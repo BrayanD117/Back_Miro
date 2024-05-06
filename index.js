@@ -2,6 +2,7 @@ const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
 const { loadEnvFile } = require("process");
+const initDB = require('./config/db')
 
 loadEnvFile();
 
@@ -21,10 +22,11 @@ app.use(express.urlencoded({
 
 app.use(morgan('dev'))
 
-app.use("/api/functionaries", require('./routes/functionaries'))
-
+app.use("/users", require('./routes/users'))
 
 
 app.listen(port, () => {
     console.log('Online =D')
 })
+
+initDB();
