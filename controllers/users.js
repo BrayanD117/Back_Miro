@@ -33,7 +33,7 @@ userController.getUsers = async (req, res) => {
 }
 
 // Receives de UUID generated from DB
-userController.updateUser = async (req, res) => {
+userController.updateUserRoles = async (req, res) => {
     const id = req.body.id
 
     try {
