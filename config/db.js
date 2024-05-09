@@ -1,11 +1,8 @@
-const { loadEnvFile } = require("process");
+require('dotenv').config()
+//const { loadEnvFile } = require("process");
 const mongoose = require('mongoose')
 
-loadEnvFile();
-
 const DB_URI = process.env.DB_URI
-
-console.log(DB_URI)
 
 module.exports = () =>  {
 

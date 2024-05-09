@@ -1,8 +1,7 @@
-const { loadEnvFile } = require("process");
+require('dotenv').config()
+//const { loadEnvFile } = require("process");
 const axios = require('axios');
 const User = require('../models/users');
-
-loadEnvFile();
 
 const userController = {}
 
@@ -15,7 +14,7 @@ userController.loadUsers = async (req, res) => {
             return {
                 id: user.identification,
                 full_name: user.full_name,
-                email: user.code_user+"unibague.edu.co",
+                email: user.code_user+"@unibague.edu.co",
                 position: user.position
             };
         });
@@ -27,9 +26,24 @@ userController.loadUsers = async (req, res) => {
     });
 }
 
+// Get all users existing into the DB
 userController.getUsers = async (req, res) => {
     const users = await User.find();
     res.status(200).json(users);
+}
+
+// Receives de UUID generated from DB
+userController.updateUser = async (req, res) => {
+    const id = req.body.id
+
+    try {
+        const user = await User.findByIdAndUpdate(id, {roles: req.body.roles}, {new: true})
+        res.status(200).json({user})
+    } catch {
+        res.json({status: "Something wrong"})
+    }
+
+    
 }
 
 module.exports = userController
