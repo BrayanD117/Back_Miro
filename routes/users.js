@@ -10,6 +10,6 @@ router.put("/updateRole", controller.updateUserRoles)
 
 router.get("/", controller.getUser)
 
-router.get("/loadData", controller.loadUsers)
+// router.get("/loadData", controller.loadUsers)
 
 module.exports = router

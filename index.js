@@ -20,6 +20,8 @@ app.use("/users", require('./routes/users'))
 
 app.use("/dimensions", require('./routes/dimensions'))
 
+app.use("/dependencies", require('./routes/dependencies'))
+
 app.listen(process.env.port, () => {
   console.log('Server running on ' + process.env.port)
 })
