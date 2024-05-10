@@ -8,6 +8,8 @@ router.get("/", controller.getUsers)
 
 router.put("/updateRole", controller.updateUserRoles)
 
-// router.get("/loadSample", controller.loadUsers)
+router.get("/", controller.getUser)
+
+router.get("/loadData", controller.loadUsers)
 
 module.exports = router

@@ -32,6 +32,12 @@ userController.getUsers = async (req, res) => {
     res.status(200).json(users);
 }
 
+userController.getUser = async (req, res) => {
+    const email = req.body.email;
+    const user = await User.findOne({email});
+    res.status(200).json(user);
+}
+
 // Receives de UUID generated from DB
 userController.updateUserRoles = async (req, res) => {
     const id = req.body.id
