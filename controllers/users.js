@@ -1,4 +1,3 @@
-require('dotenv').config()
 //const { loadEnvFile } = require("process");
 const axios = require('axios');
 const User = require('../models/users');
@@ -40,7 +39,7 @@ userController.getUser = async (req, res) => {
 
 // Receives de UUID generated from DB
 userController.updateUserRoles = async (req, res) => {
-    const id = req.body.id
+    const id = String(req.body.id)
 
     try {
         const user = await User.findByIdAndUpdate(id, {roles: req.body.roles}, {new: true})

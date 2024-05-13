@@ -14,7 +14,7 @@ dimensionController.getDimension = async (req, res) => {
 }
 
 dimensionController.createDimension = async (req, res) => {
-    const dimension = new Dimension( req.body );
+    const dimension = new Dimension( req.body )
     await dimension.save();
     res.status(200).json({status: "Dimension created"});
 }

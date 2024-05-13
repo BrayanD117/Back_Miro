@@ -4,7 +4,7 @@ const router = express.Router()
 
 const controller = require('../controllers/dimensions.js')
 
-router.get("/", controller.getDimensions)
+router.get("/all", controller.getDimensions)
 
 router.post("/create", controller.createDimension)
 
