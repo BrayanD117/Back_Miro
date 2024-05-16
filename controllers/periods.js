@@ -1,7 +1,6 @@
-
 const Period = require('../models/periods');
 
-const controller = {};
+const periodController = {};
 
 periodController.getPeriods = async (req, res) => {
     const periods = await Period.find();
@@ -20,4 +19,4 @@ periodController.createPeriod = async (req, res) => {
     res.status(200).json({status: "Period created"});
 }
 
-module.exports = controller
+module.exports = periodController
