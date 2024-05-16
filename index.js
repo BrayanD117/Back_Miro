@@ -6,7 +6,11 @@ const app = express()
 
 require('dotenv').config()
 
-app.use(cors())
+app.use(cors({
+  origin: 'http://localhost:3000',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 app.use(express.json() )
 
 app.use(express.urlencoded({
@@ -24,8 +28,10 @@ app.use("/dependencies", require('./routes/dependencies'))
 
 app.use("/periods", require('./routes/periods'))
 
-app.listen(process.env.port, () => {
-  console.log('Server running on ' + process.env.port)
+const PORT = process.env.PORT || 6000;
+
+app.listen(PORT, () => {
+  console.log('Server running on ' + PORT)
 })
 
 initDB();
