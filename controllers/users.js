@@ -25,6 +25,27 @@ userController.loadUsers = async (req, res) => {
     });
 }
 
+// Get all users existing into the DB with pagination
+userController.getUsersPagination = async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    try {
+        const users = await User.find().skip(skip).limit(limit);
+        const total = await User.countDocuments();
+
+        res.status(200).json({
+            users,
+            total,
+            page,
+            pages: Math.ceil(total / limit)
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 // Get all users existing into the DB
 userController.getUsers = async (req, res) => {
     const users = await User.find();

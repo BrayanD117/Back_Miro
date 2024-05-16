@@ -6,6 +6,8 @@ const controller = require('../controllers/users.js')
 
 router.get("/all", controller.getUsers)
 
+router.get("/allPagination", controller.getUsersPagination)
+
 router.put("/updateRole", controller.updateUserRoles)
 
 router.get("/", controller.getUser)
