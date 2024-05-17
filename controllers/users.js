@@ -85,4 +85,20 @@ userController.updateUserRoles = async (req, res) => {
     
 }
 
+userController.updateUserActiveRole = async (req, res) => {
+    const email = req.body.email;
+    const activeRole = req.body.activeRole;
+
+    try {
+        const user = await User.findOneAndUpdate(
+            { email },
+            { activeRole },
+            { new: true }
+        );
+        res.status(200).json({ user });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 module.exports = userController
