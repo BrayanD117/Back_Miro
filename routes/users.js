@@ -8,6 +8,8 @@ router.get("/all", controller.getUsers)
 
 router.get("/allPagination", controller.getUsersPagination)
 
+router.get("/roles", controller.getUserRoles);
+
 router.put("/updateRole", controller.updateUserRoles)
 
 router.get("/", controller.getUser)

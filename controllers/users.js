@@ -58,6 +58,20 @@ userController.getUser = async (req, res) => {
     res.status(200).json(user);
 }
 
+userController.getUserRoles = async (req, res) => {
+    const email = req.query.email;
+    try {
+        const user = await User.findOne({ email });
+        if (user) {
+            res.status(200).json({ roles: user.roles });
+        } else {
+            res.status(404).json({ error: "User not found" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 // Receives de UUID generated from DB
 userController.updateUserRoles = async (req, res) => {
     const id = String(req.body.id)
@@ -68,7 +82,6 @@ userController.updateUserRoles = async (req, res) => {
     } catch {
         res.json({status: "Something wrong"})
     }
-
     
 }
 
