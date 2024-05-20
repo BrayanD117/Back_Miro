@@ -29,11 +29,15 @@ userController.loadUsers = async (req, res) => {
 userController.getUsersPagination = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
+    const search = req.query.search || '';
     const skip = (page - 1) * limit;
 
     try {
-        const users = await User.find().skip(skip).limit(limit);
-        const total = await User.countDocuments();
+        const query = search
+            ? { full_name: { $regex: search, $options: 'i' } }
+            : {};
+        const users = await User.find(query).skip(skip).limit(limit);
+        const total = await User.countDocuments(query);
 
         res.status(200).json({
             users,
