@@ -4,7 +4,9 @@ const userSchema = new mongoose.Schema({
 
     identification: {
         type: Number,
-        unique: true,
+        index: {
+            unique: true
+        },
         required: true
     },
     full_name: {
@@ -25,7 +27,10 @@ const userSchema = new mongoose.Schema({
       },
     email: {
         type: String,
-        required: true
+        required: true,
+        index: {
+            unique: true,            
+        }
     },
     isActive: {
         type: Boolean,

@@ -9,7 +9,6 @@ dependencyController.loadDependencies = async (req, res) => {
     await axios.get(DEPENDENCIES_ENDPOINT)
     .then(response => {
         return response.data.map(dependency => {
-            console.log(dependency)
             return {
                 dep_code: dependency.dep_code,
                 name: dependency.dep_name,
@@ -36,7 +35,7 @@ dependencyController.addUserToDependency = async (dep_code, user) => {
             dep_code
         });
 
-        if(dependency.members.includes(user)) {
+        if(!dependency.members.$isEmpty && dependency.members.includes(user)) {
             console.log("User already exists in dependency")
             return;
         }

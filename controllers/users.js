@@ -7,7 +7,15 @@ const userController = {}
 
 USERS_ENDPOINT = process.env.USERS_ENDPOINT;
 
+const roles = ["Administrador", "Responsable", "Productor","Usuario"];
+
 userController.addExternalUser = async (req, res) => {
+    const dep_code = req.body.dep_code;
+
+    const email = req.body.email;
+
+    await dependencyController.addUserToDependency(dep_code, email);
+    console.log(req.body)
     const user = new User( req.body )
     await user.save();
     res.status(200).json({status: "User created"});
@@ -16,17 +24,18 @@ userController.addExternalUser = async (req, res) => {
 userController.loadUsers = async (req, res) => {
     await axios.get(USERS_ENDPOINT)
     .then(response => {
-        return response.data.map(user => {
-            dependencyController.addUserToDependency(user.dep_code, user.email);
+        return response.data.map(async user =>  {
+
+            await dependencyController.addUserToDependency(user.dep_code, email);
             return {
                 identification: user.identification,
                 full_name: user.full_name,
-                email: user.code_user+"@unibague.edu.co",
+                email: `${user.code_user}@unibague.edu.co`,
                 position: user.position
             };
         });
     })
-    .then(async (users) => { await User.insertMany(users) })
+    .then(async (users) => { console.log(users[0]);await User.insertMany(users) })
     .then(() => { res.status(200).send("Users loaded")})
     .catch(error => {
         console.error(error);
@@ -94,19 +103,21 @@ userController.getResponsibles = async (req, res) => {
   };
   
 userController.updateUserRoles = async (req, res) => {
-    const email = req.body.email;
+    const _id = req.body._id;
     const roles = req.body.roles;
-
+    console.log(_id)
     try {
-        const user = await User.findOneAndUpdate(
-            { email },
+        if(!validateRoles(roles)) {
+            throw new Error("Invalid roles");
+        }
+        const user = await User.findByIdAndUpdate(
+            _id,
             { roles },
             { new: true }
         );
         res.status(200).json({ user });
     } catch (error){
-        console.log(error)
-        res.status(404).json({status: "Something wrong"})
+        res.status(500).json({ error: error.message });
     }
     
 }
@@ -126,5 +137,9 @@ userController.updateUserActiveRole = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+const validateRoles = (userRoles) => {
+    return userRoles.every(role => roles.includes(role));
+}
 
 module.exports = userController

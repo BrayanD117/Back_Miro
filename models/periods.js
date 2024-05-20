@@ -2,6 +2,11 @@ const mongoose = require('mongoose')
 
 const periodSchema = new mongoose.Schema({
 
+    name: {
+        type: String,
+        required: true,
+        unique: true
+    },
     start_date: {
         type: Date,
         required: true,
@@ -25,6 +30,10 @@ const periodSchema = new mongoose.Schema({
     upload_end_date: {
         type: Date,
         required: true,
+    },
+    is_active: {
+        type: Boolean,
+        default: false,
     }
 },
 {
