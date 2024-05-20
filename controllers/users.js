@@ -63,7 +63,7 @@ userController.getUserRoles = async (req, res) => {
     try {
         const user = await User.findOne({ email });
         if (user) {
-            res.status(200).json({ roles: user.roles });
+            res.status(200).json({ roles: user.roles, activeRole: user.activeRole });
         } else {
             res.status(404).json({ error: "User not found" });
         }
