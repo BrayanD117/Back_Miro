@@ -72,6 +72,15 @@ userController.getUserRoles = async (req, res) => {
     }
 };
 
+userController.getResponsibles = async (req, res) => {
+    try {
+      const responsibles = await User.find({ roles: "Responsable" });
+      res.status(200).json(responsibles);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
+  
 // Receives de UUID generated from DB
 userController.updateUserRoles = async (req, res) => {
     const id = String(req.body.id)

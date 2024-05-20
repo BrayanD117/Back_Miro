@@ -10,6 +10,8 @@ router.get("/allPagination", controller.getUsersPagination)
 
 router.get("/roles", controller.getUserRoles);
 
+router.get("/responsibles", controller.getResponsibles);
+
 router.put("/updateRole", controller.updateUserRoles)
 
 router.put("/updateActiveRole", controller.updateUserActiveRole);
