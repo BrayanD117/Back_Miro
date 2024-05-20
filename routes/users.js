@@ -20,4 +20,6 @@ router.get("/", controller.getUser)
 
 router.post("/loadData", controller.loadUsers)
 
+router.post("/addExternalUser", controller.addExternalUser)
+
 module.exports = router
