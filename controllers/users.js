@@ -17,7 +17,7 @@ userController.loadUsers = async (req, res) => {
     await axios.get(USERS_ENDPOINT)
     .then(response => {
         return response.data.map(user => {
-            dependencyController.addUserToDependency(user.dep_code, user.identification);
+            dependencyController.addUserToDependency(user.dep_code, user.email);
             return {
                 identification: user.identification,
                 full_name: user.full_name,
