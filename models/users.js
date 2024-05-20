@@ -4,9 +4,7 @@ const userSchema = new mongoose.Schema({
 
     identification: {
         type: Number,
-        index: {
-            unique: true
-        },
+        index: true,
         required: true
     },
     full_name: {
@@ -22,20 +20,19 @@ const userSchema = new mongoose.Schema({
         default: ["Usuario"]
     },
     activeRole: {
-        type: String,
+        type: String,   
         default: "Usuario",
       },
     email: {
         type: String,
         required: true,
-        index: {
-            unique: true,            
-        }
+        index: true
     },
     isActive: {
         type: Boolean,
         default: true,
-    }
+    },
+    dep_code: String
     
 },
 {

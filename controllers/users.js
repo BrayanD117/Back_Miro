@@ -24,18 +24,22 @@ userController.addExternalUser = async (req, res) => {
 userController.loadUsers = async (req, res) => {
     await axios.get(USERS_ENDPOINT)
     .then(response => {
-        return response.data.map(async user =>  {
-
-            await dependencyController.addUserToDependency(user.dep_code, email);
+        return response.data.map(user => {
             return {
                 identification: user.identification,
                 full_name: user.full_name,
-                email: `${user.code_user}@unibague.edu.co`,
-                position: user.position
+                email: user.code_user+"@unibague.edu.co",
+                position: user.position,
+                dep_code: user.dep_code,
             };
         });
     })
-    .then(async (users) => { console.log(users[0]);await User.insertMany(users) })
+    .then(async (users) => { 
+        await User.insertMany(users);
+        for (const user of users) {
+            await dependencyController.addUserToDependency(user.dep_code, user.email);
+        }
+    })
     .then(() => { res.status(200).send("Users loaded")})
     .catch(error => {
         console.error(error);
@@ -103,15 +107,14 @@ userController.getResponsibles = async (req, res) => {
   };
   
 userController.updateUserRoles = async (req, res) => {
-    const _id = req.body._id;
-    const roles = req.body.roles;
-    console.log(_id)
+    const email = req.body.email;
+    const roles = Array(...req.body.roles);
     try {
         if(!validateRoles(roles)) {
             throw new Error("Invalid roles");
         }
-        const user = await User.findByIdAndUpdate(
-            _id,
+        const user = await User.findOneAndUpdate(
+            { email },
             { roles },
             { new: true }
         );
