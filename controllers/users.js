@@ -1,24 +1,32 @@
 //const { loadEnvFile } = require("process");
 const axios = require('axios');
 const User = require('../models/users');
+const dependencyController = require('./dependencies.js')
 
 const userController = {}
 
 USERS_ENDPOINT = process.env.USERS_ENDPOINT;
 
+userController.addExternalUser = async (req, res) => {
+    const user = new User( req.body )
+    await user.save();
+    res.status(200).json({status: "User created"});
+}
+
 userController.loadUsers = async (req, res) => {
     await axios.get(USERS_ENDPOINT)
     .then(response => {
         return response.data.map(user => {
+            dependencyController.addUserToDependency(user.dep_code, user.identification);
             return {
-                id: user.identification,
+                identification: user.identification,
                 full_name: user.full_name,
                 email: user.code_user+"@unibague.edu.co",
                 position: user.position
             };
         });
     })
-    .then(async (users) => { await User.insertMany(users) } )
+    .then(async (users) => { await User.insertMany(users) })
     .then(() => { res.status(200).send("Users loaded")})
     .catch(error => {
         console.error(error);
@@ -81,15 +89,20 @@ userController.getResponsibles = async (req, res) => {
     }
   };
   
-// Receives de UUID generated from DB
 userController.updateUserRoles = async (req, res) => {
-    const id = String(req.body.id)
+    const email = req.body.email;
+    const roles = req.body.roles;
 
     try {
-        const user = await User.findByIdAndUpdate(id, {roles: req.body.roles}, {new: true})
-        res.status(200).json({user})
-    } catch {
-        res.json({status: "Something wrong"})
+        const user = await User.findOneAndUpdate(
+            { email },
+            { roles },
+            { new: true }
+        );
+        res.status(200).json({ user });
+    } catch (error){
+        console.log(error)
+        res.status(404).json({status: "Something wrong"})
     }
     
 }

@@ -18,6 +18,6 @@ router.put("/updateActiveRole", controller.updateUserActiveRole);
 
 router.get("/", controller.getUser)
 
-// router.get("/loadData", controller.loadUsers)
+router.post("/loadData", controller.loadUsers)
 
 module.exports = router

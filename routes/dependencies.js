@@ -6,6 +6,6 @@ const controller = require('../controllers/dependencies.js')
 
 router.get("/", controller.getDependencies)
 
-// router.post("/loadData", controller.loadDependencies)
+router.post("/loadData", controller.loadDependencies)
 
 module.exports = router

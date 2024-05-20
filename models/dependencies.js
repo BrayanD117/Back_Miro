@@ -12,13 +12,10 @@ const dependencySchema = new mongoose.Schema({
         required: true,
         unique: true
     },
-    users: {
+    members: {
         type: [String],
         required: true
-    },
-    dep_father: {
-        type: String
-    },
+    }
 },
 {
     versionKey: false,

@@ -13,7 +13,6 @@ dependencyController.loadDependencies = async (req, res) => {
             return {
                 dep_code: dependency.dep_code,
                 name: dependency.dep_name,
-                dep_father: dependency.dep_father
             };
         });
     })
@@ -28,6 +27,26 @@ dependencyController.loadDependencies = async (req, res) => {
 dependencyController.getDependencies = async (req, res) => {
     const dependencies = await Dependency.find();
     res.status(200).json(dependencies);
+}
+
+dependencyController.addUserToDependency = async (dep_code, user) => {
+    try {
+
+        const dependency = await Dependency.findOne({
+            dep_code
+        });
+
+        if(dependency.members.includes(user)) {
+            console.log("User already exists in dependency")
+            return;
+        }
+        dependency.members.push(user);
+        await dependency.save();
+        console.log("User added to dependency")
+
+    } catch (error) {
+        console.log(error)
+    }
 }
 
 module.exports = dependencyController
