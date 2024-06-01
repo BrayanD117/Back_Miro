@@ -15,6 +15,9 @@ const dimensionSchema = new mongoose.Schema({
     },
     templates: {
         type: [String],
+    },
+    published_templates: {
+        type: [String],
     }
 },
 {
