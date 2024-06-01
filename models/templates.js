@@ -1,7 +1,25 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-// Define the schema for the fields array
+// Define los tipos de datos permitidos
+const allowedDataTypes = [
+    "Entero",
+    "Decimal",
+    "Porcentaje",
+    "Texto Corto",
+    "Texto Largo",
+    "True/False",
+    "Fecha",
+    "Fecha Inicial / Fecha Final",
+    "Link"
+];
+
+// Define la función de validación personalizada
+function validateDataType(value) {
+    return allowedDataTypes.includes(value);
+}
+
+// Define el esquema para el campo
 const fieldSchema = new Schema({
     name: { 
         type: String,
@@ -10,7 +28,8 @@ const fieldSchema = new Schema({
     },
     datatype: { 
         type: String, 
-        required: true 
+        required: true,
+        validate: [validateDataType, "Invalid datatype"] // Usa la función de validación
     },
     required: {
         type: Boolean,
@@ -19,10 +38,10 @@ const fieldSchema = new Schema({
     validate_with: {
         type: String,
         required: false
-    } // Reference to another collection for validation
+    } // Referencia a otra colección para validación
 });
 
-// Define the schema for the main template
+// Define el esquema para la plantilla principal
 const templateSchema = new Schema({
     name: { 
         type: String, 
@@ -37,7 +56,7 @@ const templateSchema = new Schema({
     fields: {
         type: [fieldSchema],
         required: true
-    }, // Array of fields
+    }, // Array de campos
     active: {
         type: Boolean,
         default: true,
@@ -48,6 +67,6 @@ const templateSchema = new Schema({
     versionKey: false,
     timestamps: true
 }
-); // Name of the collection in the database
+); // Nombre de la colección en la base de datos
 
-module.exports = mongoose.model('templates', templateSchema);;
+module.exports = mongoose.model('templates', templateSchema);
