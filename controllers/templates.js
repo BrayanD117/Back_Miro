@@ -26,6 +26,7 @@ templateController.getPlantilla = async (req, res) => {
 
 templateController.createPlantilla = async (req, res) => {
     try {
+        console.log(req.body)
         const plantilla = new Template(req.body);
         await plantilla.save();
         res.status(200).json({ status: 'Plantilla creada' });
