@@ -8,7 +8,7 @@ const dimensionSchema = new mongoose.Schema({
         unique: true
     },
     responsibles: {
-        type: [String],
+        type: String,
     },
     producers: {
         type: [String],
