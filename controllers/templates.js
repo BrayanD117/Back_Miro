@@ -1,20 +1,20 @@
-const Plantilla = require('../models/plantilla.model'); // Ajusta el path según tu estructura de proyecto
+const Template = require('../models/plantilla.model'); // Ajusta el path según tu estructura de proyecto
 
-const plantillaController = {};
+const templateController = {};
 
-plantillaController.getPlantillas = async (req, res) => {
+templateController.getPlantillas = async (req, res) => {
     try {
-        const plantillas = await Plantilla.find();
+        const plantillas = await Template.find();
         res.status(200).json(plantillas);
     } catch (error) {
         res.status(500).json({ mensaje: 'Error al obtener las plantillas', error });
     }
 };
 
-plantillaController.getPlantilla = async (req, res) => {
+templateController.getPlantilla = async (req, res) => {
     try {
         const { id } = req.body;
-        const plantilla = await Plantilla.findById(id);
+        const plantilla = await Template.findById(id);
         if (!plantilla) {
             return res.status(404).json({ mensaje: 'Plantilla no encontrada' });
         }
@@ -24,9 +24,9 @@ plantillaController.getPlantilla = async (req, res) => {
     }
 };
 
-plantillaController.createPlantilla = async (req, res) => {
+templateController.createPlantilla = async (req, res) => {
     try {
-        const plantilla = new Plantilla(req.body);
+        const plantilla = new Template(req.body);
         await plantilla.save();
         res.status(200).json({ status: 'Plantilla creada' });
     } catch (error) {
@@ -49,10 +49,10 @@ plantillaController.createPlantilla = async (req, res) => {
 //     }
 // };
 
-plantillaController.deletePlantilla = async (req, res) => {
+templateController.deletePlantilla = async (req, res) => {
     try {
         const { id } = req.body;
-        const plantillaEliminada = await Plantilla.findByIdAndDelete(id);
+        const plantillaEliminada = await Template.findByIdAndDelete(id);
         if (!plantillaEliminada) {
             return res.status(404).json({ mensaje: 'Plantilla no encontrada' });
         }
@@ -62,4 +62,4 @@ plantillaController.deletePlantilla = async (req, res) => {
     }
 };
 
-module.exports = plantillaController;
+module.exports = templateController;

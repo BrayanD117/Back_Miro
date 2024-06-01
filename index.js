@@ -28,6 +28,8 @@ app.use("/dependencies", require('./routes/dependencies'))
 
 app.use("/periods", require('./routes/periods'))
 
+app.use("/templates", require('./routes/templates'))
+
 const PORT = process.env.PORT || 6000;
 
 app.listen(PORT, () => {
