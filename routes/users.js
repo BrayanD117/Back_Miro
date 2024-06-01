@@ -12,6 +12,8 @@ router.get("/roles", controller.getUserRoles);
 
 router.get("/responsibles", controller.getResponsibles);
 
+router.get("/producers", controller.getProducers);
+
 router.put("/updateRole", controller.updateUserRoles)
 
 router.put("/updateActiveRole", controller.updateUserActiveRole);

@@ -115,6 +115,15 @@ userController.getResponsibles = async (req, res) => {
     }
   };
   
+userController.getProducers = async (req, res) => {
+    try {
+        const producers = await User.find({ roles: "Productor" });
+        res.status(200).json(producers);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+  };
+
   userController.updateUserRoles = async (req, res) => {
     const email = req.body.email;
     const roles = Array.from(req.body.roles);
