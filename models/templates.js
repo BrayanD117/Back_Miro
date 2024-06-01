@@ -19,29 +19,30 @@ const fieldSchema = new Schema({
     validate_with: {
         type: String,
         required: false
-    }, // Reference to another collection for validation
-    active: {
-        type: Boolean,
-        default: true,
-        required: true
-    }
+    } // Reference to another collection for validation
 });
 
 // Define the schema for the main template
 const templateSchema = new Schema({
     name: { 
         type: String, 
-        required: true 
+        required: true,
     },
     file_name: {
         type: String,
-        required: true
     },
     file_description: { 
         type: String,
-        required: true
     },
-    fields: [fieldSchema] // Array of fields
+    fields: {
+        type: [fieldSchema],
+        required: true
+    }, // Array of fields
+    active: {
+        type: Boolean,
+        default: true,
+        required: true
+    }
 }, 
 {
     versionKey: false,

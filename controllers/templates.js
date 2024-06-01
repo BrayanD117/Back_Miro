@@ -1,4 +1,4 @@
-const Template = require('../models/plantilla.model'); // Ajusta el path según tu estructura de proyecto
+const Template = require('../models/templates'); // Ajusta el path según tu estructura de proyecto
 
 const templateController = {};
 
@@ -30,7 +30,15 @@ templateController.createPlantilla = async (req, res) => {
         await plantilla.save();
         res.status(200).json({ status: 'Plantilla creada' });
     } catch (error) {
-        res.status(400).json({ mensaje: 'Error al crear la plantilla', error });
+        if (error.name === 'ValidationError') {
+            const mensajesErrores = {};
+            for (let campo in error.errors) {
+                mensajesErrores[campo] = error.errors[campo].message;
+            }
+            res.status(400).json({ mensaje: 'Error al crear la plantilla', errores: mensajesErrores });
+        } else {
+            res.status(500).json({ mensaje: 'Error interno del servidor', error });
+        }
     }
 };
 
