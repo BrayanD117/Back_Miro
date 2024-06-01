@@ -55,7 +55,15 @@ userController.getUsersPagination = async (req, res) => {
 
     try {
         const query = search
-            ? { full_name: { $regex: search, $options: 'i' } }
+            ? {
+                $or: [
+                    { identification: !isNaN(Number(search)) ? Number(search) : undefined },
+                    { full_name: { $regex: search, $options: 'i' } },
+                    { position: { $regex: search, $options: 'i' } },
+                    { email: { $regex: search, $options: 'i' } },
+                    { roles: { $regex: search, $options: 'i' } }
+                ].filter(condition => condition !== undefined)
+            }
             : {};
         const users = await User.find(query).skip(skip).limit(limit);
         const total = await User.countDocuments(query);
@@ -67,7 +75,8 @@ userController.getUsersPagination = async (req, res) => {
             pages: Math.ceil(total / limit)
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error fetching users:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 };
 
