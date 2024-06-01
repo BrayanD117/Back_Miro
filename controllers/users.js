@@ -106,9 +106,9 @@ userController.getResponsibles = async (req, res) => {
     }
   };
   
-userController.updateUserRoles = async (req, res) => {
+  userController.updateUserRoles = async (req, res) => {
     const email = req.body.email;
-    const roles = Array(...req.body.roles);
+    const roles = Array.from(req.body.roles);
     try {
         if(!validateRoles(roles)) {
             throw new Error("Invalid roles");
@@ -118,12 +118,16 @@ userController.updateUserRoles = async (req, res) => {
             { roles },
             { new: true }
         );
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
         res.status(200).json({ user });
     } catch (error){
         res.status(500).json({ error: error.message });
     }
     
 }
+
 
 userController.updateUserActiveRole = async (req, res) => {
     const email = req.body.email;
@@ -135,6 +139,9 @@ userController.updateUserActiveRole = async (req, res) => {
             { activeRole },
             { new: true }
         );
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
         res.status(200).json({ user });
     } catch (error) {
         res.status(500).json({ error: error.message });
