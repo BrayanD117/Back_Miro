@@ -24,4 +24,6 @@ router.post("/loadData", controller.loadUsers)
 
 router.post("/addExternalUser", controller.addExternalUser)
 
+router.put("/updateStatus", controller.updateUserStatus);
+
 module.exports = router
