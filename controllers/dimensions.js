@@ -39,14 +39,25 @@ dimensionController.getDimensionsPagination = async (req, res) => {
 };
 
 dimensionController.createDimension = async (req, res) => {
-  const dimension = new Dimension(req.body);
   try {
+    const nameLowerCase = req.body.name.toLowerCase();
+    const existingDimension = await Dimension.findOne({ name: nameLowerCase });
+    
+    if (existingDimension) {
+      return res.status(400).json({ error: "La dimensión con ese nombre ya existe" });
+    }
+
+    const dimension = new Dimension({
+      ...req.body,
+      name: nameLowerCase
+    });
+
     await dimension.save();
     res.status(200).json({ status: "Dimension created" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-}
+};
 
 dimensionController.updateDimension = async (req, res) => {
   const { id } = req.params;
