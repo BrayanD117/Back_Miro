@@ -22,29 +22,45 @@ userController.addExternalUser = async (req, res) => {
 }
 
 userController.loadUsers = async (req, res) => {
-    await axios.get(USERS_ENDPOINT)
-    .then(response => {
-        return response.data.map(user => {
-            return {
-                identification: user.identification,
-                full_name: user.full_name,
-                email: user.code_user+"@unibague.edu.co",
-                position: user.position,
-                dep_code: user.dep_code,
-            };
+    console.log('USERS_ENDPOINT:', USERS_ENDPOINT);
+    try {
+        const response = await axios.get(USERS_ENDPOINT);
+        console.log('External users data:', response.data);
+
+        const externalUsers = response.data.map(user => ({
+            identification: user.identification,
+            full_name: user.full_name,
+            email: user.code_user + "@unibague.edu.co",
+            position: user.position,
+            dep_code: user.dep_code,
+        }));
+
+        const updatePromises = externalUsers.map(async (externalUser) => {
+            const existingUser = await User.findOne({ email: externalUser.email });
+            if (!existingUser) {
+                await User.create({ ...externalUser, isActive: true });
+            } else {
+                await User.findOneAndUpdate({ email: externalUser.email }, { isActive: true });
+            }
         });
-    })
-    .then(async (users) => { 
-        await User.insertMany(users);
-        for (const user of users) {
-            await dependencyController.addUserToDependency(user.dep_code, user.email);
-        }
-    })
-    .then(() => { res.status(200).send("Users loaded")})
-    .catch(error => {
-        console.error(error);
-    });
-}
+
+        await Promise.all(updatePromises);
+
+        const allUsers = await User.find();
+        const deactivatePromises = allUsers.map(async (user) => {
+            if (!externalUsers.some(externalUser => externalUser.email === user.email)) {
+                await User.findOneAndUpdate({ email: user.email }, { isActive: false });
+            }
+        });
+
+        await Promise.all(deactivatePromises);
+
+        res.status(200).send("Users synchronized");
+    } catch (error) {
+        console.error('Error during user synchronization:', error);
+        res.status(500).json({ error: 'Internal Server Error', details: error.message });
+    }
+};
 
 // Get all users existing into the DB with pagination
 userController.getUsersPagination = async (req, res) => {
