@@ -1,10 +1,10 @@
 const mongoose = require('mongoose')
 
-const usersSchema = new mongoose.Schema({
+const userSchema = new mongoose.Schema({
 
-    id: {
+    identification: {
         type: Number,
-        unique: true,
+        index: true,
         required: true
     },
     full_name: {
@@ -19,10 +19,20 @@ const usersSchema = new mongoose.Schema({
         type: [String],
         default: ["Usuario"]
     },
+    activeRole: {
+        type: String,   
+        default: "Usuario",
+      },
     email: {
         type: String,
-        required: true
+        required: true,
+        index: true
     },
+    isActive: {
+        type: Boolean,
+        default: true,
+    },
+    dep_code: String
     
 },
 {
@@ -31,4 +41,4 @@ const usersSchema = new mongoose.Schema({
 }
 );
 
-module.exports = mongoose.model('users', usersSchema);
+module.exports = mongoose.model('users', userSchema);
