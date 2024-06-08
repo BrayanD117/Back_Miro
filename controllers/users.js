@@ -200,6 +200,17 @@ userController.updateUserStatus = async (req, res) => {
     }
 };
 
+userController.getUsersByDependency = async (req, res) => {
+    const { dep_code } = req.params;
+    try {
+        const users = await User.find({ dep_code });
+        res.status(200).json(users);
+    } catch (error) {
+        console.error('Error fetching users by dependency:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 const validateRoles = (userRoles) => {
     return userRoles.every(role => roles.includes(role));
 }
