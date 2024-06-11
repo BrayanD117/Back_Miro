@@ -64,15 +64,24 @@ dimensionController.updateDimension = async (req, res) => {
   const dimensionData = req.body;
 
   try {
-    const dimension = await Dimension.findByIdAndUpdate(id, dimensionData, { new: true });
+    // Encuentra la dimensión por su ID
+    let dimension = await Dimension.findById(id);
     if (!dimension) {
       return res.status(404).json({ error: "Dimension not found" });
     }
+
+    // Asigna las nuevas propiedades al documento
+    Object.assign(dimension, dimensionData);
+
+    // Guarda el documento actualizado
+    await dimension.save();
+
     res.status(200).json({ dimension });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 dimensionController.deleteDimension = async (req, res) => {
   const { id } = req.params;

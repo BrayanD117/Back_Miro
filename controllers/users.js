@@ -35,6 +35,11 @@ userController.loadUsers = async (req, res) => {
             dep_code: user.dep_code,
         }));
 
+        externalUsers.map(async (externalUser) => {
+            await dependencyController.addUserToDependency(externalUser.dep_code, externalUser.email);
+        }
+    )
+
         const updatePromises = externalUsers.map(async (externalUser) => {
             const existingUser = await User.findOne({ email: externalUser.email });
             if (!existingUser) {

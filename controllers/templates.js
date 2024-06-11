@@ -58,6 +58,7 @@ templateController.createPlantilla = async (req, res) => {
 //     }
 // };
 
+//TODO Validar antes de borrar que no tenga ninguna plantilla publicada asociada
 templateController.deletePlantilla = async (req, res) => {
     try {
         const { id } = req.body;
