@@ -22,7 +22,7 @@ userController.addExternalUser = async (req, res) => {
 }
 
 userController.loadUsers = async (req, res) => {
-    console.log('USERS_ENDPOINT:', USERS_ENDPOINT);
+
     try {
         const response = await axios.get(USERS_ENDPOINT);
         console.log('External users data:', response.data);
@@ -166,7 +166,6 @@ userController.getProducers = async (req, res) => {
     }
     
 }
-
 
 userController.updateUserActiveRole = async (req, res) => {
     const email = req.body.email;

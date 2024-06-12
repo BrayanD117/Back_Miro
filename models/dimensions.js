@@ -35,6 +35,8 @@ dimensionSchema.pre('save', async function(next) {
             const user = await User.findOne({ email: this.responsible });
             if (!user) {
                 return next(new Error('User not found'));
+            } else if (!user.roles.includes('Responsable')) {
+                return next(new Error('User is not a responsible'));
             }
         } catch (error) {
             return next(error);
