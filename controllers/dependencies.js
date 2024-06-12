@@ -1,5 +1,6 @@
 const axios = require('axios');
 const Dependency = require('../models/dependencies');
+const User = require('../models/users');
 
 const dependencyController = {}
 
@@ -34,10 +35,37 @@ dependencyController.getDependency = async (req, res) => {
     }
 }
 
-// Get all dependencies existing into the DB
+// Get all dependencies existing into the DB with pagination
 dependencyController.getDependencies = async (req, res) => {
-    const dependencies = await Dependency.find();
-    res.status(200).json(dependencies);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const search = req.query.search || '';
+    const skip = (page - 1) * limit;
+
+    try {
+        const query = search
+            ? {
+                $or: [
+                    { dep_code: { $regex: search, $options: 'i' } },
+                    { name: { $regex: search, $options: 'i' } },
+                    { responsible: { $regex: search, $options: 'i' } },
+                    { dep_father: { $regex: search, $options: 'i' } }
+                ]
+            }
+            : {};
+        const dependencies = await Dependency.find(query).skip(skip).limit(limit);
+        const total = await Dependency.countDocuments(query);
+
+        res.status(200).json({
+            dependencies,
+            total,
+            page,
+            pages: Math.ceil(total / limit)
+        });
+    } catch (error) {
+        console.error('Error fetching dependencies:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
 }
 
 dependencyController.addUserToDependency = async (dep_code, user) => {
@@ -76,6 +104,22 @@ dependencyController.setResponsible = async (req, res) => {
     } catch (error) {
         console.log(error);
         res.status(500).json({ status: "Error assigning responsible", error: error.message });
+    }
+}
+
+dependencyController.getMembers = async (req, res) => {
+    const dep_code = req.params.dep_code;
+    try {
+        const dependency = await Dependency.findOne({ dep_code });
+        if (!dependency) {
+            return res.status(404).json({ status: "Dependency not found" });
+        }
+
+        const members = await User.find({ email: { $in: dependency.members } });
+        res.status(200).json(members);
+    } catch (error) {
+        console.error('Error fetching members:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 }
 

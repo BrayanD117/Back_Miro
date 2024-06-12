@@ -12,4 +12,6 @@ router.post("/loadData", controller.loadDependencies)
 
 router.put("/setResponsible", controller.setResponsible)
 
+router.get("/:dep_code/members", controller.getMembers)
+
 module.exports = router
