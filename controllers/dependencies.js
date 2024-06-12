@@ -107,6 +107,31 @@ dependencyController.setResponsible = async (req, res) => {
     }
 }
 
+dependencyController.updateDependency = async (req, res) => {
+    const { id } = req.params;
+    const { dep_code, name, responsible, dep_father, producers } = req.body;
+
+    try {
+        const dependency = await Dependency.findById(id);
+        if (!dependency) {
+            return res.status(404).json({ status: "Dependency not found" });
+        }
+
+        dependency.dep_code = dep_code;
+        dependency.name = name;
+        dependency.responsible = responsible;
+        dependency.dep_father = dep_father;
+        dependency.members = producers;
+
+        await dependency.save();
+
+        res.status(200).json({ status: "Dependency updated" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ status: "Error updating dependency", error: error.message });
+    }
+}
+
 dependencyController.getMembers = async (req, res) => {
     const dep_code = req.params.dep_code;
     try {

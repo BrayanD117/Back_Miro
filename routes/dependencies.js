@@ -14,4 +14,6 @@ router.put("/setResponsible", controller.setResponsible)
 
 router.get("/:dep_code/members", controller.getMembers)
 
+router.put("/:id", controller.updateDependency)
+
 module.exports = router
