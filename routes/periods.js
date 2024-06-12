@@ -8,4 +8,8 @@ router.get("/", controller.getPeriod)
 
 router.post("/create", controller.createPeriod)
 
+router.put("/:id", controller.updatePeriod);  
+
+router.delete("/:id", controller.deletePeriod);
+
 module.exports = router
