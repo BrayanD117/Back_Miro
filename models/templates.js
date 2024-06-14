@@ -38,7 +38,11 @@ const fieldSchema = new Schema({
     validate_with: {
         type: String,
         required: false
-    } // Referencia a otra colección para validación
+    }, // Referencia a otra colección para validación
+    comment: {
+        type: String,
+        required: false
+    } // Campo para comentarios
 });
 
 // Define el esquema para la plantilla principal
