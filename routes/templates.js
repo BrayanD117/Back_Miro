@@ -4,7 +4,7 @@ const controller = require('../controllers/templates'); // Ajusta el path según
 router.get("/all", controller.getPlantillas);       // Obtener todas las plantillas
 router.get("/", controller.getPlantilla);        // Obtener una plantilla por ID
 router.post("/create", controller.createPlantilla);  // Crear una nueva plantilla
-// router.put("/update", controller.updatePlantilla); // Actualizar una plantilla por ID (pendiente)
+router.put("/:id", controller.updatePlantilla);
 router.delete("/delete", controller.deletePlantilla); // Borrar una plantilla por ID
 
 module.exports = router;
