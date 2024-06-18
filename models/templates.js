@@ -23,7 +23,6 @@ function validateDataType(value) {
 const fieldSchema = new Schema({
     name: { 
         type: String,
-        unique: true, 
         required: true 
     },
     datatype: { 
@@ -50,6 +49,7 @@ const templateSchema = new Schema({
     name: { 
         type: String, 
         required: true,
+        unique: true  // Asegura que el nombre de la plantilla sea único
     },
     file_name: {
         type: String,

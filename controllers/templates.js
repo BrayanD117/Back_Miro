@@ -48,10 +48,17 @@ templateController.getPlantilla = async (req, res) => {
 
 templateController.createPlantilla = async (req, res) => {
     try {
+        // Convertir el nombre de la plantilla a minúsculas para la comparación
+        const existingTemplate = await Template.findOne({ name: new RegExp(`^${req.body.name}$`, 'i') });
+        if (existingTemplate) {
+            return res.status(400).json({ mensaje: 'El nombre de la plantilla ya existe. Por favor, elija otro nombre.' });
+        }
+
         const plantilla = new Template(req.body);
         await plantilla.save();
         res.status(200).json({ status: 'Plantilla creada' });
     } catch (error) {
+        console.error('Error al crear la plantilla:', error);
         if (error.name === 'ValidationError') {
             const mensajesErrores = {};
             for (let campo in error.errors) {
