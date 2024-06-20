@@ -35,7 +35,7 @@ templateController.getPlantillas = async (req, res) => {
 
 templateController.getPlantilla = async (req, res) => {
     try {
-        const { id } = req.body;
+        const { id } = req.params;
         const plantilla = await Template.findById(id);
         if (!plantilla) {
             return res.status(404).json({ mensaje: 'Plantilla no encontrada' });
