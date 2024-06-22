@@ -20,7 +20,7 @@ router.put("/updateActiveRole", controller.updateUserActiveRole);
 
 router.get("/", controller.getUser)
 
-router.post("/loadData", controller.loadUsers)
+router.post("/updateAll", controller.loadUsers)
 
 router.post("/addExternalUser", controller.addExternalUser)
 
