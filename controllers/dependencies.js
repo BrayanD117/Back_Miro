@@ -70,21 +70,18 @@ dependencyController.getDependencies = async (req, res) => {
 
 dependencyController.addUserToDependency = async (dep_code, user) => {
     try {
+        const dependency = await Dependency.findOne({ dep_code });
 
-        const dependency = await Dependency.findOne({
-            dep_code
-        });
-
-        if(!dependency.members.$isEmpty && dependency.members.includes(user)) {
-            console.log("User already exists in dependency")
+        if (dependency.members.includes(user)) {
+            console.log("User already exists in dependency");
             return;
         }
         dependency.members.push(user);
         await dependency.save();
-        console.log("User added to dependency")
+        console.log("User added to dependency");
 
     } catch (error) {
-        console.log(error)
+        console.log(error);
     }
 }
 
@@ -99,7 +96,7 @@ dependencyController.setResponsible = async (req, res) => {
         // Asigna el email como responsable
         dependency.responsible = email;
         await dependency.save();
-        
+
         res.status(200).json({ status: "Responsible assigned" });
     } catch (error) {
         console.log(error);
@@ -121,7 +118,7 @@ dependencyController.updateDependency = async (req, res) => {
         dependency.name = name;
         dependency.responsible = responsible;
         dependency.dep_father = dep_father;
-        dependency.members = producers;
+        dependency.members = [...new Set([...dependency.members, ...producers])];
 
         await dependency.save();
 
@@ -148,4 +145,4 @@ dependencyController.getMembers = async (req, res) => {
     }
 }
 
-module.exports = dependencyController
+module.exports = dependencyController;
