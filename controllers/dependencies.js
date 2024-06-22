@@ -17,7 +17,7 @@ dependencyController.loadDependencies = async (req, res) => {
             };
         });
     })
-    .then(async (dependencies) => { await Dependency.insertMany(dependencies) } )
+    .then(async (dependencies) => { await Dependency.upsertDependencies(dependencies) } )
     .then(() => { res.status(200).send("Dependencies loaded")})
     .catch(error => {
         console.error(error);

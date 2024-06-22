@@ -42,4 +42,22 @@ dependencySchema.pre('save', async function(next) {
     next();
 });
 
+dependencySchema.statics.upsertDependencies = async function(dependencies) {
+    const bulkOps = dependencies.map(dep => ({
+        updateOne: {
+            filter: { dep_code: dep.dep_code },
+            update: { $set: dep },
+            upsert: true // Realiza una operación de upsert
+        }
+    }));
+
+    await this.bulkWrite(bulkOps);
+
+    const newDepCodes = dependencies.map(dep => dep.dep_code);
+    await this.updateMany(
+        { dep_code: { $nin: newDepCodes } },
+        { $set: { active: false } }
+    );
+};
+
 module.exports = mongoose.model('Dependency', dependencySchema);
