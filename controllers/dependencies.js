@@ -142,4 +142,22 @@ dependencyController.getMembers = async (req, res) => {
     }
 }
 
+dependencyController.getMembersWithFather = async (req, res) => {
+    const dep_code = req.body.dep_code;
+    try {
+        const dependency = await Dependency.findOne({ dep_code });
+        if (!dependency) {
+            return res.status(404).json({ status: "Dependency not found" });
+        }
+
+        const members = await User.find({ email: { $in: dependency.members } });
+        const father = await Dependency.findOne({ dep_code: dependency.dep_father });
+        const fatherMembers = await User.find({ email: { $in: father.members } });
+        res.status(200).json({ members, fatherMembers });
+    } catch (error) {
+        console.error('Error fetching members:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
 module.exports = dependencyController;

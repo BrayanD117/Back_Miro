@@ -16,4 +16,6 @@ router.get("/:dep_code/members", controller.getMembers)
 
 router.put("/:id", controller.updateDependency)
 
+router.get("/members", controller.getMembersWithFather)
+
 module.exports = router
