@@ -18,7 +18,7 @@ dependencyController.loadDependencies = async (req, res) => {
         });
     })
     .then(async (dependencies) => { await Dependency.upsertDependencies(dependencies) } )
-    .then(() => { res.status(200).send("Dependencies loaded")})
+    .then(() => { res.status(200).send("Dependencies loaded/updated successfully")})
     .catch(error => {
         console.error(error);
     });
@@ -70,18 +70,15 @@ dependencyController.getDependencies = async (req, res) => {
 
 dependencyController.addUserToDependency = async (dep_code, user) => {
     try {
-        const dependency = await Dependency.findOne({ dep_code });
-
-        if (dependency.members.includes(user)) {
-            console.log("User already exists in dependency");
-            return;
+        try {
+            await Dependency.addUserToDependency(dep_code, user);
+        } catch (error) {
+            console.error(error);
         }
-        dependency.members.push(user);
-        await dependency.save();
-        console.log("User added to dependency");
 
     } catch (error) {
         console.log(error);
+        throw error;
     }
 }
 

@@ -22,43 +22,32 @@ userController.addExternalUser = async (req, res) => {
 }
 
 userController.loadUsers = async (req, res) => {
-
     try {
         const response = await axios.get(USERS_ENDPOINT);
-        console.log('External users data:', response.data);
 
-        const externalUsers = response.data.map(user => ({
-            identification: user.identification,
-            full_name: user.full_name,
-            email: user.code_user + "@unibague.edu.co",
-            position: user.position,
-            dep_code: user.dep_code,
-        }));
+        const externalUsers = response.data
+            .filter(user => user.code_user && user.code_user.trim() !== "")
+            .map(user => ({
+                identification: user.identification,
+                full_name: user.full_name,
+                email: user.email,
+                position: user.position,
+                dep_code: user.dep_code,
+            }));
 
-        externalUsers.map(async (externalUser) => {
-            await dependencyController.addUserToDependency(externalUser.dep_code, externalUser.email);
-        }
-    )
+        // Handle dependency updates concurrently
+        await Promise.all(
+            externalUsers.map(async (externalUser) => {
+                try {
+                    await dependencyController.addUserToDependency(externalUser.dep_code, externalUser.email);
+                } catch (error) {
+                    console.error(`Error processing user ${externalUser.email}:`, error);
+                }
+            })
+        );
 
-        const updatePromises = externalUsers.map(async (externalUser) => {
-            const existingUser = await User.findOne({ email: externalUser.email });
-            if (!existingUser) {
-                await User.create({ ...externalUser, isActive: true });
-            } else {
-                await User.findOneAndUpdate({ email: externalUser.email }, { isActive: true });
-            }
-        });
-
-        await Promise.all(updatePromises);
-
-        const allUsers = await User.find();
-        const deactivatePromises = allUsers.map(async (user) => {
-            if (!externalUsers.some(externalUser => externalUser.email === user.email)) {
-                await User.findOneAndUpdate({ email: user.email }, { isActive: false });
-            }
-        });
-
-        await Promise.all(deactivatePromises);
+        // Sync users
+        await User.syncUsers(externalUsers);
 
         res.status(200).send("Users synchronized");
     } catch (error) {

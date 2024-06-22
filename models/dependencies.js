@@ -60,4 +60,36 @@ dependencySchema.statics.upsertDependencies = async function(dependencies) {
     );
 };
 
+dependencySchema.statics.addUserToDependency = async function(dep_code, user) {
+    try {
+        // Buscar si el usuario ya está en la dependencia especificada
+        const currentDependency = await this.findOne({ dep_code, members: user });
+
+        if (currentDependency) {
+            console.log("User already exists in the specified dependency");
+            return;
+        }
+
+        // Eliminar al usuario de cualquier otra dependencia en la que se encuentre actualmente
+        await this.updateMany(
+            { members: user },
+            { $pull: { members: user } }
+        );
+
+        // Añadir al usuario a la nueva dependencia
+        const newDependency = await this.findOne({ dep_code });
+        if (!newDependency) {
+            console.log("Specified dependency not found");
+            return;
+        }
+
+        newDependency.members.push(user);
+        await newDependency.save();
+        console.log("User added to the specified dependency");
+
+    } catch (error) {
+        console.error(error);
+    }
+};
+
 module.exports = mongoose.model('Dependency', dependencySchema);
