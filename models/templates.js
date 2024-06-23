@@ -65,6 +65,10 @@ const templateSchema = new Schema({
         type: Boolean,
         default: true,
         required: true
+    },
+    created_by: {
+        type: String,
+        required: true
     }
 }, 
 {
