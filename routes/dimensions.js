@@ -6,6 +6,8 @@ const controller = require('../controllers/dimensions.js');
 
 router.get("/all", controller.getDimensionsPagination);
 
+router.get("/responsible", controller.getDimensionsByResponsible);
+
 router.post("/create", controller.createDimension);
 
 router.put("/:id", controller.updateDimension);

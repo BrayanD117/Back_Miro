@@ -38,6 +38,17 @@ dimensionController.getDimensionsPagination = async (req, res) => {
   }
 };
 
+dimensionController.getDimensionsByResponsible = async (req, res) => {
+  const email = req.query.email;
+  try {
+    const dimensions = await Dimension.find({ responsible: email });
+    res.status(200).json(dimensions);
+  } catch (error) {
+    console.error('Error fetching dimensions by responsible:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 dimensionController.createDimension = async (req, res) => {
   try {
     const nameLowerCase = req.body.name.toLowerCase();
