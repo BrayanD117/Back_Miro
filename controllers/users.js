@@ -23,6 +23,8 @@ userController.addExternalUser = async (req, res) => {
 
 userController.loadUsers = async (req, res) => {
     try {
+        dependencyController.loadDependencies();
+
         const response = await axios.get(USERS_ENDPOINT);
 
         const externalUsers = response.data
@@ -97,7 +99,7 @@ userController.getUsers = async (req, res) => {
 }
 
 userController.getUser = async (req, res) => {
-    const email = req.body.email;
+    const email = req.params.email;
     const user = await User.findOne({email});
     res.status(200).json(user);
 }

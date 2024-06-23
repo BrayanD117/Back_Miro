@@ -66,7 +66,6 @@ dependencySchema.statics.addUserToDependency = async function(dep_code, user) {
         const currentDependency = await this.findOne({ dep_code, members: user });
 
         if (currentDependency) {
-            console.log("User already exists in the specified dependency");
             return;
         }
 

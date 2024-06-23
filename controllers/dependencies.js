@@ -6,7 +6,7 @@ const dependencyController = {}
 
 DEPENDENCIES_ENDPOINT = process.env.DEPENDENCIES_ENDPOINT;
 
-dependencyController.loadDependencies = async (req, res) => {
+dependencyController.loadDependencies = async () => {
     await axios.get(DEPENDENCIES_ENDPOINT)
     .then(response => {
         return response.data.map(dependency => {
@@ -18,7 +18,7 @@ dependencyController.loadDependencies = async (req, res) => {
         });
     })
     .then(async (dependencies) => { await Dependency.upsertDependencies(dependencies) } )
-    .then(() => { res.status(200).send("Dependencies loaded/updated successfully")})
+    .then(() => { console.log("Dependencies loaded/updated successfully")})
     .catch(error => {
         console.error(error);
     });
