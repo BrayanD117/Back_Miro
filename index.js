@@ -6,11 +6,19 @@ const app = express()
 
 require('dotenv').config()
 
-app.use(cors({
-  origin: 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
-}));
+const allowedOrigins = ['http://localhost:3000'];
+
+const corsOptionsDelegate = function (req, callback) {
+  let corsOptions;
+  if (allowedOrigins.indexOf(req.header('Origin')) !== -1) {
+    corsOptions = { origin: true, credentials: true }; // Permitir este origen
+  } else {
+    corsOptions = { origin: false }; // Rechazar esta petición
+  }
+  callback(null, corsOptions);
+};
+
+app.use(cors(corsOptionsDelegate));
 app.use(express.json() )
 
 app.use(express.urlencoded({
