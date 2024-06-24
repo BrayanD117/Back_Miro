@@ -22,38 +22,34 @@ userController.addExternalUser = async (req, res) => {
 }
 
 userController.loadUsers = async (req, res) => {
-    console.log('USERS_ENDPOINT:', USERS_ENDPOINT);
     try {
+        dependencyController.loadDependencies();
+
         const response = await axios.get(USERS_ENDPOINT);
-        console.log('External users data:', response.data);
 
-        const externalUsers = response.data.map(user => ({
-            identification: user.identification,
-            full_name: user.full_name,
-            email: user.code_user + "@unibague.edu.co",
-            position: user.position,
-            dep_code: user.dep_code,
-        }));
+        const externalUsers = response.data
+            .filter(user => user.code_user && user.code_user.trim() !== "")
+            .map(user => ({
+                identification: user.identification,
+                full_name: user.full_name,
+                email: user.email,
+                position: user.position,
+                dep_code: user.dep_code,
+            }));
 
-        const updatePromises = externalUsers.map(async (externalUser) => {
-            const existingUser = await User.findOne({ email: externalUser.email });
-            if (!existingUser) {
-                await User.create({ ...externalUser, isActive: true });
-            } else {
-                await User.findOneAndUpdate({ email: externalUser.email }, { isActive: true });
-            }
-        });
+        // Handle dependency updates concurrently
+        await Promise.all(
+            externalUsers.map(async (externalUser) => {
+                try {
+                    await dependencyController.addUserToDependency(externalUser.dep_code, externalUser.email);
+                } catch (error) {
+                    console.error(`Error processing user ${externalUser.email}:`, error);
+                }
+            })
+        );
 
-        await Promise.all(updatePromises);
-
-        const allUsers = await User.find();
-        const deactivatePromises = allUsers.map(async (user) => {
-            if (!externalUsers.some(externalUser => externalUser.email === user.email)) {
-                await User.findOneAndUpdate({ email: user.email }, { isActive: false });
-            }
-        });
-
-        await Promise.all(deactivatePromises);
+        // Sync users
+        await User.syncUsers(externalUsers);
 
         res.status(200).send("Users synchronized");
     } catch (error) {
@@ -103,7 +99,7 @@ userController.getUsers = async (req, res) => {
 }
 
 userController.getUser = async (req, res) => {
-    const email = req.body.email;
+    const email = req.params.email;
     const user = await User.findOne({email});
     res.status(200).json(user);
 }
@@ -162,7 +158,6 @@ userController.getProducers = async (req, res) => {
     
 }
 
-
 userController.updateUserActiveRole = async (req, res) => {
     const email = req.body.email;
     const activeRole = req.body.activeRole;
@@ -197,6 +192,17 @@ userController.updateUserStatus = async (req, res) => {
         res.status(200).json({ user });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+};
+
+userController.getUsersByDependency = async (req, res) => {
+    const { dep_code } = req.params;
+    try {
+        const users = await User.find({ dep_code });
+        res.status(200).json(users);
+    } catch (error) {
+        console.error('Error fetching users by dependency:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 };
 

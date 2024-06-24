@@ -6,6 +6,12 @@ router.get("/all", controller.getPeriods)
 
 router.get("/", controller.getPeriod)
 
+router.get("/active", controller.getActivePeriods)
+
 router.post("/create", controller.createPeriod)
+
+router.put("/:id", controller.updatePeriod);  
+
+router.delete("/:id", controller.deletePeriod);
 
 module.exports = router

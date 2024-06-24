@@ -38,6 +38,17 @@ dimensionController.getDimensionsPagination = async (req, res) => {
   }
 };
 
+dimensionController.getDimensionsByResponsible = async (req, res) => {
+  const email = req.query.email;
+  try {
+    const dimensions = await Dimension.find({ responsible: email });
+    res.status(200).json(dimensions);
+  } catch (error) {
+    console.error('Error fetching dimensions by responsible:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 dimensionController.createDimension = async (req, res) => {
   try {
     const nameLowerCase = req.body.name.toLowerCase();
@@ -64,15 +75,24 @@ dimensionController.updateDimension = async (req, res) => {
   const dimensionData = req.body;
 
   try {
-    const dimension = await Dimension.findByIdAndUpdate(id, dimensionData, { new: true });
+    // Encuentra la dimensión por su ID
+    let dimension = await Dimension.findById(id);
     if (!dimension) {
       return res.status(404).json({ error: "Dimension not found" });
     }
+
+    // Asigna las nuevas propiedades al documento
+    Object.assign(dimension, dimensionData);
+
+    // Guarda el documento actualizado
+    await dimension.save();
+
     res.status(200).json({ dimension });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 dimensionController.deleteDimension = async (req, res) => {
   const { id } = req.params;

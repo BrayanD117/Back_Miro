@@ -4,8 +4,20 @@ const router = express.Router()
 
 const controller = require('../controllers/dependencies.js')
 
-router.get("/", controller.getDependencies)
+router.get("/all", controller.getDependencies)
 
-router.post("/loadData", controller.loadDependencies)
+router.get("/", controller.getDependency)
+
+router.post("/updateAll", controller.loadDependencies)
+
+router.put("/setResponsible", controller.setResponsible)
+
+router.get("/:dep_code/members", controller.getMembers)
+
+router.put("/:id", controller.updateDependency)
+
+router.get("/members", controller.getMembersWithFather)
+
+router.post("/names", controller.getDependencyNames);
 
 module.exports = router
