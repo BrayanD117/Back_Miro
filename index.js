@@ -6,19 +6,20 @@ const app = express()
 
 require('dotenv').config()
 
-const allowedOrigins = ['http://localhost:3000'];
+const allowedOrigins = ['http://localhost:3000', 'http://miro.unibague.edu.co'];
 
-const corsOptionsDelegate = function (req, callback) {
-  let corsOptions;
-  if (allowedOrigins.indexOf(req.header('Origin')) !== -1) {
-    corsOptions = { origin: true, credentials: true }; // Permitir este origen
-  } else {
-    corsOptions = { origin: false }; // Rechazar esta petición
-  }
-  callback(null, corsOptions);
-};
+app.use(cors({
+  origin: function(origin, callback){
+    if (!origin || allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 
-app.use(cors(corsOptionsDelegate));
 app.use(express.json() )
 
 app.use(express.urlencoded({

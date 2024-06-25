@@ -18,4 +18,6 @@ router.put("/:id", controller.updateDependency)
 
 router.get("/members", controller.getMembersWithFather)
 
+router.post("/names", controller.getDependencyNames);
+
 module.exports = router

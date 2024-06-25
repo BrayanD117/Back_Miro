@@ -91,4 +91,41 @@ dependencySchema.statics.addUserToDependency = async function(dep_code, user) {
     }
 };
 
+dependencySchema.statics.getMembersWithFather = async function(dep_code) {
+    return this.aggregate([
+        { $match: { dep_code } },
+        {
+            $lookup: {
+                from: "users",
+                localField: "members",
+                foreignField: "email",
+                as: "members"
+            }
+        },
+        {
+            $lookup: {
+                from: "dependencies",
+                localField: "dep_father",
+                foreignField: "dep_code",
+                as: "father"
+            }
+        },
+        { $unwind: "$father" },
+        {
+            $lookup: {
+                from: "users",
+                localField: "father.members",
+                foreignField: "email",
+                as: "fatherMembers"
+            }
+        },
+        {
+            $project: {
+                members: 1,
+                fatherMembers: 1
+            }
+        }
+    ]);
+};
+
 module.exports = mongoose.model('Dependency', dependencySchema);

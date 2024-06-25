@@ -33,6 +33,37 @@ templateController.getPlantillas = async (req, res) => {
     }
 };
 
+templateController.getPlantillasByCreator = async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    const email = req.query.email;
+    const skip = (page - 1) * limit;
+
+    try {
+        const query = {
+            created_by: email,
+            $or: [
+                { name: { $regex: search, $options: 'i' } },
+                { file_name: { $regex: search, $options: 'i' } },
+                { file_description: { $regex: search, $options: 'i' } },
+            ],
+        };
+        const templates = await Template.find(query).skip(skip).limit(limit);
+        const total = await Template.countDocuments(query);
+
+        res.status(200).json({
+            templates,
+            total,
+            page,
+            pages: Math.ceil(total / limit),
+        });
+    } catch (error) {
+        console.error('Error fetching templates by creator:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 templateController.getPlantilla = async (req, res) => {
     try {
         const { id } = req.params;
@@ -54,7 +85,7 @@ templateController.createPlantilla = async (req, res) => {
             return res.status(400).json({ mensaje: 'El nombre de la plantilla ya existe. Por favor, elija otro nombre.' });
         }
 
-        const plantilla = new Template(req.body);
+        const plantilla = new Template({ ...req.body, created_by: req.body.email });
         await plantilla.save();
         res.status(200).json({ status: 'Plantilla creada' });
     } catch (error) {

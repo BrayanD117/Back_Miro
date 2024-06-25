@@ -1,0 +1,63 @@
+name: Deploy Backend MIRÓ
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Install OpenConnect
+      run: sudo apt-get install -y openconnect
+
+    - name: Install sshpass
+      run: sudo apt-get install -y sshpass
+
+    - name: Connect to VPN
+      run: |
+        echo "${{ secrets.VPN_PASSWORD }}" | sudo openconnect --protocol=gp --user=${{ secrets.VPN_USER }} --passwd-on-stdin ${{ secrets.VPN_HOST }} -b
+      env:
+        VPN_PASSWORD: ${{ secrets.VPN_PASSWORD }}
+        VPN_USER: ${{ secrets.VPN_USER }}
+        VPN_HOST: ${{ secrets.VPN_HOST }}
+
+    - name: Verify VPN connection
+      run: ip a
+
+    - name: List network routes
+      run: ip route
+
+    - name: Test internal connectivity with SSH
+      run: |
+        sshpass -p "${{ secrets.INTERNAL_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.INTERNAL_USER }}@${{ secrets.INTERNAL_RESOURCE_IP }} 'echo "SSH connection successful"'
+
+    - name: Clone repository on remote server
+      run: |
+        sshpass -p "${{ secrets.INTERNAL_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.INTERNAL_USER }}@${{ secrets.INTERNAL_RESOURCE_IP }} '
+          cd ~/MIRO/Back_Miro || exit;
+          if [ ! -d ".git" ]; then
+            git clone https://github.com/BrayanD117/Back_Miro.git .
+          else
+            git pull
+          fi'
+
+    - name: Build and Deploy project on remote server
+      run: |
+        sshpass -p "${{ secrets.INTERNAL_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.INTERNAL_USER }}@${{ secrets.INTERNAL_RESOURCE_IP }} '
+          cd ~/MIRO/Back_Miro;
+          npm install;
+          echo "DB_URI=${{ secrets.DB_URI }}" >> .env;
+          echo "PORT=${{ secrets.PORT }}" >> .env;
+          echo "USERS_ENDPOINT=${{ secrets.USERS_ENDPOINT }}" >> .env;
+          echo "DEPENDENCIES_ENDPOINT=${{ secrets.DEPENDENCIES_ENDPOINT }}" >> .env;
+          pm2 startOrRestart ecosystem.config.js --env production'
+
+    - name: Post Checkout repository
+      run: echo "Deployment complete"

@@ -145,19 +145,33 @@ dependencyController.getMembers = async (req, res) => {
 dependencyController.getMembersWithFather = async (req, res) => {
     const dep_code = req.body.dep_code;
     try {
-        const dependency = await Dependency.findOne({ dep_code });
-        if (!dependency) {
+        const result = await Dependency.getMembersWithFather(dep_code);
+
+        if (result.length === 0) {
             return res.status(404).json({ status: "Dependency not found" });
         }
 
-        const members = await User.find({ email: { $in: dependency.members } });
-        const father = await Dependency.findOne({ dep_code: dependency.dep_father });
-        const fatherMembers = await User.find({ email: { $in: father.members } });
+        const { members, fatherMembers } = result[0];
         res.status(200).json({ members, fatherMembers });
     } catch (error) {
         console.error('Error fetching members:', error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 }
+
+dependencyController.getDependencyNames = async (req, res) => {
+    const dep_codes = req.body.dep_codes;
+    try {
+      const dependencies = await Dependency.find({ dep_code: { $in: dep_codes } });
+      const depNames = {};
+      dependencies.forEach(dep => {
+        depNames[dep.dep_code] = dep.name;
+      });
+      res.status(200).json(depNames);
+    } catch (error) {
+      console.error('Error fetching dependency names:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  };  
 
 module.exports = dependencyController;
