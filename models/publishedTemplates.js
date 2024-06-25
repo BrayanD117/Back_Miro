@@ -1,76 +1,38 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const User = requires('./users.js')
+const Dependency = requires('./dependencies.js')
+const Template = requires('./templates.js')
 
-// Define los tipos de datos permitidos
-const allowedDataTypes = [
-    "Entero",
-    "Decimal",
-    "Porcentaje",
-    "Texto Corto",
-    "Texto Largo",
-    "True/False",
-    "Fecha",
-    "Fecha Inicial / Fecha Final",
-    "Link"
-];
+const filled_fields = new Schema({
+    id: Schema.Types.ObjectId,
+    values: [{}]
+})
 
-// Define la función de validación personalizada
-function validateDataType(value) {
-    return allowedDataTypes.includes(value);
-}
+const producersData = new Schema({
+    dependency: Dependency,
+    user_sender: User,
+    filled_data: [filled_fields]
+})
 
-// Define el esquema para el campo
-const fieldSchema = new Schema({
-    name: { 
-        type: String,
-        required: true 
+const publishedTemplateSchema = new Schema({
+    template: Template,
+    producers_dep_code: {
+        type: [String],
+        required: true
     },
-    datatype: { 
-        type: String, 
-        required: true,
-        validate: [validateDataType, "Invalid datatype"] // Usa la función de validación
+    dimension_id: {
+        type: Schema.Types.ObjectId,
+        required: true
     },
-    required: {
+    loaded_data: producersData,
+    completed: {
         type: Boolean,
-        required: true
-    },
-    validate_with: {
-        type: String,
-        required: false
-    }, // Referencia a otra colección para validación
-    comment: {
-        type: String,
-        required: false
-    } // Campo para comentarios
-});
-
-// Define el esquema para la plantilla principal
-const templateSchema = new Schema({
-    name: { 
-        type: String, 
-        required: true,
-        unique: true  // Asegura que el nombre de la plantilla sea único
-    },
-    file_name: {
-        type: String,
-    },
-    file_description: { 
-        type: String,
-    },
-    fields: {
-        type: [fieldSchema],
-        required: true
-    }, // Array de campos
-    active: {
-        type: Boolean,
-        default: true,
-        required: true
+        default: false
     }
-}, 
-{
+}, {
     versionKey: false,
     timestamps: true
-}
-); // Nombre de la colección en la base de datos
+});
 
-module.exports = mongoose.model('templates', templateSchema);
+module.exports = mongoose.model('publishedTemplates', publishedTemplateSchema);
