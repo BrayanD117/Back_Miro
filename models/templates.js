@@ -69,6 +69,10 @@ const templateSchema = new Schema({
     created_by: {
         type: String,
         required: true
+    },
+    dimension: {
+        type: String,
+        required: true
     }
 }, 
 {

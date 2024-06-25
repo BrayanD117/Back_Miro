@@ -85,7 +85,7 @@ templateController.createPlantilla = async (req, res) => {
             return res.status(400).json({ mensaje: 'El nombre de la plantilla ya existe. Por favor, elija otro nombre.' });
         }
 
-        const plantilla = new Template({ ...req.body, created_by: req.body.email });
+        const plantilla = new Template({ ...req.body, created_by: req.body.email, dimension: req.body.dimension });
         await plantilla.save();
         res.status(200).json({ status: 'Plantilla creada' });
     } catch (error) {
