@@ -10,7 +10,8 @@ const allowedOrigins = ['http://localhost:3000', 'http://miro.unibague.edu.co'];
 
 app.use(cors({
   origin: function(origin, callback){
-    if (!origin || allowedOrigins.indexOf(origin) === -1) {
+    if(!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
       console.log(origin)
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
