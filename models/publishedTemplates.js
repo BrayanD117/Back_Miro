@@ -16,8 +16,15 @@ const producersData = new Schema({
 })
 
 const publishedTemplateSchema = new Schema({
-    template: Template,
-    period: Schema.Types.ObjectId,
+    name: String,
+    template: {
+        type: Template,
+        required: true
+    },
+    period: {
+        type: Schema.Types.ObjectId,
+        required: true
+    },
     producers_dep_code: {
         type: [String],
         required: true
