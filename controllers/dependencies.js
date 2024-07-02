@@ -143,7 +143,8 @@ dependencyController.getMembers = async (req, res) => {
 }
 
 dependencyController.getMembersWithFather = async (req, res) => {
-    const dep_code = req.body.dep_code;
+    const dep_code = req.query.dep_code;
+    console.log(dep_code)
     try {
         const result = await Dependency.getMembersWithFather(dep_code);
 

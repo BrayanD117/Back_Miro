@@ -41,6 +41,8 @@ app.use("/periods", require('./routes/periods'))
 
 app.use("/templates", require('./routes/templates'))
 
+app.use("/pTemplates", require('./routes/publishedTemplates'))
+
 const PORT = process.env.PORT || 6000;
 
 app.listen(PORT, () => {

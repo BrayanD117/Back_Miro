@@ -59,4 +59,4 @@ dimensionSchema.pre('save', async function(next) {
     next();
 });
 
-module.exports = mongoose.model('dimension', dimensionSchema);
+module.exports = mongoose.model('dimensions', dimensionSchema);

@@ -93,6 +93,7 @@ dependencySchema.statics.addUserToDependency = async function(dep_code, user) {
 
 dependencySchema.statics.getMembersWithFather = async function(dep_code) {
     return this.aggregate([
+        // Filtra las dependencias por el código de dependencia especificado
         { $match: { dep_code } },
         {
             $lookup: {
@@ -110,12 +111,15 @@ dependencySchema.statics.getMembersWithFather = async function(dep_code) {
                 as: "father"
             }
         },
-        { $unwind: "$father" },
+        // Desenreda la dependencia padre, si existe
+        { $unwind: { path: "$father", preserveNullAndEmptyArrays: true } },
         {
             $lookup: {
                 from: "users",
-                localField: "father.members",
-                foreignField: "email",
+                let: { fatherMembers: "$father.members" },
+                pipeline: [
+                    { $match: { $expr: { $in: ["$email", "$$fatherMembers"] } } }
+                ],
                 as: "fatherMembers"
             }
         },
@@ -128,4 +132,8 @@ dependencySchema.statics.getMembersWithFather = async function(dep_code) {
     ]);
 };
 
-module.exports = mongoose.model('Dependency', dependencySchema);
+
+
+
+
+module.exports = mongoose.model('dependencies', dependencySchema);

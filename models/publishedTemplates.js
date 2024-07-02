@@ -1,28 +1,47 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-const User = requires('./users.js')
-const Dependency = requires('./dependencies.js')
-const Template = requires('./templates.js')
+const User = require('./users.js')
+const Dependency = require('./dependencies.js')
+const Template = require('./templates.js')
 
 const filled_fields = new Schema({
-    id: Schema.Types.ObjectId,
-    values: [{}]
+    field_id: {
+        type: Schema.Types.ObjectId,
+        required: true
+    },
+    values: {
+        type: [{}],
+        required: true
+    }
+}, {
+    _id: false
 })
 
 const producersData = new Schema({
-    dependency: Dependency,
-    user_sender: User,
+    dependency: {
+        type: Schema.Types.ObjectId,
+        ref: 'dependencies',
+        required: true
+    },
+    send_by: {
+        type: {},
+        required: true
+    },
     filled_data: [filled_fields]
+}, {
+    _id: false
 })
 
 const publishedTemplateSchema = new Schema({
     name: String,
-    template: {
-        type: Template,
+    published_by: {
+        type: User.schema,
         required: true
     },
+    template: {},
     period: {
         type: Schema.Types.ObjectId,
+        ref: 'periods',
         required: true
     },
     producers_dep_code: {
@@ -31,6 +50,7 @@ const publishedTemplateSchema = new Schema({
     },
     dimension_id: {
         type: Schema.Types.ObjectId,
+        ref: 'dimensions',
         required: true
     },
     loaded_data: producersData,
