@@ -16,6 +16,6 @@ router.put("/:id", controller.updateDimension);
 
 router.delete("/:id", controller.deleteDimension);
 
-router.get("/:id", controller.getDimensionById);
+router.get("/producers/:id", controller.getProducers);
 
 module.exports = router;
