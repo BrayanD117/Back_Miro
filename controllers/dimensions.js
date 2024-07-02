@@ -1,4 +1,5 @@
 const Dimension = require('../models/dimensions');
+const Dependency = require('../models/dependencies');
 
 const dimensionController = {};
 
@@ -93,7 +94,6 @@ dimensionController.updateDimension = async (req, res) => {
   }
 };
 
-
 dimensionController.deleteDimension = async (req, res) => {
   const { id } = req.params;
 
@@ -107,5 +107,22 @@ dimensionController.deleteDimension = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+dimensionController.getProducers = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const dimension = await Dimension.findById(id);
+    if (!dimension) {
+      return res.status(404).json({ error: "Dimension not found" });
+    }
+
+    const producers = await Dependency.find({ dep_code: { $in: dimension.producers } });
+
+    res.status(200).json(producers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
 
 module.exports = dimensionController;
