@@ -2,6 +2,7 @@ const PublishedTemplate = require('../models/publishedTemplates.js');
 const Template = require('../models/templates.js')
 const Period = require('../models/periods.js')
 const Dimension = require('../models/dimensions.js')
+const Dependency = require('../models/dependencies.js')
 const User = require('../models/users.js')
 
 const mongoose = require('mongoose');
@@ -53,6 +54,40 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
         
     } catch (error) {
             
+    }
+}
+
+publTempController.feedOptionsToPublishTemplate = async (req, res) => {
+    const dimension_name = req.query.dimension_name
+    const email = req.query.email
+
+    try {
+        const dimension = await Dimension.findOne({name: dimension_id})
+        if(!dimension) {
+            return res.status(404).json({status: 'Dimension not found'})
+        }
+
+        const user = await User.findOne({email})
+        if(!user) {
+            return res.status(404).json({status: 'User not found'})
+        }
+
+        if(!dimension.producers.includes(user.dep_code) && !user.roles.includes('Administrador' || 'Responsable')) {
+            return res.status(403).json({status: 'User is not responsible of this dimension'})
+        }
+
+        // Get active periods
+        const periods = await Period.find({is_active: true})
+
+        // Get dependencie producers
+        const producers = await Dependency.find({dep_code: {$in: dimension.producers}})
+
+        const availableTemplates = await Template.find({dimension: dimension.name, active: true})
+
+        res.status(200).json({periods, producers, availableTemplates})
+
+    } catch (error) {
+        console.log(error.message)
     }
 }
 

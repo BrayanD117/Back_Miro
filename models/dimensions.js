@@ -1,6 +1,7 @@
 const mongoose = require('mongoose')
 const User = require('./users');
 const Dependency = require('./dependencies');
+const Schema = mongoose.Schema;
 
 const dimensionSchema = new mongoose.Schema({
 
@@ -17,7 +18,8 @@ const dimensionSchema = new mongoose.Schema({
         type: [String],
     },
     templates: {
-        type: [String],
+        type: [Schema.Types.ObjectId],
+        ref: 'templates'
     },
     published_templates: {
         type: [String],

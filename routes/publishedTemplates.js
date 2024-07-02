@@ -5,4 +5,6 @@ router.post("/publish", controller.publishTemplate);
 
 router.get("/", controller.getAssignedTemplatesToProductor);
 
+router.get("/feedOptions", controller.feedOptionsToPublishTemplate);
+
 module.exports = router
