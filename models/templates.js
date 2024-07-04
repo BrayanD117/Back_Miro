@@ -71,8 +71,8 @@ const templateSchema = new Schema({
         required: true
     },
     dimension: {
-        type: String,
-        required: true
+        type: Schema.Types.ObjectId,
+        ref: 'dimensions',
     }
 }, 
 {

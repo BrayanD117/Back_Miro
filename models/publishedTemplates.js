@@ -48,11 +48,6 @@ const publishedTemplateSchema = new Schema({
         type: [String],
         required: true
     },
-    dimension_id: {
-        type: Schema.Types.ObjectId,
-        ref: 'dimensions',
-        required: true
-    },
     loaded_data: producersData,
     completed: {
         type: Boolean,
