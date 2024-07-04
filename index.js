@@ -6,7 +6,7 @@ const app = express()
 
 require('dotenv').config()
 
-const allowedOrigins = ['http://localhost:3000', 'http://miro.unibague.edu.co'];
+const allowedOrigins = ['http://localhost:3000', 'https://miro.unibague.edu.co'];
 
 app.use(cors({
   origin: function(origin, callback){
