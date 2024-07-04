@@ -35,7 +35,7 @@ const producersData = new Schema({
 const publishedTemplateSchema = new Schema({
     name: String,
     published_by: {
-        type: {},
+        type: User.schema,
         required: true
     },
     template: {},
