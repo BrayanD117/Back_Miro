@@ -23,6 +23,7 @@ publTempController.publishTemplate = async (req, res) => {
 
         const user = await User.findOne({email})
 
+        // Name => Recibe el nombre de la plantilla (modificable) + period_name
         const newPublTemp = new PublishedTemplate({
             name: req.body.name,
             published_by: user,
@@ -62,7 +63,7 @@ publTempController.feedOptionsToPublishTemplate = async (req, res) => {
     const email = req.query.email
 
     try {
-        const dimension = await Dimension.findOne({name: dimension_id})
+        const dimension = await Dimension.findOne({name: dimension_name})
         if(!dimension) {
             return res.status(404).json({status: 'Dimension not found'})
         }
@@ -82,14 +83,15 @@ publTempController.feedOptionsToPublishTemplate = async (req, res) => {
         // Get dependencie producers
         const producers = await Dependency.find({dep_code: {$in: dimension.producers}})
 
-        const availableTemplates = await Template.find({dimension: dimension.name, active: true})
-
-        res.status(200).json({periods, producers, availableTemplates})
+        res.status(200).json({periods, producers})
 
     } catch (error) {
         console.log(error.message)
     }
 }
+
+
+// Editar publishedTemplate (Productores)
 
 
 module.exports = publTempController;
