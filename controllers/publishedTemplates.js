@@ -59,34 +59,32 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
 }
 
 publTempController.feedOptionsToPublishTemplate = async (req, res) => {
-    const dimension_name = req.query.dimension_name
-    const email = req.query.email
+    const email = req.query.email;
 
     try {
-        const dimension = await Dimension.findOne({name: dimension_name})
-        if(!dimension) {
-            return res.status(404).json({status: 'Dimension not found'})
+        const dimension = await Dimension.findOne({ responsible: email });
+        if (!dimension) {
+            return res.status(404).json({ status: 'Dimension not found' });
         }
-
-        const user = await User.findOne({email})
-        if(!user) {
-            return res.status(404).json({status: 'User not found'})
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ status: 'User not found' });
         }
-
-        if(!dimension.producers.includes(user.dep_code) && !user.roles.includes('Administrador' || 'Responsable')) {
-            return res.status(403).json({status: 'User is not responsible of this dimension'})
+        if (!dimension.producers.includes(user.dep_code) && !user.roles.includes('Administrador' || 'Responsable')) {
+            return res.status(403).json({ status: 'User is not responsible of this dimension' });
         }
 
         // Get active periods
-        const periods = await Period.find({is_active: true})
+        const periods = await Period.find({ is_active: true });
 
         // Get dependencie producers
-        const producers = await Dependency.find({dep_code: {$in: dimension.producers}})
+        const producers = await Dependency.find({ dep_code: { $in: dimension.producers } });
 
-        res.status(200).json({periods, producers})
+        res.status(200).json({ periods, producers });
 
     } catch (error) {
-        console.log(error.message)
+        console.log(error.message);
+        res.status(500).json({ status: 'Internal server error', details: error.message });
     }
 }
 
