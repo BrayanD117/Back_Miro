@@ -79,13 +79,12 @@ templateController.getPlantilla = async (req, res) => {
 
 templateController.createPlantilla = async (req, res) => {
     try {
-        // Convertir el nombre de la plantilla a minúsculas para la comparación
         const existingTemplate = await Template.findOne({ name: new RegExp(`^${req.body.name}$`, 'i') });
         if (existingTemplate) {
             return res.status(400).json({ mensaje: 'El nombre de la plantilla ya existe. Por favor, elija otro nombre.' });
         }
 
-        const plantilla = new Template({ ...req.body, created_by: req.body.email, dimension: req.body.dimension });
+        const plantilla = new Template({ ...req.body, created_by: req.body.email });
         await plantilla.save();
         res.status(200).json({ status: 'Plantilla creada' });
     } catch (error) {
