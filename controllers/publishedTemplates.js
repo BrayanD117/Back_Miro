@@ -41,21 +41,42 @@ publTempController.publishTemplate = async (req, res) => {
 }
 
 publTempController.getAssignedTemplatesToProductor = async (req, res) => {
-    const email = req.query.email
+    const email = req.query.email;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    const skip = (page - 1) * limit;
+  
     try {
-        const user = await User.findOne({email})
-        if(!user || !user.roles.includes('Productor')) {
-            return res.status(404).json({status: 'User not found'})
-        }
-
-        const templates = await PublishedTemplate.find({'producers_dep_code': user.dep_code}).populate('period').populate('dimension_id')
-
-        return res.status(200).json(templates)
-        
+      const user = await User.findOne({ email });
+      if (!user || !user.roles.includes('Productor')) {
+        return res.status(404).json({ status: 'User not found' });
+      }
+  
+      const query = {
+        producers_dep_code: user.dep_code,
+        name: { $regex: search, $options: 'i' }
+      };
+  
+      const templates = await PublishedTemplate.find(query)
+        .skip(skip)
+        .limit(limit)
+        .populate('period')
+        .populate('template');
+  
+      const total = await PublishedTemplate.countDocuments(query);
+  
+      res.status(200).json({
+        templates,
+        total,
+        page,
+        pages: Math.ceil(total / limit),
+      });
     } catch (error) {
-            
+      console.error('Error fetching templates:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
     }
-}
+  };  
 
 publTempController.feedOptionsToPublishTemplate = async (req, res) => {
     const email = req.query.email;
