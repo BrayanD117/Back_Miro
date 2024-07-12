@@ -146,13 +146,20 @@ dependencyController.getMembersWithFather = async (req, res) => {
     const dep_code = req.query.dep_code;
     console.log(dep_code)
     try {
-        const result = await Dependency.getMembersWithFather(dep_code);
+        //const result = await Dependency.getMembersWithFather(dep_code);
 
-        if (result.length === 0) {
+        const dependency = await Dependency.findOne({ dep_code: dep_code })
+
+        const father = await Dependency.findOne({ dep_code: dependency.dep_father })
+
+        members = User.find({ email: { $in: dependency.members } })
+        fatherMembers = User.find({ email: { $in: father.members } })
+
+        if (!dependency) {
             return res.status(404).json({ status: "Dependency not found" });
         }
 
-        const { members, fatherMembers } = result[0];
+        // const { members, fatherMembers } = result[0];
         res.status(200).json({ members, fatherMembers });
     } catch (error) {
         console.error('Error fetching members:', error);
