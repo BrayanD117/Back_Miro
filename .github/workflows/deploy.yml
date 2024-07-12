@@ -53,10 +53,6 @@ jobs:
         sshpass -p "${{ secrets.INTERNAL_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.INTERNAL_USER }}@${{ secrets.INTERNAL_RESOURCE_IP }} '
           cd ~/MIRO/Back_Miro;
           npm install;
-          echo "DB_URI=${{ secrets.DB_URI }}" >> .env;
-          echo "PORT=${{ secrets.PORT }}" >> .env;
-          echo "USERS_ENDPOINT=${{ secrets.USERS_ENDPOINT }}" >> .env;
-          echo "DEPENDENCIES_ENDPOINT=${{ secrets.DEPENDENCIES_ENDPOINT }}" >> .env;
           pm2 startOrRestart ecosystem.config.js --env production'
 
     - name: Post Checkout repository
