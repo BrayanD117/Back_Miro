@@ -33,7 +33,6 @@ app.use(express.urlencoded({
 
 app.use(morgan('dev'));
 
-// Middleware para redirigir HTTP a HTTPS en producción
 if (process.env.NODE_ENV === 'production') {
   app.use((req, res, next) => {
     if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
