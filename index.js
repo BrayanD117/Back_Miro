@@ -52,7 +52,7 @@ apiRouter.use("/periods", require('./routes/periods'));
 apiRouter.use("/templates", require('./routes/templates'));
 apiRouter.use("/pTemplates", require('./routes/publishedTemplates'));
 
-app.use('/api', apiRouter);
+app.use('/rapi', apiRouter);
 
 const PORT = process.env.PORT || 6000;
 
