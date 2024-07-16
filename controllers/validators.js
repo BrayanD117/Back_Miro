@@ -1,9 +1,17 @@
-const User = require('../models/user');
+const Validator = require('../models/validators')
 
-const validator = {};
+const validatorController = {}
 
-const options = {};
+validatorController.createValidator = async (req, res) => {
+    try {
+        const validator = new Validator(req.body)
+        await validator.save()
+        res.status(200).json({ status: "Validator created" })
 
-validator.validateWithDb = async (req, res, next) => {
-    
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message })
+    }
 }
+
+validatorController.updateValidator = async (req, res) => {

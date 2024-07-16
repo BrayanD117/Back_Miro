@@ -31,17 +31,16 @@ app.use(express.urlencoded({
 
 app.use(morgan('dev'))
 
-app.use("/users", require('./routes/users'))
+const apiRouter = express.Router();
 
-app.use("/dimensions", require('./routes/dimensions'))
+apiRouter.use("/users", require('./routes/users'));
+apiRouter.use("/dimensions", require('./routes/dimensions'));
+apiRouter.use("/dependencies", require('./routes/dependencies'));
+apiRouter.use("/periods", require('./routes/periods'));
+apiRouter.use("/templates", require('./routes/templates'));
+apiRouter.use("/pTemplates", require('./routes/publishedTemplates'));
 
-app.use("/dependencies", require('./routes/dependencies'))
-
-app.use("/periods", require('./routes/periods'))
-
-app.use("/templates", require('./routes/templates'))
-
-app.use("/pTemplates", require('./routes/publishedTemplates'))
+app.use('/api', apiRouter);
 
 const PORT = process.env.PORT || 6000;
 

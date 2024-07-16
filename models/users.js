@@ -14,7 +14,7 @@
         position: {
             type: String,
             required: true
-        },
+        },              
         roles: {
             type: [String],
             default: ["Usuario"]
