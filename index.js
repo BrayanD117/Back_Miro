@@ -65,4 +65,29 @@
     }
   });
 
+<<<<<<< HEAD
   initDB();
+=======
+const apiRouter = express.Router();
+
+apiRouter.use("/users", require('./routes/users'));
+apiRouter.use("/dimensions", require('./routes/dimensions'));
+apiRouter.use("/dependencies", require('./routes/dependencies'));
+apiRouter.use("/periods", require('./routes/periods'));
+apiRouter.use("/templates", require('./routes/templates'));
+apiRouter.use("/pTemplates", require('./routes/publishedTemplates'));
+
+app.use('/api/p', apiRouter);
+
+const PORT = process.env.PORT || 6000;
+
+app.listen(PORT, () => {
+  if (process.env.NODE_ENV === 'production') {
+    console.log('Server running in production mode on ' + PORT);
+  } else {
+    console.log('Server running in development mode on ' + PORT);
+  }
+});
+
+initDB();
+>>>>>>> 8e8a254ffb4e32b690f6fd2142cbdf381b208910
