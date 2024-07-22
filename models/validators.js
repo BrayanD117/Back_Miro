@@ -35,7 +35,15 @@ const validatorTemplate = new Schema({
     },
     columns: {
         type: [columnSchema],
-        required: true
+        required: true,
+        validate: {
+            validator: (columns) => {
+                if (!columns || columns.length === 0) return true;
+                const length = columns[0].values.length;
+                return columns.every(column => column.values.length === length);
+            },
+            message: 'All columns must have values arrays of the same length.'
+        }
     }
 }, {
     versionKey: false,

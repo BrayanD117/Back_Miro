@@ -5,24 +5,24 @@ const validatorController = {}
 
 validatorController.createValidator = async (req, res) => {
     try {
-        console.log(req.body)
+        console.log(req.body);
+        
         if(req.body.name.includes('-')) {
-            return res.status(400).json({ status: "Name cannot contain '-' character" })
+            return res.status(400).json({ status: "Name cannot contain '-' character" });
         }
 
         if(req.body.columns.some(column => column.name.includes('-'))) {
-            return res.status(400).json({ status: "Columns name cannot contain '-' character" })
+            return res.status(400).json({ status: "Columns name cannot contain '-' character" });
         }
 
-        const validator = new Validator(req.body)
-        await validator.save()
-        res.status(200).json({ status: "Validator created" })
+        const validator = new Validator(req.body);
+        await validator.save();
+        res.status(200).json({ status: "Validator created" });
 
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
-    catch (error) {
-        res.status(500).json({ error: error.message })
-    }
-}
+};
 
 validatorController.updateName = async (req, res) => {
     try {
@@ -52,7 +52,8 @@ validatorController.updateValidator = async (req, res) => {
         if (!validator) {
             return res.status(404).json({ status: "Validator not found" })
         }
-        await Validator.updateOne({name}, req.body)        
+        validator.set(req.body)
+        await validator.save()      
         res.status(200).json({ status: "Validator updated" })
     }
     catch (error) {
@@ -85,17 +86,21 @@ validatorController.validate = async (req, res) => {
     const { option } = req.query
     const [validatorName, columnName] = option.split(' - ')
 
-    const validator = await Validator.findOne({name: validatorName})
-    if (!validator) {
-        return res.status(404).json({ status: "Validator not found" })
+    try {
+        const validator = await Validator.findOne({name: validatorName})
+        if (!validator) {
+            return res.status(404).json({ status: "Validator not found" })
+        }
+    
+        const column = validator.columns.find(column => column.name === columnName)
+        if (!column) {
+            return res.status(404).json({ status: "Column not found" })
+        }
+    
+        res.status(200).json({ column })
+    } catch (error) {
+        res.status(500).json({ error: error.message })
     }
-
-    const column = validator.columns.find(column => column.name === columnName)
-    if (!column) {
-        return res.status(404).json({ status: "Column not found" })
-    }
-
-    res.status(200).json({ column })
 }
 
 module.exports = validatorController
