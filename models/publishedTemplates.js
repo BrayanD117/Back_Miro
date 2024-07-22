@@ -5,8 +5,9 @@ const Dependency = require('./dependencies.js')
 const Template = require('./templates.js')
 
 const filled_fields = new Schema({
-    field_id: {
-        type: Schema.Types.ObjectId,
+    field_name: {
+        type: Schema.Types.String,
+        ref: 'templates.fields',
         required: true
     },
     values: {

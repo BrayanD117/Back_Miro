@@ -23,7 +23,8 @@ function validateDataType(value) {
 const fieldSchema = new Schema({
     name: { 
         type: String,
-        required: true 
+        required: true,
+        unique: true
     },
     datatype: { 
         type: String, 
@@ -42,6 +43,9 @@ const fieldSchema = new Schema({
         type: String,
         required: false
     } // Campo para comentarios
+}, {
+    _id: false,
+    versionKey: false
 });
 
 // Define el esquema para la plantilla principal
