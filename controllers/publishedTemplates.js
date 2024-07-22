@@ -105,9 +105,10 @@ publTempController.feedOptionsToPublishTemplate = async (req, res) => {
   }
 }
 
-publTempController.loadDependencyData = async (req, res) => {
+publTempController.loadProducerData = async (req, res) => {
   const email = req.body.email;
   const pubTem_id = req.body.pubTem_id;
+  const data = req.body.data;
 
   try {
       const user = await User.findOne({ email })
@@ -123,6 +124,39 @@ publTempController.loadDependencyData = async (req, res) => {
       if (!pubTem.producers_dep_code.includes(user.dep_code)) {
           return res.status(403).json({ status: 'User is not assigned to this published template' });
       }
+      
+      const fieldValuesMap = {};
+      
+      data.forEach(item => {
+        Object.entries(item).forEach(([key, value]) => {
+          if (!fieldValuesMap[key]) {
+            fieldValuesMap[key] = [];
+          }
+          fieldValuesMap[key].push(value);
+        });
+      });
+      
+      const result = Object.entries(fieldValuesMap).map(([key, values]) => ({
+        field_name: key,
+        values: values
+      }));
+      
+      console.log(result);
+      
+
+      const producersData = { dependency: user.dep_code, send_by: user, filled_data: fieldValuesMap }
+
+      pubTem.loaded_data.push(producersData)
+      await pubTem.save()
+
+      return res.status(200).json({ status: 'Data loaded successfully' })
+  }
+  catch (error) {
+      console.log(error.message);
+      res.status(500).json({ status: 'Internal server error', details: error.message });
+  } 
+}
+
 
 
 // Editar publishedTemplate (Productores)
