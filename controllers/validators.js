@@ -139,4 +139,14 @@ validatorController.getValidatorsWithPagination = async (req, res) => {
     }
 };
 
+validatorController.deleteValidator = async (req, res) => {
+    try {
+        const { id } = req.body;
+        await Validator.findByIdAndDelete(id);
+        res.status(200).json({ status: "Validator deleted" });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 module.exports = validatorController
