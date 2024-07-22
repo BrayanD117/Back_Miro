@@ -117,4 +117,26 @@ validatorController.validate = async (req, res) => {
     }
 }
 
+validatorController.getValidatorsWithPagination = async (req, res) => {
+    try {
+        const { page = 1, limit = 10, search = "" } = req.query;
+        const query = search ? { name: { $regex: search, $options: 'i' } } : {};
+
+        const validators = await Validator.find(query)
+            .skip((page - 1) * limit)
+            .limit(Number(limit))
+            .exec();
+
+        const totalCount = await Validator.countDocuments(query);
+
+        res.status(200).json({
+            validators,
+            totalPages: Math.ceil(totalCount / limit),
+            currentPage: page
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
 module.exports = validatorController

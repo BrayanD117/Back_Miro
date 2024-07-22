@@ -7,5 +7,6 @@ router.put("/updateName", controller.updateName)
 router.put("/update", controller.updateValidator)
 router.get("/options", controller.getValidators)
 router.get("/", controller.getValidator)
+router.get("/pagination", controller.getValidatorsWithPagination)
 
 module.exports = router
