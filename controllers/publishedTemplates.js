@@ -105,6 +105,25 @@ publTempController.feedOptionsToPublishTemplate = async (req, res) => {
   }
 }
 
+publTempController.loadDependencyData = async (req, res) => {
+  const email = req.body.email;
+  const pubTem_id = req.body.pubTem_id;
+
+  try {
+      const user = await User.findOne({ email })
+      if (!user) {
+          return res.status(404).json({ status: 'User not found' });
+      }
+
+      const pubTem = await PublishedTemplate.findById(pubTem_id)
+      if (!pubTem) {
+          return res.status(404).json({ status: 'Published template not found' });
+      }
+
+      if (!pubTem.producers_dep_code.includes(user.dep_code)) {
+          return res.status(403).json({ status: 'User is not assigned to this published template' });
+      }
+
 
 // Editar publishedTemplate (Productores)
 
