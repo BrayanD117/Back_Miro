@@ -48,7 +48,7 @@ const publishedTemplateSchema = new Schema({
         type: [String],
         required: true
     },
-    loaded_data: producersData,
+    loaded_data: [producersData],
     completed: {
         type: Boolean,
         default: false
