@@ -96,6 +96,21 @@ validatorController.getValidator = async (req, res) => {
     }
 }
 
+validatorController.getValidatorById = async (req, res) => {
+    const { id } = req.query
+    try {
+        const validator = await Validator
+            .findById(id)
+        if (!validator) {
+            return res.status(404).json({ status: "Validator not found" })
+        }
+        res.status(200).json({ validator })
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+}
+
 validatorController.validate = async (req, res) => {
     const { option } = req.query
     const [validatorName, columnName] = option.split(' - ')
