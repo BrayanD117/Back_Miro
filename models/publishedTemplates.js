@@ -20,7 +20,7 @@ const filled_fields = new Schema({
 
 const producersData = new Schema({
     dependency: {
-        type: Schema.Types.ObjectId,
+        type: Schema.Types.String,
         ref: 'dependencies',
         required: true
     },

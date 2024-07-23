@@ -140,11 +140,8 @@ publTempController.loadProducerData = async (req, res) => {
         field_name: key,
         values: values
       }));
-      
-      console.log(result);
-      
 
-      const producersData = { dependency: user.dep_code, send_by: user, filled_data: fieldValuesMap }
+      const producersData = { dependency: user.dep_code, send_by: user, filled_data: result }
 
       pubTem.loaded_data.push(producersData)
       await pubTem.save()
