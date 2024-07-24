@@ -1,4 +1,5 @@
 const Template = require('../models/templates');
+const User = require('../models/users');
 
 const templateController = {};
 
@@ -19,6 +20,7 @@ templateController.getPlantillas = async (req, res) => {
             }
             : {};
         const templates = await Template.find(query).skip(skip).limit(limit);
+
         const total = await Template.countDocuments(query);
 
         res.status(200).json({
@@ -42,7 +44,7 @@ templateController.getPlantillasByCreator = async (req, res) => {
 
     try {
         const query = {
-            created_by: email,
+            'created_by.email': email,
             $or: [
                 { name: { $regex: search, $options: 'i' } },
                 { file_name: { $regex: search, $options: 'i' } },
@@ -84,7 +86,12 @@ templateController.createPlantilla = async (req, res) => {
             return res.status(400).json({ mensaje: 'El nombre de la plantilla ya existe. Por favor, elija otro nombre.' });
         }
 
-        const plantilla = new Template({ ...req.body, created_by: req.body.email });
+        const user = await User.findOne({ email: req.body.email });
+        if (!user) {
+            return res.status(404).json({ mensaje: 'Usuario no encontrado' });
+        }
+
+        const plantilla = new Template({ ...req.body, created_by: user });
         await plantilla.save();
         res.status(200).json({ status: 'Plantilla creada' });
     } catch (error) {
