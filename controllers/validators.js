@@ -268,12 +268,13 @@ validatorController.validateColumn = async (column) => {
                 result.column = name;
                 result.errors.push({
                     register: index + 1,
-                    message: `Tabla de validación no encontrado: ${validatorName}`
+                    message: `Tabla de validación no encontrada: ${validatorName}`
                 });
                 continue; // Continúa con el siguiente valor si el validador no se encuentra
             }
 
             const column = validator.columns.find(column => column.name === columnName);
+            //TODO VERIFICAR QUE COLUMN TENGA IS_VALIDATOR EN TRUE
             if (!column) {
                 result.status = false;
                 result.column = name;
@@ -281,7 +282,7 @@ validatorController.validateColumn = async (column) => {
                     register: index + 1,
                     message: `Columna '${columnName}' no encontrada en la tabla: ${validatorName}`
                 });
-                continue; // Continúa con el siguiente valor si la columna no se encuentra
+                continue;
             }
 
             if (!column.values.includes(value)) {
@@ -289,7 +290,7 @@ validatorController.validateColumn = async (column) => {
                 result.column = name;
                 result.errors.push({
                     register: index + 1,
-                    message: `Valor no permitido encontrado en la columna ${name}, fila ${index + 2}`
+                    message: `Valor de la columna ${name}, fila ${index + 2} no fue encontrado en la validacion: ${validate_with}`
                 });
             }
         }
