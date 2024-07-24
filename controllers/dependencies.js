@@ -168,18 +168,14 @@ dependencyController.getMembersWithFather = async (req, res) => {
 }
 
 dependencyController.getDependencyNames = async (req, res) => {
-    const dep_codes = req.body.dep_codes;
     try {
-      const dependencies = await Dependency.find({ dep_code: { $in: dep_codes } });
-      const depNames = {};
-      dependencies.forEach(dep => {
-        depNames[dep.dep_code] = dep.name;
-      });
-      res.status(200).json(depNames);
-    } catch (error) {
-      console.error('Error fetching dependency names:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
-    }
+        const codes = req.body.codes;
+        const dependencies = await Dependency.find({ dep_code: { $in: codes } });
+        const names = dependencies.map(dep => ({ code: dep.dep_code, name: dep.name }));
+        res.status(200).json(names);
+      } catch (error) {
+        res.status(500).json({ error: error.message });
+      }
   };  
 
 module.exports = dependencyController;
