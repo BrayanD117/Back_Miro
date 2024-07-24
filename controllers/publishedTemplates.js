@@ -64,6 +64,12 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
 
     const total = await PublishedTemplate.countDocuments(query);
 
+    templates.map( t => {
+      t.loaded_data.map( ld => {
+        t.uploaded = ld.send_by.email === email ? true : false        
+      })
+    })
+
     res.status(200).json({
       templates,
       total,
