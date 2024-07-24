@@ -179,27 +179,6 @@ validatorController.getValidatorById = async (req, res) => {
     }
 }
 
-validatorController.validate = async (req, res) => {
-    const { option } = req.query
-    const [validatorName, columnName] = option.split(' - ')
-
-    try {
-        const validator = await Validator.findOne({name: validatorName})
-        if (!validator) {
-            return res.status(404).json({ status: "Validator not found" })
-        }
-    
-        const column = validator.columns.find(column => column.name === columnName)
-        if (!column) {
-            return res.status(404).json({ status: "Column not found" })
-        }
-    
-        res.status(200).json({ column })
-    } catch (error) {
-        res.status(500).json({ error: error.message })
-    }
-}
-
 validatorController.getValidatorsWithPagination = async (req, res) => {
     try {
         const { page = 1, limit = 10, search = "" } = req.query;
@@ -283,6 +262,29 @@ validatorController.validateColumn = async (column) => {
                     message: `Columna '${columnName}' no encontrada en la tabla: ${validatorName}`
                 });
                 continue;
+            }
+            
+            // Validar también el type de validate_with
+            if(column.type === "Texto") {
+                if(typeof value !== "string") {
+                    result.status = false;
+                    result.column = name;
+                    result.errors.push({
+                        register: index + 1,
+                        message: `Valor de la columna ${name}, fila ${index + 2} no es un texto`
+                    });
+                }
+            }
+
+            if(column.type === "Numero") {
+                if(typeof value !== "number") {
+                    result.status = false;
+                    result.column = name;
+                    result.errors.push({
+                        register: index + 1,
+                        message: `Valor de la columna ${name}, fila ${index + 2} no es un numero`
+                    });
+                }
             }
 
             if (!column.values.includes(value)) {
