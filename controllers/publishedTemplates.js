@@ -4,6 +4,7 @@ const Period = require('../models/periods.js')
 const Dimension = require('../models/dimensions.js')
 const Dependency = require('../models/dependencies.js')
 const User = require('../models/users.js')
+const Validator = require('./validators.js')
 
 const publTempController = {};
 
@@ -106,53 +107,71 @@ publTempController.feedOptionsToPublishTemplate = async (req, res) => {
 }
 
 publTempController.loadProducerData = async (req, res) => {
-  const email = req.body.email;
-  const pubTem_id = req.body.pubTem_id;
-  const data = req.body.data;
+  const { email, pubTem_id, data } = req.body;
 
   try {
-      const user = await User.findOne({ email })
-      if (!user) {
-          return res.status(404).json({ status: 'User not found' });
-      }
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ status: 'User not found' });
+    }
 
-      const pubTem = await PublishedTemplate.findById(pubTem_id)
-      if (!pubTem) {
-          return res.status(404).json({ status: 'Published template not found' });
-      }
+    const pubTem = await PublishedTemplate.findById(pubTem_id);
+    if (!pubTem) {
+      return res.status(404).json({ status: 'Published template not found' });
+    }
 
-      if (!pubTem.producers_dep_code.includes(user.dep_code)) {
-          return res.status(403).json({ status: 'User is not assigned to this published template' });
-      }
-      
-      const fieldValuesMap = {};
-      
-      data.forEach(item => {
-        Object.entries(item).forEach(([key, value]) => {
-          if (!fieldValuesMap[key]) {
-            fieldValuesMap[key] = [];
-          }
-          fieldValuesMap[key].push(value);
-        });
+    if (!pubTem.producers_dep_code.includes(user.dep_code)) {
+      return res.status(403).json({ status: 'User is not assigned to this published template' });
+    }
+
+    const fieldValuesMap = {};
+
+    data.forEach(item => {
+      Object.entries(item).forEach(([key, value]) => {
+        if (!fieldValuesMap[key]) {
+          fieldValuesMap[key] = [];
+        }
+        fieldValuesMap[key].push(value);
       });
-      
-      const result = Object.entries(fieldValuesMap).map(([key, values]) => ({
-        field_name: key,
-        values: values
-      }));
+    });
 
-      const producersData = { dependency: user.dep_code, send_by: user, filled_data: result }
+    const result = Object.entries(fieldValuesMap).map(([key, values]) => ({
+      field_name: key,
+      values: values
+    }));
 
-      pubTem.loaded_data.push(producersData)
-      await pubTem.save()
+    const validations = result.map(async field => {
+      const templateField = pubTem.template.fields.find(f => f.name === field.field_name);
+      if (!templateField) {
+        throw new Error(`Field ${field.field_name} not found in template`);
+      }
 
-      return res.status(200).json({ status: 'Data loaded successfully' })
+      templateField.values = field.values;
+
+      const validationResult = await Validator.validateColumn(templateField);
+      return validationResult;
+    });
+
+    const validationResults = await Promise.all(validations);
+
+    const validationErrors = validationResults.filter(v => v.status === false);
+
+    if (validationErrors.length > 0) {
+      return res.status(400).json({ status: 'Validation error', details: validationErrors });
+    }
+
+    const producersData = { dependency: user.dep_code, send_by: user, filled_data: result };
+
+    pubTem.loaded_data.push(producersData);
+    await pubTem.save();
+
+    return res.status(200).json({ status: 'Data loaded successfully' });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ status: 'Internal server error', details: error.message });
   }
-  catch (error) {
-      console.log(error.message);
-      res.status(500).json({ status: 'Internal server error', details: error.message });
-  } 
-}
+};
+
 
 
 
