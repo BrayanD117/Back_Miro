@@ -64,14 +64,21 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
 
     const total = await PublishedTemplate.countDocuments(query);
 
-    templates.map( t => {
-      t.loaded_data.map( ld => {
-        t.uploaded = ld.send_by.email === email ? true : false        
-      })
-    })
+    const updatedTemplates = templates.map(t => {
+      let uploaded = false;
+      t.loaded_data.forEach(ld => {
+        if (ld.send_by.email === email) {
+          uploaded = true;
+        }
+      });
+      return {
+        ...t.toObject(),
+        uploaded
+      };
+    });
 
     res.status(200).json({
-      templates,
+      templates: updatedTemplates,
       total,
       page,
       pages: Math.ceil(total / limit),
@@ -80,7 +87,7 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
     console.error('Error fetching templates:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
-};  
+};
 
 publTempController.feedOptionsToPublishTemplate = async (req, res) => {
   const email = req.query.email;
