@@ -234,7 +234,7 @@ validatorController.deleteValidator = async (req, res) => {
 
 validatorController.validateColumn = async (column) => {
     const { name, datatype, values, validate_with, required } = column;
-    let result = { status: true, errors: [] }; // Inicializa el objeto result correctamente
+    let result = { status: true, column, errors: [] }; // Inicializa el objeto result correctamente
 
     if (!name || !datatype || !values) {
         return { status: false, errors: [{ register: null, message: 'Missing column name, datatype, or values' }] };
@@ -243,6 +243,7 @@ validatorController.validateColumn = async (column) => {
     for (const [index, value] of values.entries()) { // Usa entries() para acceder tanto al índice como al valor
         if (required && (value.length === 0 || value === null || value === undefined)) {
             result.status = false;
+            result.column = name;
             result.errors.push({
                 register: index + 1,
                 message: `Valor vacío encontrado en la columna ${name}, fila ${index + 2}`
@@ -252,6 +253,7 @@ validatorController.validateColumn = async (column) => {
         const validation = allowedDataTypes[datatype](value);
         if (!validation.isValid) {
             result.status = false;
+            result.column = name;
             result.errors.push({
                 register: index + 1,
                 message: `Valor inválido encontrado en la columna ${name}, fila ${index + 2}: ${validation.message}`
@@ -263,6 +265,7 @@ validatorController.validateColumn = async (column) => {
             const validator = await Validator.findOne({ name: validatorName });
             if (!validator) {
                 result.status = false;
+                result.column = name;
                 result.errors.push({
                     register: index + 1,
                     message: `Tabla de validación no encontrado: ${validatorName}`
@@ -273,6 +276,7 @@ validatorController.validateColumn = async (column) => {
             const column = validator.columns.find(column => column.name === columnName);
             if (!column) {
                 result.status = false;
+                result.column = name;
                 result.errors.push({
                     register: index + 1,
                     message: `Columna '${columnName}' no encontrada en la tabla: ${validatorName}`
@@ -282,6 +286,7 @@ validatorController.validateColumn = async (column) => {
 
             if (!column.values.includes(value)) {
                 result.status = false;
+                result.column = name;
                 result.errors.push({
                     register: index + 1,
                     message: `Valor no permitido encontrado en la columna ${name}, fila ${index + 2}`
