@@ -255,7 +255,7 @@ validatorController.validateColumn = async (column) => {
             result.status = false;
             result.errors.push({
                 register: index + 1,
-                message: `Valor inválido (${value}) encontrado en la columna ${name}, fila ${index + 2}: ${validation.message}`
+                message: `Valor inválido encontrado en la columna ${name}, fila ${index + 2}: ${validation.message}`
             });
         }
 
@@ -265,7 +265,7 @@ validatorController.validateColumn = async (column) => {
                 result.status = false;
                 result.errors.push({
                     register: index + 1,
-                    message: `El valor (${value}) de la columna ${name}, fila ${index + 2} no es del tipo ${columnToValidate.type}`
+                    message: `Valor de la columna ${name}, fila ${index + 2} no es del tipo ${columnToValidate.type}`
                 });
             }
 
@@ -273,7 +273,7 @@ validatorController.validateColumn = async (column) => {
                 result.status = false;
                 result.errors.push({
                     register: index + 1,
-                    message: `El valor (${value}) de la columna ${name}, fila ${index + 2} no fue encontrado en la validación: ${validate_with}`
+                    message: `Valor de la columna ${name}, fila ${index + 2} no fue encontrado en la validación: ${validate_with}`
                 });
             }
         }
