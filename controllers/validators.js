@@ -213,93 +213,75 @@ validatorController.deleteValidator = async (req, res) => {
 
 validatorController.validateColumn = async (column) => {
     const { name, datatype, values, validate_with, required } = column;
-    let result = { status: true, column, errors: [] }; // Inicializa el objeto result correctamente
+    let result = { status: true, column, errors: [] };
 
     if (!name || !datatype || !values) {
         return { status: false, errors: [{ register: null, message: 'Missing column name, datatype, or values' }] };
     }
 
-    for (const [index, value] of values.entries()) { // Usa entries() para acceder tanto al índice como al valor
+    let validator = null;
+    let columnToValidate = null;
+    
+    if (validate_with) {
+        const [validatorName, columnName] = validate_with.split(' - ');
+        validator = await Validator.findOne({ name: validatorName });
+        
+        if (!validator) {
+            return { status: false, errors: [{ register: null, message: `Tabla de validación no encontrada: ${validatorName}` }] };
+        }
+
+        columnToValidate = validator.columns.find(column => column.name === columnName);
+
+        if (!columnToValidate) {
+            return { status: false, errors: [{ register: null, message: `Columna '${columnName}' no encontrada en la tabla: ${validatorName}` }] };
+        }
+    }
+
+    // Convertir los valores a un conjunto para validaciones rápidas si es necesario
+    const validValuesSet = columnToValidate ? new Set(columnToValidate.values) : null;
+
+    values.forEach((value, index) => {
         if (required && (value.length === 0 || value === null || value === undefined)) {
             result.status = false;
-            result.column = name;
             result.errors.push({
                 register: index + 1,
                 message: `Valor vacío encontrado en la columna ${name}, fila ${index + 2}`
             });
+            return; // Continúa con el siguiente valor
         }
 
         const validation = allowedDataTypes[datatype](value);
         if (!validation.isValid) {
             result.status = false;
-            result.column = name;
             result.errors.push({
                 register: index + 1,
                 message: `Valor inválido encontrado en la columna ${name}, fila ${index + 2}: ${validation.message}`
             });
         }
 
-        if (validate_with) {
-            const [validatorName, columnName] = validate_with.split(' - ');
-            const validator = await Validator.findOne({ name: validatorName });
-            if (!validator) {
+        if (columnToValidate) {
+            if ((columnToValidate.type === "Texto" && typeof value !== "string") ||
+                (columnToValidate.type === "Numero" && typeof value !== "number")) {
                 result.status = false;
-                result.column = name;
                 result.errors.push({
                     register: index + 1,
-                    message: `Tabla de validación no encontrada: ${validatorName}`
+                    message: `Valor de la columna ${name}, fila ${index + 2} no es del tipo ${columnToValidate.type}`
                 });
-                continue; // Continúa con el siguiente valor si el validador no se encuentra
             }
 
-            const column = validator.columns.find(column => column.name === columnName);
-            //TODO VERIFICAR QUE COLUMN TENGA IS_VALIDATOR EN TRUE
-            if (!column) {
+            if (!validValuesSet.has(value)) {
                 result.status = false;
-                result.column = name;
                 result.errors.push({
                     register: index + 1,
-                    message: `Columna '${columnName}' no encontrada en la tabla: ${validatorName}`
-                });
-                continue;
-            }
-            
-            // Validar también el type de validate_with
-            if(column.type === "Texto") {
-                if(typeof value !== "string") {
-                    result.status = false;
-                    result.column = name;
-                    result.errors.push({
-                        register: index + 1,
-                        message: `Valor de la columna ${name}, fila ${index + 2} no es un texto`
-                    });
-                }
-            }
-
-            if(column.type === "Numero") {
-                if(typeof value !== "number") {
-                    result.status = false;
-                    result.column = name;
-                    result.errors.push({
-                        register: index + 1,
-                        message: `Valor de la columna ${name}, fila ${index + 2} no es un numero`
-                    });
-                }
-            }
-
-            if (!column.values.includes(value)) {
-                result.status = false;
-                result.column = name;
-                result.errors.push({
-                    register: index + 1,
-                    message: `Valor de la columna ${name}, fila ${index + 2} no fue encontrado en la validacion: ${validate_with}`
+                    message: `Valor de la columna ${name}, fila ${index + 2} no fue encontrado en la validación: ${validate_with}`
                 });
             }
         }
-    }
+    });
 
     return result;
 };
+
 
 
 module.exports = validatorController
