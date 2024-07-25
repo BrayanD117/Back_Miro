@@ -5,7 +5,6 @@ const columnSchema = new Schema({
     name: {
         type: String,
         required: true,
-        unique: true,
         index: true
     },
     is_validator: {
@@ -25,7 +24,7 @@ const columnSchema = new Schema({
     _id: false,
     versionKey: false,
     timestamps: true
-})
+});
 
 const validatorTemplate = new Schema({
     name: {
@@ -39,15 +38,23 @@ const validatorTemplate = new Schema({
         validate: {
             validator: (columns) => {
                 if (!columns || columns.length === 0) return true;
+
+                // Validación de longitud de los arrays de valores
                 const length = columns[0].values.length;
-                return columns.every(column => column.values.length === length);
+                const allSameLength = columns.every(column => column.values.length === length);
+
+                // Validación de unicidad de nombres
+                const columnNames = columns.map(column => column.name);
+                const uniqueColumnNames = new Set(columnNames).size === columnNames.length;
+
+                return allSameLength && uniqueColumnNames;
             },
-            message: 'All columns must have values arrays of the same length.'
+            message: 'All columns must have values arrays of the same length and unique names within the same validator.'
         }
     }
 }, {
     versionKey: false,
     timestamps: true
-})
+});
 
-module.exports = mongoose.model('validators', validatorTemplate)
+module.exports = mongoose.model('validators', validatorTemplate);
