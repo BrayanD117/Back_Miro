@@ -131,21 +131,20 @@ validatorController.updateValidator = async (req, res) => {
 
 validatorController.getValidators = async (req, res) => {
     try {
-        const options = ['Funcionarios - Identificación']
+        const options = [{ name: 'Funcionarios - Identificación', type: 'Texto' }];
 
-        const validators = await Validator.find({}, {name: 1, columns: 1})
+        const validators = await Validator.find({}, {name: 1, columns: 1});
         
         const result = validators.flatMap(validator => 
             validator.columns
                 .filter(column => column.is_validator)
-                .map(column => `${validator.name} - ${column.name}`)
+                .map(column => ({ name: `${validator.name} - ${column.name}`, type: column.type }))
         );
 
         options.push(...result)
 
         res.status(200).json({ options })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ error: error.message })
     }
 }
