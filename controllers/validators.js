@@ -213,7 +213,7 @@ validatorController.deleteValidator = async (req, res) => {
 
 validatorController.validateColumn = async (column) => {
     const { name, datatype, values, validate_with, required } = column;
-    let result = { status: true, column, errors: [] };
+    let result = { status: true, column: name, errors: [] };
 
     if (!name || !datatype || !values) {
         return { status: false, errors: [{ register: null, message: 'Missing column name, datatype, or values' }] };
