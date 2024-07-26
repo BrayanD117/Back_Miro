@@ -28,6 +28,10 @@ const producersData = new Schema({
         type: {},
         required: true
     },
+    loaded_date: {
+        type: Date,
+        required: true
+    },
     filled_data: [filled_fields]
 }, {
     _id: false

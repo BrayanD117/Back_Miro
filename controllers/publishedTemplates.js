@@ -28,6 +28,7 @@ publTempController.publishTemplate = async (req, res) => {
           template: template,
           period: req.body.period_id,
           producers_dep_code: req.body.producers_dep_code,
+          loaded_date: new Date()
       })
 
       await newPublTemp.save()
