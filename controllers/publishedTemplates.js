@@ -24,7 +24,7 @@ publTempController.publishTemplate = async (req, res) => {
       const now = new Date();
 
       const offset = -5; // GMT-5
-      const loaded_date = new Date(now.getTime() + offset * 60 * 60 * 1000);
+      const date_now  = new Date(now.getTime() + offset * 60 * 60 * 1000);
 
       // Name => Recibe el nombre de la plantilla (modificable) + period_name
       const newPublTemp = new PublishedTemplate({
@@ -33,7 +33,7 @@ publTempController.publishTemplate = async (req, res) => {
           template: template,
           period: req.body.period_id,
           producers_dep_code: req.body.producers_dep_code,
-          loaded_date
+          loaded_date: date_now
       })
 
       await newPublTemp.save()
