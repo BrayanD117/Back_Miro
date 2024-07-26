@@ -60,7 +60,13 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
       .skip(skip)
       .limit(limit)
       .populate('period')
-      .populate('template');
+      .populate({
+        path: 'template',
+        populate: {
+          path: 'dimension',
+          model: 'dimensions'
+        }
+      });
 
     const total = await PublishedTemplate.countDocuments(query);
 
