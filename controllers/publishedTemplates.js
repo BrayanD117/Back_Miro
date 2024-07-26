@@ -197,7 +197,41 @@ publTempController.loadProducerData = async (req, res) => {
   }
 };
 
+publTempController.getFilledDataMergedForResponsible = async (req, res) => {
+  const { pubTem_id } = req.query;
 
+  if (!pubTem_id) {
+    return res.status(400).json({ status: 'Missing pubTem_id' });
+  }
+
+  try {
+    const template = await PublishedTemplate.findById(pubTem_id);
+
+    if (!template) {
+      return res.status(404).json({ status: 'Published template not found' });
+    }
+
+    const data = template.loaded_data.map(data => {
+      const filledData = data.filled_data.reduce((acc, item) => {
+        item.values.forEach((value, index) => {
+          if (!acc[index]) {
+            acc[index] = {Dependencia: data.dependency};
+          }
+          acc[index][item.field_name] = value.$numberInt || value;
+        });
+        return acc;
+      }, []);
+    
+      return filledData;
+    }).flat();
+    
+    console.log(data);
+
+    res.status(200).json({ data });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener los datos de la plantilla' });
+  }
+}
 
 
 // Editar publishedTemplate (Productores)

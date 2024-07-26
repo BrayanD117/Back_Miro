@@ -9,4 +9,6 @@ router.get("/feedOptions", controller.feedOptionsToPublishTemplate);
 
 router.put("/producer/load", controller.loadProducerData);
 
+router.get("/responsible/mergedData", controller.getFilledDataMergedForResponsible);
+
 module.exports = router
