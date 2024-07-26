@@ -21,6 +21,11 @@ publTempController.publishTemplate = async (req, res) => {
 
       const user = await User.findOne({email})
 
+      const now = new Date();
+
+      const offset = -5; // GMT-5
+      const loaded_date = new Date(now.getTime() + offset * 60 * 60 * 1000);
+
       // Name => Recibe el nombre de la plantilla (modificable) + period_name
       const newPublTemp = new PublishedTemplate({
           name: req.body.name,
@@ -28,7 +33,7 @@ publTempController.publishTemplate = async (req, res) => {
           template: template,
           period: req.body.period_id,
           producers_dep_code: req.body.producers_dep_code,
-          loaded_date: new Date()
+          loaded_date
       })
 
       await newPublTemp.save()
