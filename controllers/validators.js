@@ -131,7 +131,7 @@ validatorController.updateValidator = async (req, res) => {
 
 validatorController.getValidators = async (req, res) => {
     try {
-        const options = [{ name: 'Funcionarios - Identificación', type: 'Texto' }];
+        const options = [{ name: 'Funcionarios - Identificación', type: 'Entero' }];
 
         const validators = await Validator.find({}, {name: 1, columns: 1});
         
@@ -220,24 +220,33 @@ validatorController.validateColumn = async (column) => {
 
     let validator = null;
     let columnToValidate = null;
-    
+    let validValuesSet = null;
+
     if (validate_with) {
         const [validatorName, columnName] = validate_with.split(' - ');
-        validator = await Validator.findOne({ name: validatorName });
-        
-        if (!validator) {
-            return { status: false, errors: [{ register: null, message: `Tabla de validación no encontrada: ${validatorName}` }] };
-        }
 
-        columnToValidate = validator.columns.find(column => column.name === columnName);
+        if (validatorName === "Funcionarios") {
+            // Obtener identificaciones de todos los usuarios
+            const users = await User.find({}, { identification: 1 }).lean();
+            const userIdentifications = users.map(user => user.identification);
+            validValuesSet = new Set(userIdentifications);
+            columnToValidate = { type: "Entero", values: userIdentifications }; // Ajusta según sea necesario
+        } else {
+            validator = await Validator.findOne({ name: validatorName });
 
-        if (!columnToValidate) {
-            return { status: false, errors: [{ register: null, message: `Columna '${columnName}' no encontrada en la tabla: ${validatorName}` }] };
+            if (!validator) {
+                return { status: false, errors: [{ register: null, message: `Tabla de validación no encontrada: ${validatorName}` }] };
+            }
+
+            columnToValidate = validator.columns.find(column => column.name === columnName);
+
+            if (!columnToValidate) {
+                return { status: false, errors: [{ register: null, message: `Columna '${columnName}' no encontrada en la tabla: ${validatorName}` }] };
+            }
+
+            validValuesSet = new Set(columnToValidate.values);
         }
     }
-
-    // Convertir los valores a un conjunto para validaciones rápidas si es necesario
-    const validValuesSet = columnToValidate ? new Set(columnToValidate.values) : null;
 
     values.forEach((value, index) => {
         if (required && (value.length === 0 || value === null || value === undefined)) {
@@ -284,6 +293,8 @@ validatorController.validateColumn = async (column) => {
 
     return result;
 };
+
+module.exports = validatorController;
 
 
 
