@@ -44,6 +44,66 @@ publTempController.publishTemplate = async (req, res) => {
   }
 }
 
+publTempController.getPublishedTemplatesDimension = async (req, res) => {
+  const email = req.query.email;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const search = req.query.search || '';
+  const skip = (page - 1) * limit;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ status: 'User not found' });
+    }
+
+    const activeRole = user.activeRole;
+
+    let query = {
+      name: { $regex: search, $options: 'i' }
+    };
+
+    
+    if (activeRole !== 'Administrador') {
+      const dimensionIds = dimensions.map(dim => dim._id);
+      if (dimensionIds.length > 0) {
+        query['template.dimension'] = { $in: dimensionIds };
+      } else {
+        return res.status(403).json({ status: 'Access denied' });
+      }
+    }
+
+    const published_templates = await PublishedTemplate.find(query)
+      .skip(skip)
+      .limit(limit)
+      .populate('period')
+      .populate({
+        path: 'template',
+        populate: {
+          path: 'dimension',
+          model: 'dimensions'
+        }
+      });
+
+    const total = await PublishedTemplate.countDocuments(query);
+    
+    published_templates.forEach(template => {
+      delete template.loaded_data;
+    });
+    
+    res.status(200).json({
+      templates: published_templates,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    console.error('Error fetching templates:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
 publTempController.getAssignedTemplatesToProductor = async (req, res) => {
   const email = req.query.email;
   const page = parseInt(req.query.page) || 1;
@@ -198,7 +258,13 @@ publTempController.loadProducerData = async (req, res) => {
 };
 
 publTempController.getFilledDataMergedForResponsible = async (req, res) => {
-  const { pubTem_id } = req.query;
+  const { pubTem_id, email } = req.query;
+
+  user = await User.findOne({ email })
+
+  if(!user || !user.roles.includes('Responsable')) {
+    return res.status(404).json({status: 'User not available'})
+  }
 
   if (!pubTem_id) {
     return res.status(400).json({ status: 'Missing pubTem_id' });
