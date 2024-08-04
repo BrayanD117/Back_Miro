@@ -280,6 +280,31 @@ publTempController.loadProducerData = async (req, res) => {
   }
 };
 
+publTempController.deleteLoadedDataDependency = async (req, res) => {
+  const { pubTem_id, email } = req.query
+
+  try {
+    const user = await User.findOne({ email })
+    if (!user) { return res.status(404).json({ status: 'User not found' }) }
+
+    const pubTem = await PublishedTemplate.findById(pubTem_id);
+    if (!pubTem) { return res.status(404).json({ status: 'Published template not found' }) }
+
+    if (!pubTem.producers_dep_code.includes(user.dep_code)) {
+      return res.status(403).json({ status: 'User is not assigned to this published template' })
+    }
+
+    const index = pubTem.loaded_data.findIndex(data => data.dependency === user.dep_code)
+    if (index === -1) { return res.status(404).json({ status: 'Data not found' }) }
+  
+    pubTem.loaded_data.splice(index, 1);
+    await pubTem.save();
+    return res.status(200).json({ status: 'Data deleted successfully' })
+  } catch (error) {
+    return res.status(500).json({ status: 'Internal server error', details: error.message })
+  }
+};
+
 
 publTempController.getFilledDataMergedForResponsible = async (req, res) => {
   const { pubTem_id, email } = req.query;
