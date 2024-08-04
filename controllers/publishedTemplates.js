@@ -8,6 +8,13 @@ const Validator = require('./validators.js')
 
 const publTempController = {};
 
+datetime_now = () => {
+  const now = new Date();
+
+  const offset = -5; // GMT-5
+  return new Date(now.getTime() + offset * 60 * 60 * 1000);
+}
+
 publTempController.publishTemplate = async (req, res) => {
   console.log(req.body)
   template_id = req.body.template_id
@@ -19,12 +26,7 @@ publTempController.publishTemplate = async (req, res) => {
           return res.status(404).json({status: 'Template not found'})
       }
 
-      const user = await User.findOne({email})
-
-      const now = new Date();
-
-      const offset = -5; // GMT-5
-      const date_now  = new Date(now.getTime() + offset * 60 * 60 * 1000);
+      const date_now  = datetime_now()
 
       // Name => Recibe el nombre de la plantilla (modificable) + period_name
       const newPublTemp = new PublishedTemplate({
@@ -192,7 +194,8 @@ publTempController.feedOptionsToPublishTemplate = async (req, res) => {
 }
 
 publTempController.loadProducerData = async (req, res) => {
-  const { email, pubTem_id, data } = req.body;
+  const { email, pubTem_id, data, edit } = req.body;
+  // Obtener el parámetro edit de la query
 
   try {
     const user = await User.findOne({ email });
@@ -245,9 +248,29 @@ publTempController.loadProducerData = async (req, res) => {
       return res.status(400).json({ status: 'Validation error', details: validationErrors });
     }
 
-    const producersData = { dependency: user.dep_code, send_by: user, filled_data: result };
+    const producersData = {
+      dependency: user.dep_code,
+      send_by: user,
+      filled_data: result,
+      loaded_date: datetime_now()  // Agregar la fecha de carga
+    };
 
-    pubTem.loaded_data.push(producersData);
+    if (edit === 'true') {
+      // Reemplazar datos existentes si edit = true
+      const existingDataIndex = pubTem.loaded_data.findIndex(
+        data => data.dependency === user.dep_code
+      );
+
+      if (existingDataIndex > -1) {
+        pubTem.loaded_data[existingDataIndex] = producersData;
+      } else {
+        pubTem.loaded_data.push(producersData);
+      }
+    } else {
+      // Solo agregar datos nuevos si edit no es true
+      pubTem.loaded_data.push(producersData);
+    }
+
     await pubTem.save();
 
     return res.status(200).json({ status: 'Data loaded successfully' });
@@ -256,6 +279,7 @@ publTempController.loadProducerData = async (req, res) => {
     return res.status(500).json({ status: 'Internal server error', details: error.message });
   }
 };
+
 
 publTempController.getFilledDataMergedForResponsible = async (req, res) => {
   const { pubTem_id, email } = req.query;
