@@ -140,16 +140,39 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
 
     const updatedTemplates = templates.map(t => {
       let uploaded = false;
-      t.loaded_data.forEach(ld => {
+    
+      // Filtrar loaded_data según dep_code
+      const filteredLoadedData = t.loaded_data.filter(ld => {
         if (ld.send_by.email === email) {
           uploaded = true;
         }
+        return ld.dependency === user.dep_code;
       });
+
+      delete t.loaded_data;
+    
+      // Transformar filteredLoadedData en un formato similar al método getFilledDataMergedForResponsible
+      const transformedLoadedData = filteredLoadedData.map(ld => {
+        const filledData = ld.filled_data.reduce((acc, item) => {
+          item.values.forEach((value, index) => {
+            if (!acc[index]) {
+              acc[index] = { Dependencia: ld.dependency };
+            }
+            acc[index][item.field_name] = value.$numberInt || value;
+          });
+          return acc;
+        }, []);
+    
+        return filledData;
+      }).flat();
+    
       return {
         ...t.toObject(),
+        loaded_data: transformedLoadedData,
         uploaded
       };
     });
+    
 
     res.status(200).json({
       templates: updatedTemplates,
