@@ -4,7 +4,8 @@ const Period = require('../models/periods.js')
 const Dimension = require('../models/dimensions.js')
 const Dependency = require('../models/dependencies.js')
 const User = require('../models/users.js')
-const Validator = require('./validators.js')
+const Validator = require('./validators.js');
+const validators = require('../models/validators.js');
 
 const publTempController = {};
 
@@ -138,7 +139,7 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
 
     const total = await PublishedTemplate.countDocuments(query);
 
-    const updatedTemplates = templates.map(t => {
+    const updatedTemplatesPromises = templates.map(async t => {
       let uploaded = false;
     
       // Filtrar loaded_data según dep_code
@@ -149,8 +150,6 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
         return ld.dependency === user.dep_code;
       });
 
-      delete t.loaded_data;
-    
       // Transformar filteredLoadedData en un formato similar al método getFilledDataMergedForResponsible
       const transformedLoadedData = filteredLoadedData.map(ld => {
         const filledData = ld.filled_data.reduce((acc, item) => {
@@ -165,14 +164,23 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
     
         return filledData;
       }).flat();
+
+      // Obtener validadores utilizando giveValidatorToExcel
+      const validatorPromises = t.template.fields.map(field => {
+        return Validator.giveValidatorToExcel(field.validate_with);
+      });
+
+      const validators = await Promise.all(validatorPromises);
     
       return {
         ...t.toObject(),
         loaded_data: transformedLoadedData,
-        uploaded
+        uploaded,
+        validators
       };
     });
-    
+
+    const updatedTemplates = await Promise.all(updatedTemplatesPromises);
 
     res.status(200).json({
       templates: updatedTemplates,

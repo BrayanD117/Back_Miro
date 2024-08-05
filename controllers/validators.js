@@ -294,8 +294,37 @@ validatorController.validateColumn = async (column) => {
     return result;
 };
 
-module.exports = validatorController;
 
+validatorController.giveValidatorToExcel = async (name) => {
+    try {
+        name = name.split(' - ')[0];
+        const validator = await Validator.findOne({ name });
 
+        if (!validator) {
+            console.log(`Validator with name ${name} not found`);
+            return {};
+        }
+
+        // Asegúrate de inicializar acc como un array de objetos vacíos
+        const validatorFilled = validator.columns.reduce((acc, item) => {
+            item.values.forEach((value, index) => {
+                // Inicializar el objeto si no existe
+                if (!acc[index]) {
+                    acc[index] = {};
+                }
+                acc[index][item.name] = value.$numberInt || value;
+            });
+            return acc;
+        }, []);
+
+        console.log(validatorFilled);
+
+        return validatorFilled;
+
+    } catch (error) {
+        console.log(error);
+        return {};
+    }
+}
 
 module.exports = validatorController
