@@ -286,8 +286,7 @@ publTempController.loadProducerData = async (req, res) => {
       loaded_date: datetime_now()  // Agregar la fecha de carga
     };
 
-    if (edit === 'true') {
-      // Reemplazar datos existentes si edit = true
+    if (edit === true) {
       const existingDataIndex = pubTem.loaded_data.findIndex(
         data => data.dependency === user.dep_code
       );
