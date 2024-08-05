@@ -143,7 +143,7 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
     
       // Filtrar loaded_data según dep_code
       const filteredLoadedData = t.loaded_data.filter(ld => {
-        if (ld.send_by.email === email) {
+        if (ld.send_by.dep_code === user.dep_code) {
           uploaded = true;
         }
         return ld.dependency === user.dep_code;
