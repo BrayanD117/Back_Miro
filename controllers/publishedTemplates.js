@@ -30,7 +30,7 @@ publTempController.publishTemplate = async (req, res) => {
 
       // Name => Recibe el nombre de la plantilla (modificable) + period_name
       const newPublTemp = new PublishedTemplate({
-          name: req.body.name,
+          name: req.body.name || template.name,
           published_by: user,
           template: template,
           period: req.body.period_id,
