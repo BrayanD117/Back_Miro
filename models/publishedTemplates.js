@@ -51,7 +51,14 @@ const publishedTemplateSchema = new Schema({
     },
     producers_dep_code: {
         type: [String],
-        required: true
+        required: true,
+        validate: {
+            validator: function (v) {
+                const uniqueDependencies = new Set(v.map(ld => ld.dependency));
+                return uniqueDependencies.size === v.length;
+            },
+            message: props => `Dependency already uploaded data: ${props.value.map(ld => ld.dependency).join(', ')}`
+        }
     },
     loaded_data: [producersData],
     completed: {
