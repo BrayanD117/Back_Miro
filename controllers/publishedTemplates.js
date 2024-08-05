@@ -26,7 +26,7 @@ publTempController.publishTemplate = async (req, res) => {
           return res.status(404).json({status: 'Template not found'})
       }
 
-      const date_now  = datetime_now()
+      const date_now = datetime_now()
 
       // Name => Recibe el nombre de la plantilla (modificable) + period_name
       const newPublTemp = new PublishedTemplate({
@@ -35,7 +35,7 @@ publTempController.publishTemplate = async (req, res) => {
           template: template,
           period: req.body.period_id,
           producers_dep_code: req.body.producers_dep_code,
-          loaded_date: date_now
+          published_date: date_now
       })
 
       await newPublTemp.save()
@@ -370,7 +370,7 @@ publTempController.getFilledDataMergedForDimension = async (req, res) => {
 }
 
 
-// Editar publishedTemplate (Productores)
+// TODO Editar publishedTemplate (Productores)
 
 
 module.exports = publTempController;
