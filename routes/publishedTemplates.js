@@ -9,7 +9,7 @@ router.get("/feedOptions", controller.feedOptionsToPublishTemplate);
 
 router.put("/producer/load", controller.loadProducerData);
 
-router.get("/responsible", controller.getPublishedTemplatesDimension);
-router.get("/responsible/mergedData", controller.getFilledDataMergedForResponsible);
+router.get("/dimension", controller.getPublishedTemplatesDimension);
+router.get("/dimension/mergedData", controller.getFilledDataMergedForDimension);
 
 module.exports = router

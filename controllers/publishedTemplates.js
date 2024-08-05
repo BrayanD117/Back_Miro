@@ -329,7 +329,7 @@ publTempController.deleteLoadedDataDependency = async (req, res) => {
 };
 
 
-publTempController.getFilledDataMergedForResponsible = async (req, res) => {
+publTempController.getFilledDataMergedForDimension = async (req, res) => {
   const { pubTem_id, email } = req.query;
 
   user = await User.findOne({ email })
