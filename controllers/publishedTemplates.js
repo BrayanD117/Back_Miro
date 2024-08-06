@@ -243,6 +243,11 @@ publTempController.loadProducerData = async (req, res) => {
       return res.status(403).json({ status: 'User is not assigned to this published template' });
     }
 
+    // Asigna el published_date si no existe
+    if (!pubTem.published_date) {
+      pubTem.published_date = datetime_now();
+    }
+
     const fieldValuesMap = {};
 
     data.forEach(item => {
