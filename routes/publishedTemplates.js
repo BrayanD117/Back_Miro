@@ -8,6 +8,8 @@ router.get("/", controller.getAssignedTemplatesToProductor);
 router.get("/feedOptions", controller.feedOptionsToPublishTemplate);
 
 router.put("/producer/load", controller.loadProducerData);
+router.get("/uploaded", controller.getUploadedTemplatesByProducer);
+router.delete("/producer/delete", controller.deleteLoadedDataDependency);
 
 router.get("/dimension", controller.getPublishedTemplatesDimension);
 router.get("/dimension/mergedData", controller.getFilledDataMergedForDimension);
