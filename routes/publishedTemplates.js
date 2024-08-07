@@ -4,6 +4,7 @@ const controller = require('../controllers/publishedTemplates');
 router.post("/publish", controller.publishTemplate);
 
 router.get("/", controller.getAssignedTemplatesToProductor);
+router.get("/available", controller.getAvailableTemplatesToProductor);
 
 router.get("/feedOptions", controller.feedOptionsToPublishTemplate);
 
