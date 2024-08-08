@@ -27,8 +27,6 @@ publTempController.publishTemplate = async (req, res) => {
           return res.status(404).json({status: 'Template not found'})
       }
 
-      const date_now = datetime_now()
-
       // Name => Recibe el nombre de la plantilla (modificable) + period_name
       const newPublTemp = new PublishedTemplate({
           name: req.body.name || template.name,
@@ -36,7 +34,7 @@ publTempController.publishTemplate = async (req, res) => {
           template: template,
           period: req.body.period_id,
           producers_dep_code: req.body.producers_dep_code,
-          published_date: date_now
+          published_date: datetime_now()
       })
 
       await newPublTemp.save()
