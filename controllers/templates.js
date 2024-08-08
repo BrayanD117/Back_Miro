@@ -1,5 +1,6 @@
 const Template = require('../models/templates');
 const User = require('../models/users');
+const Dimension = require('../models/dimensions');
 
 const templateController = {};
 
@@ -43,8 +44,10 @@ templateController.getPlantillasByCreator = async (req, res) => {
     const skip = (page - 1) * limit;
 
     try {
+        const dimensions = await Dimension.find({ responsible: email });
+
         const query = {
-            'created_by.email': email,
+            dimension: { $in: dimensions.map(dimension => dimension._id) },
             $or: [
                 { name: { $regex: search, $options: 'i' } },
                 { file_name: { $regex: search, $options: 'i' } },

@@ -58,6 +58,8 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
       return res.status(404).json({ status: 'User not found' });
     }
 
+    const dimensions = await Dimension.find({ responsible: email });
+
     const activeRole = user.activeRole;
 
     let query = {
@@ -328,12 +330,15 @@ publTempController.deleteLoadedDataDependency = async (req, res) => {
     }
 
     const index = pubTem.loaded_data.findIndex(data => data.dependency === user.dep_code)
+    console.log(index)
     if (index === -1) { return res.status(404).json({ status: 'Data not found' }) }
   
     pubTem.loaded_data.splice(index, 1);
+    console.log("test")
     await pubTem.save();
     return res.status(200).json({ status: 'Data deleted successfully' })
   } catch (error) {
+    console.log(error.message)
     return res.status(500).json({ status: 'Internal server error', details: error.message })
   }
 };
@@ -456,7 +461,7 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
 
     // Filtrar las plantillas que ya han sido cargadas por el productor
     const filteredTemplates = templates.filter(t => 
-      !t.loaded_data.some(ld => ld.send_by.email === email)
+      !t.loaded_data.some(ld => ld.send_by.dep_code === user.dep_code)
     );
 
     const total = filteredTemplates.length;
