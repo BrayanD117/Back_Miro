@@ -27,6 +27,12 @@ publTempController.publishTemplate = async (req, res) => {
           return res.status(404).json({status: 'Template not found'})
       }
 
+      const user = await User.findOne({email})
+
+      if(!user) {
+          return res.status(404).json({status: 'User not found'})
+      }
+
       // Name => Recibe el nombre de la plantilla (modificable) + period_name
       const newPublTemp = new PublishedTemplate({
           name: req.body.name || template.name,
