@@ -15,19 +15,19 @@ const periodSchema = new mongoose.Schema({
         type: Date,
         required: true,
     },
-    collect_start_date: {
+    productor_start_date: {
         type: Date,
         required: true,
     },
-    collect_end_date: {
+    productor_end_date: {
         type: Date,
         required: true,
     },
-    upload_start_date: {
+    responsible_start_date: {
         type: Date,
         required: true,
     },
-    upload_end_date: {
+    responsible_end_date: {
         type: Date,
         required: true,
     },

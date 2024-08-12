@@ -5,7 +5,6 @@ const Dimension = require('../models/dimensions.js')
 const Dependency = require('../models/dependencies.js')
 const User = require('../models/users.js')
 const Validator = require('./validators.js');
-const validators = require('../models/validators.js');
 
 const publTempController = {};
 
