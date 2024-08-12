@@ -15,11 +15,11 @@ const periodSchema = new mongoose.Schema({
         type: Date,
         required: true,
     },
-    productor_start_date: {
+    producer_start_date: {
         type: Date,
         required: true,
     },
-    productor_end_date: {
+    producer_end_date: {
         type: Date,
         required: true,
     },

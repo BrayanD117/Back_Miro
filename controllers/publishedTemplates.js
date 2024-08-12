@@ -91,7 +91,7 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
           path: 'dimension',
           model: 'dimensions'
         }
-      });
+      })
 
     const total = await PublishedTemplate.countDocuments(query);
     
