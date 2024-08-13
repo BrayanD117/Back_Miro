@@ -145,6 +145,17 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
     const total = await PublishedTemplate.countDocuments(query);
 
     const updatedTemplatesPromises = templates.map(async t => {
+      
+      const validators = await Promise.all(
+        t.template.fields.map(async (field) => {
+          return Validator.giveValidatorToExcel(field.validate_with);
+        })
+      );
+
+      t = t.toObject();
+      validatorsFiltered = validators.filter(v => v !== undefined)
+      t.validators = validatorsFiltered // Añadir validators al objeto
+  
       let uploaded = false;
     
       // Filtrar loaded_data según dep_code
@@ -170,18 +181,12 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
         return filledData;
       }).flat();
 
-      // Obtener validadores utilizando giveValidatorToExcel
-      const validatorPromises = t.template.fields.map(field => {
-        return Validator.giveValidatorToExcel(field.validate_with);
-      });
 
-      const validators = await Promise.all(validatorPromises);
-    
+
       return {
-        ...t.toObject(),
+        ...t,
         loaded_data: transformedLoadedData,
-        uploaded,
-        validators
+        uploaded
       };
     });
 
@@ -404,7 +409,7 @@ publTempController.getUploadedTemplatesByProducer = async (req, res) => {
     }
 
     const query = {
-      'loaded_data.send_by.email': email,
+      'loaded_data.send_by.dep_code': user.dep_code,
       name: { $regex: search, $options: 'i' }
     };
 
@@ -420,10 +425,26 @@ publTempController.getUploadedTemplatesByProducer = async (req, res) => {
         }
       });
 
+      const templatesWithValidators = await Promise.all(
+        templates.map(async (template) => {
+          const validators = await Promise.all(
+            template.template.fields.map(async (field) => {
+              return Validator.giveValidatorToExcel(field.validate_with);
+            })
+          );
+  
+          template = template.toObject();
+          validatorsFiltered = validators.filter(v => v !== undefined)
+          template.validators = validatorsFiltered // Añadir validators al objeto
+  
+          return template;
+        })
+      );
+
     const total = await PublishedTemplate.countDocuments(query);
 
     res.status(200).json({
-      templates,
+      "templates": templatesWithValidators,
       total,
       page,
       pages: Math.ceil(total / limit),
@@ -469,10 +490,26 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
       !t.loaded_data.some(ld => ld.send_by.dep_code === user.dep_code)
     );
 
+    const templatesWithValidators = await Promise.all(
+      filteredTemplates.map(async (template) => {
+        const validators = await Promise.all(
+          template.template.fields.map(async (field) => {
+            return Validator.giveValidatorToExcel(field.validate_with);
+          })
+        );
+
+        template = template.toObject();
+        validatorsFiltered = validators.filter(v => v !== undefined)
+        template.validators = validatorsFiltered // Añadir validators al objeto
+
+        return template;
+      })
+    );
+
     const total = filteredTemplates.length;
 
     res.status(200).json({
-      templates: filteredTemplates,
+      templates: templatesWithValidators,
       total,
       page,
       pages: Math.ceil(total / limit),

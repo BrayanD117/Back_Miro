@@ -302,11 +302,15 @@ validatorController.giveValidatorToExcel = async (name) => {
 
         if (!validator) {
             console.log(`Validator with name ${name} not found`);
-            return {};
+            return;
         }
 
         // Asegúrate de inicializar acc como un array de objetos vacíos
-        const validatorFilled = validator.columns.reduce((acc, item) => {
+        const validatorFilled = {}
+
+        validatorFilled['name'] = name
+        
+        validatorFilled['values'] = validator.columns.reduce((acc, item) => {
             item.values.forEach((value, index) => {
                 // Inicializar el objeto si no existe
                 if (!acc[index]) {
@@ -323,7 +327,7 @@ validatorController.giveValidatorToExcel = async (name) => {
 
     } catch (error) {
         console.log(error);
-        return {};
+        return;
     }
 }
 
