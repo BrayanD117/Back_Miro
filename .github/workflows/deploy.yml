@@ -14,6 +14,14 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.11.1'
+
+    - name: Install dependencies
+      run: npm install
+
     - name: Install OpenConnect
       run: sudo apt-get install -y openconnect
 
@@ -54,6 +62,11 @@ jobs:
           cd ~/MIRO/Back_Miro;
           npm install;
           pm2 startOrRestart ecosystem.config.js --env production'
+
+    - name: Run Semantic Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: npx semantic-release
 
     - name: Post Checkout repository
       run: echo "Deployment complete"
