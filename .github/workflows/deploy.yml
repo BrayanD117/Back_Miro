@@ -72,5 +72,13 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: npx semantic-release
 
+    - name: Restart PM2 with new version
+      run: |
+        sshpass -p "${{ secrets.INTERNAL_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.INTERNAL_USER }}@${{ secrets.INTERNAL_RESOURCE_IP }} '
+          cd ~/MIRO/Back_Miro;
+          pm2 stop all;
+          pm2 startOrRestart ecosystem.config.js --env production;
+          exit;'
+
     - name: Post Checkout repository
       run: echo "Deployment complete"
