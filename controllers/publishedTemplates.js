@@ -95,12 +95,27 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
 
     const total = await PublishedTemplate.countDocuments(query);
     
-    published_templates.forEach(template => {
-      delete template.loaded_data;
-    });
+    const updated_templates = await Promise.all(published_templates.map(async template => {
+      const dependencies = await Dependency.find(
+        { dep_code: { $in: template.producers_dep_code } },
+        'name -_id'
+      );
+      template.producers_dep_code = dependencies.map(dep => dep.name);
+      
+      template.loaded_data = await Promise.all(template.loaded_data.map(async data => {
+        const loadedDependency = await Dependency.findOne(
+          { dep_code: data.dependency },
+          'name -_id'
+        );
+        data.dependency = loadedDependency ? loadedDependency.name : data.dependency;
+        return data;
+      }));
+      
+      return template;
+    }));
     
     res.status(200).json({
-      templates: published_templates,
+      templates: updated_templates,
       total,
       page,
       pages: Math.ceil(total / limit),
