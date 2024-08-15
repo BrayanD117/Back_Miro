@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - ci/versioning-test
   workflow_dispatch:
 
 permissions:
