@@ -105,6 +105,8 @@ dependencyController.updateDependency = async (req, res) => {
     const { id } = req.params;
     const { dep_code, name, responsible, dep_father, producers } = req.body;
 
+    console.log(producers)
+
     try {
         const dependency = await Dependency.findById(id);
         if (!dependency) {
@@ -117,6 +119,13 @@ dependencyController.updateDependency = async (req, res) => {
         dependency.dep_father = dep_father;
         dependency.members = [...new Set([...dependency.members, ...producers])];
 
+        const users = await User.find({ email: { $in: producers } })
+        console.log(users)
+
+        users.map(user => {
+            user.roles = [...new Set([...user.roles, "Productor"])];
+            user.save();
+        });
         await dependency.save();
 
         res.status(200).json({ status: "Dependency updated" });
