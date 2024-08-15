@@ -122,10 +122,10 @@ dependencyController.updateDependency = async (req, res) => {
         const users = await User.find({ email: { $in: producers } })
         console.log(users)
 
-        users.map(user => {
-            user.roles = [...new Set([...user.roles, "Productor"])];
-            user.save();
-        });
+        await User.updateMany(
+            { email: { $in: producers } }, 
+            { $addToSet: { roles: "Productor" } }, { multi: true })
+
         await dependency.save();
 
         res.status(200).json({ status: "Dependency updated" });
