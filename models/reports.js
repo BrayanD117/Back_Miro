@@ -23,3 +23,5 @@ const reportSchema = new Schema({
     versionKey: false,
     timestamps: true
 })
+
+module.exports = mongoose.model('reports', reportSchema)
