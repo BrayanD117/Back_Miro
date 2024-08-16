@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const filledReportSchema = new Schema({
-    dimension_sender: {
+    dimension: {
         type: Schema.Types.ObjectId,
         ref: 'dimensions',
         required: true
@@ -19,7 +19,6 @@ const filledReportSchema = new Schema({
         type: [String],
         required: true
     }
-
 }, {
     _id: false,
     versionKey: false,
@@ -39,11 +38,6 @@ const publishedReportSchema = new Schema({
     dimensions: {
         type: [Schema.Types.ObjectId],
         required: true
-    },
-    status: {
-        type: String,
-        required: true,
-        enum: ['Enviado', 'Pendiente', 'Aprobado', 'Rechazado']
     },
     filled_reports: {
         type: [filledReportSchema],
