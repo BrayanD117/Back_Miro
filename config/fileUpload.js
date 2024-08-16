@@ -5,31 +5,25 @@ const fs = require('fs');
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-      const reportId = req.body.id;
-  
-      if (!reportId) {
-        return cb(new Error('Falta el ID del reporte'), false);
-      }
-  
-      // Ruta absoluta hacia la carpeta MIRO
-      const miroDirectory = path.join(os.homedir(), process.env.MIRO_BASE_PATH, reportId);
-  
-      // Verifica si la carpeta existe, si no, la crea
+      const miroDirectory = path.join(os.homedir(), process.env.MIRO_BASE_PATH, 'uploads')
       if (!fs.existsSync(miroDirectory)) {
-        fs.mkdirSync(miroDirectory, { recursive: true });
+        fs.mkdirSync(miroDirectory, { recursive: true })
       }
-  
-      cb(null, miroDirectory); // Asigna la carpeta dinámica en ~/MIRO/{reportId}
+      cb(null, miroDirectory);
     },
     filename: (req, file, cb) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+      cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname)); // Genera un nombre único
     }
   });
 
   
   const fileFilter = (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    const allowedTypes = ['image/jpeg',
+        'image/png',
+        'application/pdf',
+        'application/msword', // .doc
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {

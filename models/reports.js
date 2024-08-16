@@ -18,6 +18,10 @@ const reportSchema = new Schema({
     required_files: {
         type: [String],
         required: true
+    },
+    created_by: {
+        type: {},
+        required: true
     }
 }, {
     versionKey: false,

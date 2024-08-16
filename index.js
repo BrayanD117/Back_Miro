@@ -52,6 +52,7 @@ apiRouter.use("/periods", require('./routes/periods'));
 apiRouter.use("/templates", require('./routes/templates'));
 apiRouter.use("/pTemplates", require('./routes/publishedTemplates'));
 apiRouter.use("/validators", require('./routes/validators'));
+apiRouter.use("/reports", require('./routes/reports'));
 
 app.use('/api/p', apiRouter);
 
