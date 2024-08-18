@@ -1,6 +1,7 @@
 const Template = require('../models/templates');
 const User = require('../models/users');
 const Dimension = require('../models/dimensions');
+const Validator = require('./validators')
 
 const templateController = {};
 
@@ -57,8 +58,24 @@ templateController.getPlantillasByCreator = async (req, res) => {
         const templates = await Template.find(query).skip(skip).limit(limit);
         const total = await Template.countDocuments(query);
 
+        const templatesWithValidators = await Promise.all(
+            templates.map(async (template) => {
+              const validators = await Promise.all(
+                template.fields.map(async (field) => {
+                  return Validator.giveValidatorToExcel(field.validate_with);
+                })
+              );
+      
+              template = template.toObject();
+              validatorsFiltered = validators.filter(v => v !== undefined)
+              template.validators = validatorsFiltered // Añadir validators al objeto
+      
+              return template;
+            })
+          );
+
         res.status(200).json({
-            templates,
+            templates: templatesWithValidators,
             total,
             page,
             pages: Math.ceil(total / limit),

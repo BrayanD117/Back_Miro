@@ -96,6 +96,16 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
     const total = await PublishedTemplate.countDocuments(query);
     
     const updated_templates = await Promise.all(published_templates.map(async template => {
+      const validators = await Promise.all(
+        template.template.fields.map(async (field) => {
+          return Validator.giveValidatorToExcel(field.validate_with);
+        })
+      );
+
+      template = template.toObject();
+      validatorsFiltered = validators.filter(v => v !== undefined)
+      template.validators = validatorsFiltered // Añadir validators al objeto
+
       const dependencies = await Dependency.find(
         { dep_code: { $in: template.producers_dep_code } },
         'name -_id'
