@@ -343,7 +343,10 @@ publTempController.loadProducerData = async (req, res) => {
 
     await pubTem.save();
 
-    return res.status(200).json({ status: 'Data loaded successfully' });
+    return res.status(200).json({ 
+      status: 'Data loaded successfully', 
+      recordsLoaded: data.length
+    });
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({ status: 'Internal server error', details: error.message });
