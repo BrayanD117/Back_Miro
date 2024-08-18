@@ -24,10 +24,9 @@ reportController.getReports = async (req, res) => {
         const searchQuery = search
             ? {
                 $or: [
-                    { title: { $regex: search, $options: 'i' } },  // 'i' para insensible a mayúsculas
+                    { name: { $regex: search, $options: 'i' } },  // 'i' para insensible a mayúsculas
                     { description: { $regex: search, $options: 'i' } },
-                    { createdBy: { $regex: search, $options: 'i' } }, // Suponiendo que 'createdBy' es un campo de string
-                    // Agrega más campos según sea necesario
+                    { 'created_by.email': { $regex: search, $options: 'i' } }, // Búsqueda en el email del creador
                 ]
             }
             : {};
