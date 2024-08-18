@@ -99,10 +99,17 @@ userController.getUsers = async (req, res) => {
 }
 
 userController.getUser = async (req, res) => {
-    const email = req.params.email;
-    const user = await User.findOne({email, isActive: true});
-    res.status(200).json(user);
-}
+    const email = req.query.email; 
+    try {
+        const user = await User.findOne({ email, isActive: true });
+        if (!user) {
+            return res.status(404).json({ error: "User not found or inactive" });
+        }
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({ error: "Internal Server Error", details: error.message });
+    }
+};
 
 userController.getUserRoles = async (req, res) => {
     const email = req.query.email;
