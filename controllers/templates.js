@@ -25,8 +25,24 @@ templateController.getPlantillas = async (req, res) => {
 
         const total = await Template.countDocuments(query);
 
+        const templatesWithValidators = await Promise.all(
+            templates.map(async (template) => {
+              const validators = await Promise.all(
+                template.fields.map(async (field) => {
+                  return Validator.giveValidatorToExcel(field.validate_with);
+                })
+              );
+      
+              template = template.toObject();
+              validatorsFiltered = validators.filter(v => v !== undefined)
+              template.validators = validatorsFiltered // Añadir validators al objeto
+      
+              return template;
+            })
+        );
+
         res.status(200).json({
-            templates,
+            templates: templatesWithValidators,
             total,
             page,
             pages: Math.ceil(total / limit)
