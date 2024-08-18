@@ -100,14 +100,14 @@ userController.getUsers = async (req, res) => {
 
 userController.getUser = async (req, res) => {
     const email = req.params.email;
-    const user = await User.findOne({email});
+    const user = await User.findOne({email, isActive: true});
     res.status(200).json(user);
 }
 
 userController.getUserRoles = async (req, res) => {
     const email = req.query.email;
     try {
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email, isActive: true });
         if (user) {
             res.status(200).json({ roles: user.roles, activeRole: user.activeRole });
         } else {
