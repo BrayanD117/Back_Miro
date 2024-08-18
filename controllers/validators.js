@@ -131,6 +131,48 @@ validatorController.updateValidator = async (req, res) => {
 
 validatorController.getValidators = async (req, res) => {
     try {
+        const { email, page = 1, limit = 10, search = '' } = req.query;
+
+        // Buscar usuario activo por email
+        const user = await User.findOne({ email, isActive: true });
+        if (!user) {
+            return res.status(404).json({ status: "User not found" });
+        }
+        
+        // Crear filtro de búsqueda para todos los campos del validador
+        const searchFilter = search
+            ? {
+                $or: [
+                    { name: { $regex: search, $options: 'i' } },
+                    { description: { $regex: search, $options: 'i' } },
+                    { otherField1: { $regex: search, $options: 'i' } }, // Añade aquí los campos que desees incluir en la búsqueda
+                    { otherField2: { $regex: search, $options: 'i' } }
+                ]
+            }
+            : {};
+
+        // Obtener la lista de validadores con paginación y filtro de búsqueda
+        const validators = await Validator.find(searchFilter)
+            .skip((page - 1) * limit)
+            .limit(Number(limit));
+
+        // Obtener el total de documentos para calcular páginas totales
+        const totalValidators = await Validator.countDocuments(searchFilter);
+
+        res.status(200).json({
+            validators,
+            currentPage: Number(page),
+            totalPages: Math.ceil(totalValidators / limit),
+            totalValidators
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}
+
+
+validatorController.getValidatorOptions = async (req, res) => {
+    try {
         const options = [{ name: 'Funcionarios - Identificación', type: 'Entero' }];
 
         const validators = await Validator.find({}, {name: 1, columns: 1});
