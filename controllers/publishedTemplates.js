@@ -565,8 +565,11 @@ publTempController.getTemplateById = async (req, res) => {
     if (!publishedTemplate) {
       return res.status(404).json({ status: 'Template not found' });
     }
-    
-    res.status(200).json(publishedTemplate.template);
+    const response = {
+      name: publishedTemplate.name,
+      template: publishedTemplate.template,
+    };
+    res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching template by ID:', error);
     res.status(500).json({ status: 'Internal Server Error', error: error.message });
