@@ -549,6 +549,31 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
 };
 
 
+publTempController.getTemplateById = async (req, res) => {
+  const templateId = req.params.id;
+
+  try {
+    const publishedTemplate = await PublishedTemplate.findById(templateId)
+      .populate({
+        path: 'template',
+        populate: {
+          path: 'dimension',
+          model: 'dimensions'
+        }
+      });
+
+    if (!publishedTemplate) {
+      return res.status(404).json({ status: 'Template not found' });
+    }
+    
+    res.status(200).json(publishedTemplate.template);
+  } catch (error) {
+    console.error('Error fetching template by ID:', error);
+    res.status(500).json({ status: 'Internal Server Error', error: error.message });
+  }
+};
+
+
 // TODO Editar publishedTemplate (Productores)
 
 

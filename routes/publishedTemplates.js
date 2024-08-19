@@ -15,4 +15,6 @@ router.delete("/producer/delete", controller.deleteLoadedDataDependency);
 router.get("/dimension", controller.getPublishedTemplatesDimension);
 router.get("/dimension/mergedData", controller.getFilledDataMergedForDimension);
 
+router.get("/template/:id", controller.getTemplateById);
+
 module.exports = router
