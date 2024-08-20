@@ -1,5 +1,6 @@
-const { driveService } = require('@googleapis/drive')
-const {GoogleAuth} = require('google-auth-library');
+const { drive } = require('@googleapis/drive')
+const { GoogleAuth } = require('google-auth-library');
+const fs = require('fs');
 const path = require('path');
 
 const driveId = process.env.DRIVE_ID
@@ -9,14 +10,14 @@ const auth = new GoogleAuth({
     scopes: 'https://www.googleapis.com/auth/drive'
   });
   
-const drive = driveService({
+const driveService = drive({
     version: 'v3',
     auth: auth
 });
 
 const getOrCreateFolder = async (folderName, parentId) =>  {
     const query = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and '${parentId}' in parents and trashed = false`;
-    const res = await drive.files.list({
+    const res = await driveService.files.list({
         q: query,
         fields: 'files(id, name)',
         supportsAllDrives: true,
@@ -33,7 +34,7 @@ const getOrCreateFolder = async (folderName, parentId) =>  {
             driveId
         }
 
-        const folder = await drive.files.create({
+        const folder = await driveService.files.create({
             resource: folderMetadata,
             fields: 'id',
             supportsAllDrives: true,
@@ -63,10 +64,10 @@ const uploadFileToGoogleDrive = async (file, destinationPath) => {
 
     const media = {
         mimeType: file.mimetype,
-        body: file.buffer,
+        body: fs.createReadStream(file.path)
     };
 
-    const response = await drive.files.create({
+    const response = await driveService.files.create({
         resource: fileMetadata,
         media: media,
         fields: 'id',

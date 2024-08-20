@@ -105,8 +105,6 @@ dependencyController.updateDependency = async (req, res) => {
     const { id } = req.params;
     const { dep_code, name, responsible, dep_father, producers } = req.body;
 
-    console.log(producers)
-
     try {
         const dependency = await Dependency.findById(id);
         if (!dependency) {
@@ -153,7 +151,6 @@ dependencyController.getMembers = async (req, res) => {
 
 dependencyController.getMembersWithFather = async (req, res) => {
     const dep_code = req.query.dep_code;
-    console.log(dep_code)
     try {
         //const result = await Dependency.getMembersWithFather(dep_code);
 

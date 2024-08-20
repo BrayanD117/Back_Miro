@@ -12,8 +12,7 @@ const reportSchema = new Schema({
         required: false
     },
     report_example_path: {
-        type: String,
-        required: true
+        type: String
     },
     requires_attachment: {
         type: Boolean,

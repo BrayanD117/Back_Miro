@@ -15,7 +15,6 @@ userController.addExternalUser = async (req, res) => {
     const email = req.body.email;
 
     await dependencyController.addUserToDependency(dep_code, email);
-    console.log(req.body)
     const user = new User( req.body )
     await user.save();
     res.status(200).json({status: "User created"});

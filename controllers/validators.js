@@ -72,9 +72,7 @@ const allowedDataTypes = {
 };
 
 validatorController.createValidator = async (req, res) => {
-    try {
-        console.log(req.body);
-        
+    try {      
         if(req.body.name.includes('-')) {
             return res.status(400).json({ status: "Name cannot contain '-' character" });
         }
@@ -362,8 +360,6 @@ validatorController.giveValidatorToExcel = async (name) => {
             });
             return acc;
         }, []);
-
-        console.log(validatorFilled);
 
         return validatorFilled;
 

@@ -17,7 +17,6 @@ datetime_now = () => {
 }
 
 publTempController.publishTemplate = async (req, res) => {
-  console.log(req.body)
   template_id = req.body.template_id
   email = req.body.user_email
 
@@ -369,11 +368,9 @@ publTempController.deleteLoadedDataDependency = async (req, res) => {
     }
 
     const index = pubTem.loaded_data.findIndex(data => data.dependency === user.dep_code)
-    console.log(index)
     if (index === -1) { return res.status(404).json({ status: 'Data not found' }) }
   
     pubTem.loaded_data.splice(index, 1);
-    console.log("test")
     await pubTem.save();
     return res.status(200).json({ status: 'Data deleted successfully' })
   } catch (error) {
@@ -567,11 +564,8 @@ publTempController.getTemplateById = async (req, res) => {
       return res.status(404).json({ status: 'Template not found' });
     }
 
-    console.log("Template fields before processing:", publishedTemplate.template.fields);
-
     const fieldsWithValidatorIds = await Promise.all(publishedTemplate.template.fields.map(async (field) => {
       if (field.validate_with) {
-        console.log("Looking for validator with name:", field.validate_with);
         try {
           // Extraer el nombre del template y el nombre de la columna desde field.validate_with
           const [templateName, columnName] = field.validate_with.split(' - ');
@@ -584,7 +578,6 @@ publTempController.getTemplateById = async (req, res) => {
             const column = validator.columns.find(col => col.name === columnName && col.is_validator);
             
             if (column) {
-              console.log("Found validator column:", column);
               field.validate_with = {
                 id: validator._id.toString(),
                 name: `${validator.name} - ${column.name}`,
