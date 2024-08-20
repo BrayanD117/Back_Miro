@@ -5,6 +5,7 @@ const Dimension = require('../models/dimensions.js')
 const Dependency = require('../models/dependencies.js')
 const User = require('../models/users.js')
 const Validator = require('./validators.js');
+const ValidatorModel = require('../models/validators');
 
 const publTempController = {};
 
@@ -565,10 +566,50 @@ publTempController.getTemplateById = async (req, res) => {
     if (!publishedTemplate) {
       return res.status(404).json({ status: 'Template not found' });
     }
+
+    console.log("Template fields before processing:", publishedTemplate.template.fields);
+
+    const fieldsWithValidatorIds = await Promise.all(publishedTemplate.template.fields.map(async (field) => {
+      if (field.validate_with) {
+        console.log("Looking for validator with name:", field.validate_with);
+        try {
+          // Extraer el nombre del template y el nombre de la columna desde field.validate_with
+          const [templateName, columnName] = field.validate_with.split(' - ');
+
+          // Buscar en la base de datos por el templateName y luego encontrar la columna correspondiente
+          const validator = await ValidatorModel.findOne({ name: templateName });
+          
+          if (validator) {
+            // Encontrar la columna que es validadora
+            const column = validator.columns.find(col => col.name === columnName && col.is_validator);
+            
+            if (column) {
+              console.log("Found validator column:", column);
+              field.validate_with = {
+                id: validator._id.toString(),
+                name: `${validator.name} - ${column.name}`,
+              };
+            } else {
+              console.error(`Validator column not found for: ${columnName}`);
+            }
+          } else {
+            console.error(`Validator not found for template: ${templateName}`);
+          }
+        } catch (err) {
+          console.error(`Error during ValidatorModel.findOne: ${err.message}`);
+        }
+      }
+      return field;
+    }));
+
     const response = {
       name: publishedTemplate.name,
-      template: publishedTemplate.template,
+      template: {
+        ...publishedTemplate.template._doc,
+        fields: fieldsWithValidatorIds,
+      },
     };
+
     res.status(200).json(response);
   } catch (error) {
     console.error('Error fetching template by ID:', error);
