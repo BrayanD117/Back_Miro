@@ -54,7 +54,7 @@ reportController.getReports = async (req, res) => {
 reportController.createReport = async (req, res) => {
     try {
         const { email } = req.body;
-        const { name, description, required_files } = req.body;
+        const { name, description, requires_attachment } = req.body;
         const user = await User.findOne({ email , activeRole: 'Administrador' });
         if (!user) {
             if (req.file) {
@@ -62,7 +62,7 @@ reportController.createReport = async (req, res) => {
             }
             return res.status(403).json({ status: "User not found or isn't an Adminstrator" });
         }
-        const newReport = new Report({ name, description, required_files, report_example_path: req.file.path, creator: email });
+        const newReport = new Report({ name, description, requires_attachment, report_example_path: req.file.path, creator: email });
         await newReport.save();
         res.status(201).json({ status: "Report created" });
     } catch (error) {

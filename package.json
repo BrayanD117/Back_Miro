@@ -11,10 +11,12 @@
   "author": "Brayan & Steven",
   "license": "ISC",
   "dependencies": {
+    "@googleapis/drive": "^8.13.0",
     "axios": "^1.6.8",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "google-auth-library": "^9.14.0",
     "mongodb": "^6.6.0",
     "mongoose": "^8.3.3",
     "morgan": "^1.10.0",

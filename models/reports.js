@@ -15,8 +15,8 @@ const reportSchema = new Schema({
         type: String,
         required: true
     },
-    required_files: {
-        type: [String],
+    requires_attachment: {
+        type: Boolean,
         required: true
     },
     created_by: {

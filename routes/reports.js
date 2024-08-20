@@ -1,4 +1,4 @@
-const upload = require('../config/fileUpload.js')
+const upload = require('../config/fileReceive.js')
 const controller = require('../controllers/reports.js')
 
 const router = require('express').Router()
