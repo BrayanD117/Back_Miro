@@ -77,4 +77,17 @@ const uploadFileToGoogleDrive = async (file, destinationPath) => {
     return response.data.id;
 }
 
-module.exports = uploadFileToGoogleDrive
+const getDriveFile = async (fileId) => {
+    try {
+        const response = await driveService.files.get({
+            fileId,
+            alt: 'media',
+            supportsAllDrives: true,
+        }, { responseType: 'stream' });
+        return response.data;
+    } catch (error) {
+        throw new Error(`Failed to retrieve file: ${error.message}`);
+    }
+};
+
+module.exports = {uploadFileToGoogleDrive, getDriveFile};

@@ -1,5 +1,5 @@
 const fs = require('fs');
-const driveUploader = require('../config/driveUpload');
+const {driveUploader, getDriveFile}  = require('../config/driveUpload');
 
 const Report = require('../models/reports');
 const User = require('../models/users');
@@ -105,6 +105,16 @@ reportController.createReport = async (req, res) => {
         }
 
         res.status(500).json({ status: "Error creating report", error: error.message });
+    }
+}
+
+reportController.getReportExampleFile = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const file = await getDriveFile(id)
+        res.status(200).json({ file });
+    } catch (error) {
+        res.status(500).json({ status: "Error getting file", error: error.message });
     }
 }
 

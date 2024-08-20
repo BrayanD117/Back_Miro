@@ -7,4 +7,6 @@ router.get("/all", controller.getReports)
 
 router.post("/create", upload.single('report_example'), controller.createReport)
 
+router.get("/:id", controller.getReportExampleFile)
+
 module.exports = router
