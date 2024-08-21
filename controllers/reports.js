@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { uploadFileToGoogleDrive, getDriveFile, generateTemporaryLink }  = require('../config/driveUpload');
+const { uploadFileToGoogleDrive }  = require('../config/driveUpload');
 
 const Report = require('../models/reports');
 const User = require('../models/users');
@@ -82,9 +82,9 @@ reportController.createReport = async (req, res) => {
         await newReport.save({ session });
         
         const destinationPath = `Reportes/Formatos/${req.file.originalname}`
-        const fileId = await uploadFileToGoogleDrive(req.file, destinationPath)
-        const link = await generateTemporaryLink(fileId)
-        newReport.report_example_path = link;
+        const fileData = await uploadFileToGoogleDrive(req.file, destinationPath)
+        newReport.report_example_id = fileData.id;
+        newReport.report_example_link = fileData.webViewLink;
         await newReport.save({ session })
         // Si la subida del archivo tiene éxito, actualiza el informe con el fileId
         fs.unlinkSync(req.file.path)

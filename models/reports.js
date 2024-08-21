@@ -11,7 +11,10 @@ const reportSchema = new Schema({
         type: String,
         required: false
     },
-    report_example_path: {
+    report_example_id: {
+        type: String
+    },
+    report_example_link: {
         type: String
     },
     requires_attachment: {

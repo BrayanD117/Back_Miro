@@ -79,11 +79,11 @@ const uploadFileToGoogleDrive = async (file, destinationPath) => {
     const response = await driveService.files.create({
         resource: fileMetadata,
         media: media,
-        fields: 'id',
+        fields: 'id, webViewLink',
         supportsAllDrives: true,
     });
 
-    return response.data.id;
+    return {id:response.data.id, webViewLink: response.data.webViewLink}
 }
 
 const uploadFilesToGoogleDrive = async (files, destinationPath) => {
@@ -92,34 +92,4 @@ const uploadFilesToGoogleDrive = async (files, destinationPath) => {
     return fileIds;
   };
 
-const getDriveFile = async (fileId) => {
-    try {
-        const response = await driveService.files.get({
-            fileId,
-            alt: 'media',
-            supportsAllDrives: true,
-        }, { responseType: 'stream' });
-        return response.data;
-    } catch (error) {
-        throw new Error(`Failed to retrieve file: ${error.message}`);
-    }
-};
-
-const generateTemporaryLink = async (fileId) => {
-    try {
-        // Obtener el enlace compartido del archivo
-        const { data } = await driveService.files.get({
-            fileId: fileId,
-            fields: 'webViewLink',
-            supportsAllDrives: true,
-        });
-        console.log(data)
-
-        return data.webViewLink;  // Este es el enlace directo de descarga
-
-    } catch (error) {
-        throw new Error(`Failed to generate temporary link: ${error.message}`);
-    }
-};
-
-module.exports = {uploadFileToGoogleDrive, getDriveFile, generateTemporaryLink};
+module.exports = {uploadFileToGoogleDrive};

@@ -37,6 +37,7 @@ const publishedReportSchema = new Schema({
     },
     dimensions: {
         type: [Schema.Types.ObjectId],
+        ref: 'dimensions',
         required: true
     },
     filled_reports: {
