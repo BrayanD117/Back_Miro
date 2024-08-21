@@ -1,5 +1,5 @@
 const fs = require('fs');
-const {driveUploader, getDriveFile}  = require('../config/driveUpload');
+const { uploadFileToGoogleDrive, getDriveFile, generateTemporaryLink }  = require('../config/driveUpload');
 
 const Report = require('../models/reports');
 const User = require('../models/users');
@@ -81,15 +81,16 @@ reportController.createReport = async (req, res) => {
         });
         await newReport.save({ session });
         
-        const destinationPath = `Reportes/Formatos/${req.file.originalname}`;
-        const fileId = await driveUploader(req.file, destinationPath);
-        newReport.report_example_path = fileId;
-        await newReport.save({ session });
+        const destinationPath = `Reportes/Formatos/${req.file.originalname}`
+        const fileId = await uploadFileToGoogleDrive(req.file, destinationPath)
+        const link = await generateTemporaryLink(fileId)
+        newReport.report_example_path = link;
+        await newReport.save({ session })
         // Si la subida del archivo tiene éxito, actualiza el informe con el fileId
         fs.unlinkSync(req.file.path)
         // Confirma la transacción
-        await session.commitTransaction();
-        session.endSession();
+        await session.commitTransaction()
+        session.endSession()
 
         res.status(201).json({ status: "Report created" });
 
@@ -111,8 +112,10 @@ reportController.createReport = async (req, res) => {
 reportController.getReportExampleFile = async (req, res) => {
     const { id } = req.params;
     try {
-        const file = await getDriveFile(id)
-        res.status(200).json({ file });
+        console.time('getDriveFile')
+        const link = await generateTemporaryLink(id)
+        console.timeEnd('getDriveFile')
+        res.status(200).json({ link });
     } catch (error) {
         res.status(500).json({ status: "Error getting file", error: error.message });
     }

@@ -15,7 +15,14 @@ const driveService = drive({
     auth: auth
 });
 
+const folderCache = new Map();
+
 const getOrCreateFolder = async (folderName, parentId) =>  {
+    const cacheKey = `${parentId}-${folderName}`;
+    if (folderCache.has(cacheKey)) {
+        return folderCache.get(cacheKey);
+    }
+
     const query = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and '${parentId}' in parents and trashed = false`;
     const res = await driveService.files.list({
         q: query,
@@ -24,15 +31,15 @@ const getOrCreateFolder = async (folderName, parentId) =>  {
         includeItemsFromAllDrives: true,
     });
 
+    let folderId;
     if (res.data.files.length > 0) {
-        return res.data.files[0].id;
+        folderId = res.data.files[0].id;
     } else {
         const folderMetadata = {
             name: folderName,
             mimeType: 'application/vnd.google-apps.folder',
             parents: [parentId],
-            driveId
-        }
+        };
 
         const folder = await driveService.files.create({
             resource: folderMetadata,
@@ -40,9 +47,13 @@ const getOrCreateFolder = async (folderName, parentId) =>  {
             supportsAllDrives: true,
         });
 
-        return folder.data.id;
+        folderId = folder.data.id;
     }
-}
+
+    folderCache.set(cacheKey, folderId);
+    return folderId;
+};
+
 
 
 const uploadFileToGoogleDrive = async (file, destinationPath) => {
@@ -50,9 +61,7 @@ const uploadFileToGoogleDrive = async (file, destinationPath) => {
     let parentId = driveId
 
     for (let i = 0; i < folders.length - 1; i++) {
-        const folderName = folders[i];
-        const folderId = await getOrCreateFolder(folderName, parentId);
-        parentId = folderId;
+        parentId = await getOrCreateFolder(folders[i], parentId);
     }
 
     const fileMetadata = {
@@ -77,6 +86,12 @@ const uploadFileToGoogleDrive = async (file, destinationPath) => {
     return response.data.id;
 }
 
+const uploadFilesToGoogleDrive = async (files, destinationPath) => {
+    const uploadPromises = files.map((file) => uploadFileToGoogleDrive(file, destinationPath));
+    const fileIds = await Promise.all(uploadPromises);
+    return fileIds;
+  };
+
 const getDriveFile = async (fileId) => {
     try {
         const response = await driveService.files.get({
@@ -90,4 +105,21 @@ const getDriveFile = async (fileId) => {
     }
 };
 
-module.exports = {uploadFileToGoogleDrive, getDriveFile};
+const generateTemporaryLink = async (fileId) => {
+    try {
+        // Obtener el enlace compartido del archivo
+        const { data } = await driveService.files.get({
+            fileId: fileId,
+            fields: 'webViewLink',
+            supportsAllDrives: true,
+        });
+        console.log(data)
+
+        return data.webViewLink;  // Este es el enlace directo de descarga
+
+    } catch (error) {
+        throw new Error(`Failed to generate temporary link: ${error.message}`);
+    }
+};
+
+module.exports = {uploadFileToGoogleDrive, getDriveFile, generateTemporaryLink};
