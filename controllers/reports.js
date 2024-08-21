@@ -53,56 +53,51 @@ reportController.getReports = async (req, res) => {
 
 
 reportController.createReport = async (req, res) => {
-    const session = await Report.startSession();
-    session.startTransaction();
-
     try {
         const { email } = req.body;
         const { name, description, requires_attachment } = req.body;
         const user = await User.findOne({ email, activeRole: 'Administrador' });
 
         if (!user || user.activeRole !== 'Administrador') {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(403).json({ status: "User not found or isn't an Administrator" });
         }
 
         if (!req.file) {
-            await session.abortTransaction();
-            session.endSession();
             return res.status(400).json({ status: "No file attached" });
         }
-        // Crea el informe pero aún no lo guarda en la base de datos
+
+        // Crea el informe
         const newReport = new Report({ 
             name, 
             description, 
             requires_attachment,
             created_by: user 
         });
-        await newReport.save({ session });
-        
-        const destinationPath = `Reportes/Formatos/${req.file.originalname}`
-        const fileData = await uploadFileToGoogleDrive(req.file, destinationPath)
+
+        // Guarda el informe en la base de datos
+        await newReport.save();
+
+        // Define la ruta en Google Drive y sube el archivo
+        const destinationPath = `Reportes/Formatos/${req.file.originalname}`;
+        const fileData = await uploadFileToGoogleDrive(req.file, destinationPath);
+
+        // Actualiza el informe con la información del archivo subido
         newReport.report_example_id = fileData.id;
         newReport.report_example_link = fileData.webViewLink;
-        await newReport.save({ session })
-        // Si la subida del archivo tiene éxito, actualiza el informe con el fileId
-        fs.unlinkSync(req.file.path)
-        // Confirma la transacción
-        await session.commitTransaction()
-        session.endSession()
+
+        // Guarda los cambios en el informe
+        await newReport.save();
+
+        // Elimina el archivo local después de la subida exitosa
+        fs.unlinkSync(req.file.path);
 
         res.status(201).json({ status: "Report created" });
-
     } catch (error) {
         console.log(error);
 
-        // En caso de error, deshacer la transacción
-        await session.abortTransaction();
-        session.endSession();
-
+        // En caso de error, elimina el archivo si existe
         if (req.file) {
-            fs.unlinkSync(req.file.path); // Elimina el archivo en caso de error
+            fs.unlinkSync(req.file.path);
         }
 
         res.status(500).json({ status: "Error creating report", error: error.message });
