@@ -21,6 +21,10 @@ const reportSchema = new Schema({
         type: Boolean,
         required: true
     },
+    file_name: {
+        type: String,
+        required: true
+    },
     created_by: {
         type: {},
         required: true

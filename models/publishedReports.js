@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { validate } = require('./reports');
 const Schema = mongoose.Schema;
 
 const filledReportSchema = new Schema({
@@ -38,11 +39,24 @@ const publishedReportSchema = new Schema({
     dimensions: {
         type: [Schema.Types.ObjectId],
         ref: 'dimensions',
+        validate: [
+            {
+                validator: function (v) {
+                    return v.length > 0;
+                },
+                message: 'At least one dimension is required'
+            },
+            {
+                validator: function (v) {
+                    return new Set(v).size === v.length;
+                },
+                message: 'Dimensions array must not contain duplicates'
+            }
+        ],
         required: true
     },
     filled_reports: {
-        type: [filledReportSchema],
-        required: true
+        type: [filledReportSchema]
     }
 
 }, {

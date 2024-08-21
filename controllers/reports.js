@@ -55,7 +55,7 @@ reportController.getReports = async (req, res) => {
 reportController.createReport = async (req, res) => {
     try {
         const { email } = req.body;
-        const { name, description, requires_attachment } = req.body;
+        const { name, description, requires_attachment, file_name } = req.body;
         const user = await User.findOne({ email, activeRole: 'Administrador' });
 
         if (!user || user.activeRole !== 'Administrador') {
@@ -71,6 +71,7 @@ reportController.createReport = async (req, res) => {
             name, 
             description, 
             requires_attachment,
+            file_name,
             created_by: user 
         });
 
