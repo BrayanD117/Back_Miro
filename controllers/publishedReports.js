@@ -75,7 +75,7 @@ pubReportController.getPublishedReport = async (req, res) => {
 }
 
 pubReportController.publishReport = async (req, res) => {
-    const { reportId, periodId, dimensions_id } = req.body;
+    const { reportId, periodId, dimensionsId } = req.body;
     try {
         const report = await Report.findById(reportId)
         if (!report) {
@@ -84,7 +84,7 @@ pubReportController.publishReport = async (req, res) => {
         const publishedReport = new PubReport({
             report,
             period: periodId,
-            dimensions: dimensions_id
+            dimensions: dimensionsId
         });
         await publishedReport.save();
         res.status(200).json({ status: "Published Report created" });
