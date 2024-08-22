@@ -2,6 +2,7 @@ const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
 const initDB = require('./config/db');
+const swaggerRouter = require('./swagger');
 const app = express();
 
 require('dotenv').config();
@@ -25,11 +26,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
-
-app.use(express.urlencoded({
-  extended: false
-}));
-
+app.use(express.urlencoded({ extended: false }));
 app.use(morgan('dev'));
 
 if (process.env.NODE_ENV === 'production') {
@@ -56,6 +53,9 @@ apiRouter.use("/pReports", require('./routes/publishedReports'));
 
 app.use('/api/p', apiRouter);
 
+// Añadir Swagger UI en la ruta /api-docs
+app.use('/', swaggerRouter);
+
 const PORT = process.env.PORT || 6000;
 
 app.listen(PORT, () => {
@@ -65,7 +65,5 @@ app.listen(PORT, () => {
     console.log('Server running in development mode on ' + PORT);
   }
 });
-
-
 
 initDB();
