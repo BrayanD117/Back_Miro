@@ -8,6 +8,7 @@ const pubReportController = {};
 
 pubReportController.getPublishedReports = async (req, res) => {
     try {
+        console.log("Llegué", req.query);
         const { email, page = 1, limit = 10, search = '' } = req.query;
 
         // Verificar si el usuario es un administrador o Productor activo
@@ -43,6 +44,8 @@ pubReportController.getPublishedReports = async (req, res) => {
             .exec();
 
         const totalReports = await PubReport.countDocuments(searchQuery);
+
+        console.log("Total Reports", publishedReports);
 
         // Responder con los datos paginados y la información de paginación
         res.status(200).json({
