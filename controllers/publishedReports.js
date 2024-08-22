@@ -3,6 +3,7 @@ const Report = require('../models/reports');
 const User = require('../models/users');
 const Period = require('../models/periods');
 const Dimension = require('../models/dimensions');
+const dimensions = require('../models/dimensions');
 
 const pubReportController = {};
 
@@ -14,7 +15,7 @@ pubReportController.getPublishedReports = async (req, res) => {
         // Verificar si el usuario es un administrador o Productor activo
         const user = await User.findOne({ 
             email, 
-            activeRole: { $in: ['Administrador', 'Productor'] }, 
+            activeRole: { $in: ['Administrador'] }, 
             isActive: true 
         });
         if (!user) {
@@ -63,6 +64,68 @@ pubReportController.getPublishedReports = async (req, res) => {
     }
 }
 
+pubReportController.getPublishedReportsResponsible = async (req, res) => {
+    try {
+        console.log("Llegué", req.query);
+        const { email, page = 1, limit = 10, search = '' } = req.query;
+
+        // Verificar si el usuario es un administrador o Productor activo
+        const user = await User.findOne({ 
+            email, 
+            activeRole: { $in: ['Administrador', 'Productor'] }, 
+            isActive: true 
+        });
+        if (!user) {
+            return res.status(403).json({ status: "User not found or isn't an Administrator or Producer" });
+        }
+
+        // Configurar paginación
+        const pageNumber = parseInt(page, 10);
+        const pageSize = parseInt(limit, 10);
+        const skip = (pageNumber - 1) * pageSize;
+
+        // Crear objeto de búsqueda
+        const searchQuery = search.trim()
+            ? {
+                $or: [
+                    { 'report.name': { $regex: search, $options: 'i' } }, // Busca en el campo "report.name"
+                    { 'period.name': { $regex: search, $options: 'i' } } // Busca en el campo "period.name"
+                ]
+            }
+            : {};
+
+        const publishedReports = await PubReport.find(searchQuery)
+            .skip(skip)
+            .limit(pageSize)
+            .populate('period')
+            .populate({
+                path: 'dimensions',
+                select: 'name responsible',
+                match: { responsible: email }
+            })
+            .exec();
+        
+        const publishedReportsFilter = publishedReports.filter(report => 
+            report.filled_reports.filter(
+                filledRep => dimensions.includes(filledRep.dimension)).length === 0
+            );
+        
+        const totalReports = publishedReports.length;
+        //const publishedReportsFilter = publishedReports.filter(report => report.filled_reports.dim);
+        // Responder con los datos paginados y la información de paginación
+        res.status(200).json({
+            total: totalReports,
+            page: pageNumber,
+            limit: pageSize,
+            totalPages: Math.ceil(totalReports / pageSize),
+            publishedReports: publishedReportsFilter
+        });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ status: "Error getting published reports", error: error.message });
+    }
+}
 
 pubReportController.getPublishedReport = async (req, res) => {
     const { id } = req.params;
