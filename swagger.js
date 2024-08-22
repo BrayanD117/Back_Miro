@@ -17,11 +17,11 @@ const options = {
       },
     ],
   },
-  apis: ["./routes/*.js"],
+  apis: ["./routes/*.js", "./docs/*.js"],
 };
 
 const swaggerSpec = swaggerJsdoc(options);
 
-router.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+router.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 module.exports = router;
