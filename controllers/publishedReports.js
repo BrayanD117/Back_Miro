@@ -40,12 +40,13 @@ pubReportController.getPublishedReports = async (req, res) => {
             .skip(skip)
             .limit(pageSize)
             .populate('period')
-            .populate('dimensions')
+            .populate({
+                path: 'dimensions',
+                select: 'name responsible'
+            })
             .exec();
 
         const totalReports = await PubReport.countDocuments(searchQuery);
-
-        console.log("Total Reports", publishedReports);
 
         // Responder con los datos paginados y la información de paginación
         res.status(200).json({

@@ -16,7 +16,7 @@ const filledReportSchema = new Schema({
         type: Date,
         required: true,
     },
-    sended_files_path: {
+    sended_files_link: {
         type: [String],
         required: true
     }

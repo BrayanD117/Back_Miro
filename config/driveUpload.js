@@ -56,7 +56,7 @@ const getOrCreateFolder = async (folderName, parentId) =>  {
 
 
 
-const uploadFileToGoogleDrive = async (file, destinationPath) => {
+const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
     const folders = destinationPath.split('/');
     let parentId = driveId
 
@@ -65,7 +65,7 @@ const uploadFileToGoogleDrive = async (file, destinationPath) => {
     }
 
     const fileMetadata = {
-        name: folders[folders.length - 1],
+        name,
         parents: [parentId],
         driveId, 
         supportsAllDrives: true,
