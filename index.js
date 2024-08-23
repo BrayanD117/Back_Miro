@@ -53,6 +53,7 @@ apiRouter.use("/pReports", require('./routes/publishedReports'));
 
 app.use('/api/p', apiRouter);
 
+
 // Añadir Swagger UI en la ruta /api-docs
 app.use('/', swaggerRouter);
 

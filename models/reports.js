@@ -17,6 +17,9 @@ const reportSchema = new Schema({
     report_example_link: {
         type: String
     },
+    report_example_download: {
+        type: String
+    },
     requires_attachment: {
         type: Boolean,
         required: true

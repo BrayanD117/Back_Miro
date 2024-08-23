@@ -79,11 +79,13 @@ const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
     const response = await driveService.files.create({
         resource: fileMetadata,
         media: media,
-        fields: 'id, webViewLink',
+        fields: 'id, webViewLink, webContentLink',
         supportsAllDrives: true,
     });
 
-    return {id:response.data.id, webViewLink: response.data.webViewLink}
+    console.log(response.data)
+
+    return response.data;
 }
 
 const uploadFilesToGoogleDrive = async (files, destinationPath) => {

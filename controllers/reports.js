@@ -85,6 +85,7 @@ reportController.createReport = async (req, res) => {
         // Actualiza el informe con la información del archivo subido
         newReport.report_example_id = fileData.id;
         newReport.report_example_link = fileData.webViewLink;
+        newReport.report_example_download = fileData.webContentLink;
 
         // Guarda los cambios en el informe
         await newReport.save();
@@ -102,18 +103,6 @@ reportController.createReport = async (req, res) => {
         }
 
         res.status(500).json({ status: "Error creating report", error: error.message });
-    }
-}
-
-reportController.getReportExampleFile = async (req, res) => {
-    const { id } = req.params;
-    try {
-        console.time('getDriveFile')
-        const link = await generateTemporaryLink(id)
-        console.timeEnd('getDriveFile')
-        res.status(200).json({ link });
-    } catch (error) {
-        res.status(500).json({ status: "Error getting file", error: error.message });
     }
 }
 

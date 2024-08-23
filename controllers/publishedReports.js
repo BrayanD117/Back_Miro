@@ -7,14 +7,21 @@ const dimensions = require('../models/dimensions');
 
 const pubReportController = {};
 
+const datetime_now = () => {
+    const now = new Date();
+
+    const offset = -5; // GMT-5
+    return new Date(now.getTime() + offset * 60 * 60 * 1000);
+}
+
 pubReportController.getPublishedReports = async (req, res) => {
     try {
         console.log("Llegué", req.query);
         const { email, page = 1, limit = 10, search = '' } = req.query;
 
         // Verificar si el usuario es un administrador o Productor activo
-        const user = await User.findOne({ 
-            email, 
+        const user = await User.findOne({
+            email,
             activeRole: { $in: ['Administrador'] }, 
             isActive: true 
         });
@@ -72,11 +79,11 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
         // Verificar si el usuario es un administrador o Productor activo
         const user = await User.findOne({ 
             email, 
-            activeRole: { $in: ['Administrador', 'Productor'] }, 
+            activeRole: { $in: ['Responsable'] }, 
             isActive: true 
         });
         if (!user) {
-            return res.status(403).json({ status: "User not found or isn't an Administrator or Producer" });
+            return res.status(403).json({ status: "User not found or isn't Responsible" });
         }
 
         // Configurar paginación
@@ -104,7 +111,9 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
                 match: { responsible: email }
             })
             .exec();
-        
+
+
+        //Gives only reports that the dimension haven't uploaded yet
         const publishedReportsFilter = publishedReports.filter(report => 
             report.filled_reports.filter(
                 filledRep => dimensions.includes(filledRep.dimension)).length === 0
