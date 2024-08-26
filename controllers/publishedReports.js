@@ -211,25 +211,32 @@ pubReportController.loadResponsibleReport = async (req, res) => {
         if(!reportFile) {
             return res.status(400).json({ status: "No file attached" });
         }
-        const reportFileDataHandle = await uploadFileToGoogleDrive(reportFile, `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${dimension.name}`, reportFile.originalname)
+        if(publishedReport.report.requieres_attachment && attachments.length === 0) {
+            return res.status(400).json({ status: "No attachments attached & are required" });
+        }
+        const [reportFileDataHandle, attachmentsDataHandle] = await Promise.all([
+            uploadFileToGoogleDrive(reportFile, `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${dimension.name}`, reportFile.originalname),
+            publishedReport.report.requieres_attachment && attachments.length > 0 
+                ? uploadFilesToGoogleDrive(attachments, `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${dimension.name}/Anexos`)
+                : Promise.resolve([]) // Si no se requieren adjuntos o no hay archivos adjuntos, devuelve una promesa resuelta con un array vacío
+        ]);
+    
+        // Procesa los datos del archivo del reporte
         const reportFileData = {
             id: reportFileDataHandle.id,
             name: reportFileDataHandle.name,
             view_link: reportFileDataHandle.webViewLink,
             download_link: reportFileDataHandle.webContentLink,
-            folder_id: reportFileDataHandle.parents[0]
-        }
-
-        if(publishedReport.report.requieres_attachment && attachments.length === 0) {
-            return res.status(400).json({ status: "No attachments attached & are required" });
-        }
-        const attachmentsDataHandle = await uploadFilesToGoogleDrive(attachments, `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${dimension.name}/Anexos`);
+            folder_id: reportFileDataHandle.parents[0],
+        };
+    
+        // Procesa los datos de los archivos adjuntos si los hay
         const attachmentsData = attachmentsDataHandle.map(attachment => ({
             id: attachment.id,
             name: attachment.name,
             view_link: attachment.webViewLink,
             download_link: attachment.webContentLink,
-            folder_id: attachment.parents[0]
+            folder_id: attachment.parents[0],
         }));
 
         publishedReport.filled_reports.push({
