@@ -60,7 +60,7 @@ const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
     const folders = destinationPath.split('/');
     let parentId = driveId
 
-    for (let i = 0; i < folders.length - 1; i++) {
+    for (let i = 0; i < folders.length; i++) {
         parentId = await getOrCreateFolder(folders[i], parentId);
     }
 
@@ -79,19 +79,25 @@ const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
     const response = await driveService.files.create({
         resource: fileMetadata,
         media: media,
-        fields: 'id, webViewLink, webContentLink',
+        fields: 'id, name, webViewLink, webContentLink, parents',
         supportsAllDrives: true,
     });
-
-    console.log(response.data)
 
     return response.data;
 }
 
 const uploadFilesToGoogleDrive = async (files, destinationPath) => {
-    const uploadPromises = files.map((file) => uploadFileToGoogleDrive(file, destinationPath));
-    const fileIds = await Promise.all(uploadPromises);
-    return fileIds;
+    const folders = destinationPath.split('/');
+    let parentId = driveId;
+
+    // Asegúrate de que la carpeta destino esté creada antes de cargar los archivos
+    for (let i = 0; i < folders.length; i++) {
+        parentId = await getOrCreateFolder(folders[i], parentId);
+    }
+
+    const uploadPromises = files.map((file) => uploadFileToGoogleDrive(file, destinationPath, file.originalname));
+    const filesData = await Promise.all(uploadPromises);
+    return filesData;
   };
 
-module.exports = {uploadFileToGoogleDrive};
+module.exports = {uploadFileToGoogleDrive, uploadFilesToGoogleDrive};

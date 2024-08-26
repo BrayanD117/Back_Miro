@@ -2,6 +2,32 @@ const mongoose = require('mongoose');
 const { validate } = require('./reports');
 const Schema = mongoose.Schema;
 
+const driveFile = new Schema({
+    id: {
+        type: String,
+        required: true
+    },
+    name: {
+        type: String,
+        required: true
+    },
+    view_link: {
+        type: String,
+        required: true
+    },
+    download_link: {
+        type: String,
+        required: true
+    },
+    folder_id: {
+        type: String,
+        required: true
+    }
+}, {
+    _id: false,
+    versionKey: false
+});
+
 const filledReportSchema = new Schema({
     dimension: {
         type: Schema.Types.ObjectId,
@@ -16,9 +42,20 @@ const filledReportSchema = new Schema({
         type: Date,
         required: true,
     },
-    sended_files_link: {
-        type: [String],
+    report_file: {
+        type: driveFile,
         required: true
+    },
+    attachments: {
+        type: [driveFile]
+    },
+    status: {
+        type: String,
+        enum: ['Pendiente Aprobación', 'Aprobado', 'Rechazado'],
+        default: 'Pendiente Aprobación'
+    },
+    observations: {
+        type: String
     }
 }, {
     _id: false,
@@ -57,7 +94,8 @@ const publishedReportSchema = new Schema({
     },
     filled_reports: {
         type: [filledReportSchema]
-    }
+    },
+    folder_id: String
 
 }, {
     versionKey: false,

@@ -3,7 +3,7 @@ const Report = require('../models/reports');
 const User = require('../models/users');
 const Period = require('../models/periods');
 const Dimension = require('../models/dimensions');
-const dimensions = require('../models/dimensions');
+const { uploadFileToGoogleDrive, uploadFilesToGoogleDrive }  = require('../config/driveUpload');
 
 const pubReportController = {};
 
@@ -16,7 +16,6 @@ const datetime_now = () => {
 
 pubReportController.getPublishedReports = async (req, res) => {
     try {
-        console.log("Llegué", req.query);
         const { email, page = 1, limit = 10, search = '' } = req.query;
 
         // Verificar si el usuario es un administrador o Productor activo
@@ -73,7 +72,6 @@ pubReportController.getPublishedReports = async (req, res) => {
 
 pubReportController.getPublishedReportsResponsible = async (req, res) => {
     try {
-        console.log("Llegué", req.query);
         const { email, page = 1, limit = 10, search = '' } = req.query;
 
         // Verificar si el usuario es un administrador o Productor activo
@@ -112,7 +110,7 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
             })
             .exec();
 
-
+            
         //Gives only reports that the dimension haven't uploaded yet
         const publishedReportsFilter = publishedReports.filter(report => 
             report.filled_reports.filter(
@@ -187,4 +185,67 @@ pubReportController.feedOptionsForPublish = async (req, res) => {
     }
 }
 
-module.exports = pubReportController;
+pubReportController.loadResponsibleReport = async (req, res) => {
+    try {
+        const { email, reportId } = req.body;
+        const reportFile = req.files['reportFile'] ? req.files['reportFile'][0] : null;
+        const attachments = req.files['attachments'] || [];
+
+        const user = await User.findOne({ email, isActive: true, activeRole: 'Responsable' });
+        if (!user) {
+            return res.status(403).json({ status: "User not found or isn't an active responsible" });
+        }
+        const publishedReport = await PubReport.findById(reportId).populate('period');
+        if (!publishedReport) {
+            return res.status(404).json({ status: "Published Report not found" });
+        }
+        if(publishedReport.period.responsible_start_date >= datetime_now() && publishedReport.period.responsible_end_date <= datetime_now()){
+            return res.status(403).json({ status: "Period is closed for reports uploading" });
+        }
+        const dimension = await Dimension.findOne({ responsible: email });
+        console.log(dimension._id);
+        if(publishedReport.filled_reports.some(filledReport => filledReport.dimension.equals(dimension._id))) {
+            return res.status(403).json({ status: "Dimension already uploaded report" });
+        }
+
+        if(!reportFile) {
+            return res.status(400).json({ status: "No file attached" });
+        }
+        const reportFileDataHandle = await uploadFileToGoogleDrive(reportFile, `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${dimension.name}`, reportFile.originalname)
+        const reportFileData = {
+            id: reportFileDataHandle.id,
+            name: reportFileDataHandle.name,
+            view_link: reportFileDataHandle.webViewLink,
+            download_link: reportFileDataHandle.webContentLink,
+            folder_id: reportFileDataHandle.parents[0]
+        }
+
+        if(publishedReport.report.requieres_attachment && attachments.length === 0) {
+            return res.status(400).json({ status: "No attachments attached & are required" });
+        }
+        const attachmentsDataHandle = await uploadFilesToGoogleDrive(attachments, `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${dimension.name}/Anexos`);
+        const attachmentsData = attachmentsDataHandle.map(attachment => ({
+            id: attachment.id,
+            name: attachment.name,
+            view_link: attachment.webViewLink,
+            download_link: attachment.webContentLink,
+            folder_id: attachment.parents[0]
+        }));
+
+        publishedReport.filled_reports.push({
+            dimension: dimension._id,
+            send_by: user,
+            loaded_date: datetime_now(),
+            report_file: reportFileData,
+            attachments: attachmentsData
+        });
+        await publishedReport.save();
+            res.status(201).json({ status: "Responsible report loaded" });
+    }
+    catch (error) {
+        console.log(error);
+        res.status(500).json({ status: "Error loading responsible report", error: error.message });
+    }
+}
+
+module.exports = pubReportController
