@@ -110,7 +110,6 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
             })
             .exec();
 
-            
         //Gives only reports that the dimension haven't uploaded yet
         const publishedReportsFilter = publishedReports.filter(report => 
             report.filled_reports.filter(
@@ -120,6 +119,70 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
         const totalReports = publishedReports.length;
         //const publishedReportsFilter = publishedReports.filter(report => report.filled_reports.dim);
         // Responder con los datos paginados y la información de paginación
+        res.status(200).json({
+            total: totalReports,
+            page: pageNumber,
+            limit: pageSize,
+            totalPages: Math.ceil(totalReports / pageSize),
+            publishedReports: publishedReportsFilter
+        });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ status: "Error getting published reports", error: error.message });
+    }
+}
+
+pubReportController.getLoadedReportsResponsible = async (req, res) => {
+    try {
+        const { email, page = 1, limit = 10, search = '' } = req.query;
+
+        const user = await User.findOne({ email, isActive: true, activeRole: 'Responsable' });
+        if (!user) {
+            return res.status(403).json({ status: "User not found or isn't an active responsible" });
+        }
+        // Configurar paginación
+        const pageNumber = parseInt(page, 10);
+        const pageSize = parseInt(limit, 10);
+        const skip = (pageNumber - 1) * pageSize;
+
+        // Crear objeto de búsqueda
+        const searchQuery = search.trim()
+            ? {
+                $or: [
+                    { 'report.name': { $regex: search, $options: 'i' } }, // Busca en el campo "report.name"
+                    { 'period.name': { $regex: search, $options: 'i' } } // Busca en el campo "period.name"
+                ]
+            }
+            : {};
+
+        const publishedReports = await PubReport.find(searchQuery)
+            .skip(skip)
+            .limit(pageSize)
+            .populate('period')
+            .populate({
+                path: 'dimensions',
+                select: 'name responsible',
+                match: { responsible: email }
+            })
+            .populate({
+                path: 'filled_reports.dimension',
+                select: 'name responsible',
+                match: { responsible: email }
+            })
+            .where('filled_reports').elemMatch({ $exists: true })
+            .exec();
+
+        const publishedReportsFilter = publishedReports.map(report => {
+            const filledReports = report.filled_reports.filter(filledReport => filledReport.dimension !== null || filledReport.dimension.responsible !== undefined);
+            return {
+                ...report._doc,
+                filled_reports: filledReports
+            }
+        })
+
+        const totalReports = publishedReports.length;
+
         res.status(200).json({
             total: totalReports,
             page: pageNumber,
@@ -216,7 +279,7 @@ pubReportController.loadResponsibleReport = async (req, res) => {
         }
         const [reportFileDataHandle, attachmentsDataHandle] = await Promise.all([
             uploadFileToGoogleDrive(reportFile, `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${dimension.name}`, reportFile.originalname),
-            publishedReport.report.requieres_attachment && attachments.length > 0 
+            publishedReport.report.requires_attachment && attachments.length > 0 
                 ? uploadFilesToGoogleDrive(attachments, `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${dimension.name}/Anexos`)
                 : Promise.resolve([]) // Si no se requieren adjuntos o no hay archivos adjuntos, devuelve una promesa resuelta con un array vacío
         ]);
@@ -238,6 +301,8 @@ pubReportController.loadResponsibleReport = async (req, res) => {
             download_link: attachment.webContentLink,
             folder_id: attachment.parents[0],
         }));
+
+        console.log(attachments);
 
         publishedReport.filled_reports.push({
             dimension: dimension._id,
