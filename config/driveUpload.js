@@ -59,13 +59,14 @@ const getOrCreateFolder = async (folderName, parentId) =>  {
 const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
     const folders = destinationPath.split('/');
     let parentId = driveId
+    console.log(Buffer.from(name, 'utf8').toString())
 
     for (let i = 0; i < folders.length; i++) {
         parentId = await getOrCreateFolder(folders[i], parentId);
     }
 
     const fileMetadata = {
-        name,
+        name: Buffer.from(name, 'latin1').toString('utf8'),
         parents: [parentId],
         driveId, 
         supportsAllDrives: true,
