@@ -62,6 +62,13 @@ const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
     console.log(Buffer.from(name, 'utf8').toString())
     let ancestorId
 
+    const files = await driveService.files.get({
+      fileId: '1Vjmmc-W-36ZRArgzs0jAm9g-yIBWrqcJ',
+      fields: 'parents'
+    })
+
+    console.log(files.data.parents) 
+
     for (let i = 0; i < folders.length; i++) {
         parentId = await getOrCreateFolder(folders[i], parentId);
         if(i === folders.length - 2) {
@@ -105,4 +112,41 @@ const uploadFilesToGoogleDrive = async (files, destinationPath) => {
     return filesData;
   };
 
-module.exports = {uploadFileToGoogleDrive, uploadFilesToGoogleDrive};
+const moveDriveFolder = async (folderId, destinationPath) => {
+    const folders = destinationPath.split('/');
+    let newParentId = driveId;
+
+    for (let i = 0; i < folders.length; i++) {
+        newParentId = await getOrCreateFolder(folders[i], newParentId);
+    }
+
+    await driveService.files.update({
+        fileId: folderId,
+        addParents: newParentId,
+        removeParents: driveId,
+        fields: 'parents',
+        supportsAllDrives: true,
+    });
+}
+
+const deleteDriveFile = async (fileId) => {
+  try {
+    await driveService.files.delete({
+        fileId,
+        supportsAllDrives: true,
+    });
+  } catch (error) {
+    console.error(`Error deleting file ${fileId}:`, error);
+  }
+}
+
+const deleteDriveFiles = async (fileIds) => {
+  try{
+    const deletePromises = fileIds.map((fileId) => deleteDriveFile(fileId));
+    await Promise.all(deletePromises);
+  } catch (error) {
+    console.error('Error deleting files:', error);
+  }
+}
+
+module.exports = {uploadFileToGoogleDrive, uploadFilesToGoogleDrive, moveDriveFolder};

@@ -54,6 +54,8 @@ const filledReportSchema = new Schema({
         enum: ['En Borrador', 'En Revisión', 'Aprobado', 'Rechazado'],
         default: 'En Borrador'
     },
+    //TODO Improve for required
+    status_date: Date,
     observations: {
         type: String
     }
@@ -82,12 +84,6 @@ const publishedReportSchema = new Schema({
                     return v.length > 0;
                 },
                 message: 'At least one dimension is required'
-            },
-            {
-                validator: function (v) {
-                    return new Set(v).size === v.length;
-                },
-                message: 'Dimensions array must not contain duplicates'
             }
         ],
         required: true
