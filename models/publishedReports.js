@@ -51,8 +51,8 @@ const filledReportSchema = new Schema({
     },
     status: {
         type: String,
-        enum: ['Pendiente Aprobación', 'Aprobado', 'Rechazado'],
-        default: 'Pendiente Aprobación'
+        enum: ['En Borrador', 'En Revisión', 'Aprobado', 'Rechazado'],
+        default: 'En Borrador'
     },
     observations: {
         type: String

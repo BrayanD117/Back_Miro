@@ -60,9 +60,13 @@ const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
     const folders = destinationPath.split('/');
     let parentId = driveId
     console.log(Buffer.from(name, 'utf8').toString())
+    let ancestorId
 
     for (let i = 0; i < folders.length; i++) {
         parentId = await getOrCreateFolder(folders[i], parentId);
+        if(i === folders.length - 2) {
+            ancestorId = parentId
+        }
     }
 
     const fileMetadata = {
@@ -84,7 +88,7 @@ const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
         supportsAllDrives: true,
     });
 
-    return response.data;
+    return {...response.data, reportFolderId: ancestorId};
 }
 
 const uploadFilesToGoogleDrive = async (files, destinationPath) => {

@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { uploadFileToGoogleDrive }  = require('../config/driveUpload');
+const { uploadFileToGoogleDrive }  = require('../config/googleDrive');
 
 const Report = require('../models/reports');
 const User = require('../models/users');

@@ -3,7 +3,7 @@ const Report = require('../models/reports');
 const User = require('../models/users');
 const Period = require('../models/periods');
 const Dimension = require('../models/dimensions');
-const { uploadFileToGoogleDrive, uploadFilesToGoogleDrive }  = require('../config/driveUpload');
+const { uploadFileToGoogleDrive, uploadFilesToGoogleDrive }  = require('../config/googleDrive');
 
 const pubReportController = {};
 
@@ -49,6 +49,10 @@ pubReportController.getPublishedReports = async (req, res) => {
             .populate('period')
             .populate({
                 path: 'dimensions',
+                select: 'name responsible'
+            })
+            .populate({
+                path: 'filled_reports.dimension',
                 select: 'name responsible'
             })
             .exec();
@@ -113,7 +117,8 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
         //Gives only reports that the dimension haven't uploaded yet
         const publishedReportsFilter = publishedReports.filter(report => 
             report.filled_reports.filter(
-                filledRep => dimensions.includes(filledRep.dimension)).length === 0
+                filledRep => report.dimensions.includes(filledRep.dimension)).length === 0 ||
+                (report.dimensions.includes(filledRep.dimension) && filledRep.status === 'En Borrador')
             );
         
         const totalReports = publishedReports.length;
@@ -248,7 +253,7 @@ pubReportController.feedOptionsForPublish = async (req, res) => {
     }
 }
 
-pubReportController.loadResponsibleReport = async (req, res) => {
+pubReportController.loadResponsibleReportDraft = async (req, res) => {
     try {
         const { email, reportId } = req.body;
         const reportFile = req.files['reportFile'] ? req.files['reportFile'][0] : null;
@@ -258,15 +263,18 @@ pubReportController.loadResponsibleReport = async (req, res) => {
         if (!user) {
             return res.status(403).json({ status: "User not found or isn't an active responsible" });
         }
+
         const publishedReport = await PubReport.findById(reportId).populate('period');
         if (!publishedReport) {
             return res.status(404).json({ status: "Published Report not found" });
         }
+
         if(publishedReport.period.responsible_start_date >= datetime_now() && publishedReport.period.responsible_end_date <= datetime_now()){
             return res.status(403).json({ status: "Period is closed for reports uploading" });
         }
+
         const dimension = await Dimension.findOne({ responsible: email });
-        console.log(dimension._id);
+
         if(publishedReport.filled_reports.some(filledReport => filledReport.dimension.equals(dimension._id))) {
             return res.status(403).json({ status: "Dimension already uploaded report" });
         }
@@ -274,13 +282,17 @@ pubReportController.loadResponsibleReport = async (req, res) => {
         if(!reportFile) {
             return res.status(400).json({ status: "No file attached" });
         }
+
         if(publishedReport.report.requieres_attachment && attachments.length === 0) {
             return res.status(400).json({ status: "No attachments attached & are required" });
         }
+
+        const now = datetime_now()
+
         const [reportFileDataHandle, attachmentsDataHandle] = await Promise.all([
-            uploadFileToGoogleDrive(reportFile, `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${dimension.name}`, reportFile.originalname),
+            uploadFileToGoogleDrive(reportFile, `Reportes/Borradores/${publishedReport.period.name}/${publishedReport.report.name}/${dimension.name}/${now.toISOString()}`, reportFile.originalname),
             publishedReport.report.requires_attachment && attachments.length > 0 
-                ? uploadFilesToGoogleDrive(attachments, `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${dimension.name}/Anexos`)
+                ? uploadFilesToGoogleDrive(attachments, `Reportes/Borradores/${publishedReport.period.name}/${publishedReport.report.name}/${dimension.name}/${now.toISOString()}/Anexos`)
                 : Promise.resolve([]) // Si no se requieren adjuntos o no hay archivos adjuntos, devuelve una promesa resuelta con un array vacío
         ]);
     
@@ -290,7 +302,7 @@ pubReportController.loadResponsibleReport = async (req, res) => {
             name: reportFileDataHandle.name,
             view_link: reportFileDataHandle.webViewLink,
             download_link: reportFileDataHandle.webContentLink,
-            folder_id: reportFileDataHandle.parents[0],
+            folder_id: reportFileDataHandle.parents[0]
         };
     
         // Procesa los datos de los archivos adjuntos si los hay
@@ -299,10 +311,8 @@ pubReportController.loadResponsibleReport = async (req, res) => {
             name: attachment.name,
             view_link: attachment.webViewLink,
             download_link: attachment.webContentLink,
-            folder_id: attachment.parents[0],
+            folder_id: attachment.parents[0]
         }));
-
-        console.log(attachments);
 
         publishedReport.filled_reports.push({
             dimension: dimension._id,
@@ -311,12 +321,26 @@ pubReportController.loadResponsibleReport = async (req, res) => {
             report_file: reportFileData,
             attachments: attachmentsData
         });
+
+        publishedReport.folder_id = reportFileDataHandle.reportFolderId;
         await publishedReport.save();
-            res.status(201).json({ status: "Responsible report loaded" });
+        res.status(201).json({ status: "Responsible report loaded" });
     }
     catch (error) {
         console.log(error);
         res.status(500).json({ status: "Error loading responsible report", error: error.message });
+    }
+}
+
+pubReportController.editFilledReport = async (req, res) => {
+    try {
+        const { deletedAttachments, deletedReport, email, reportId} = req.body
+        const reportFile = req.files['reportFile'] ? req.files['reportFile'][0] : null;
+        
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ status: "Error editing filled report", error: error.message });
     }
 }
 
