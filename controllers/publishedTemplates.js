@@ -610,6 +610,36 @@ publTempController.getTemplateById = async (req, res) => {
   }
 };
 
+publTempController.getUploadedTemplateDataByProducer = async (req, res) => {
+  const { id_template } = req.params;
+  const { email } = req.query;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user || !user.roles.includes('Productor')) {
+      return res.status(404).json({ status: 'User not found' });
+    }
+
+    const template = await PublishedTemplate.findOne({
+      _id: id_template,
+      'loaded_data.send_by.email': email,
+    });
+
+    if (!template) {
+      return res.status(404).json({ status: 'Template not found' });
+    }
+
+    const producerData = template.loaded_data.find(
+      (data) => data.send_by.email === email
+    );
+
+    res.status(200).json({ data: producerData.filled_data });
+  } catch (error) {
+    console.error('Error fetching template data:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 
 // TODO Editar publishedTemplate (Productores)
 
