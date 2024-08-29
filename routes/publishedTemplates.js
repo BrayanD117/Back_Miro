@@ -17,4 +17,7 @@ router.get("/dimension/mergedData", controller.getFilledDataMergedForDimension);
 
 router.get("/template/:id", controller.getTemplateById);
 
+router.get('/uploaded/:id_template', controller.getUploadedTemplateDataByProducer);
+
+
 module.exports = router
