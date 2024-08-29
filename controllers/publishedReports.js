@@ -337,10 +337,13 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       return res.status(404).json({ status: "Published Report not found" });
     }
 
-    if (
-      publishedReport.period.responsible_start_date <= now &&
-      publishedReport.period.responsible_end_date >= now
-    ) {
+    const startDate = new Date(publishedReport.period.responsible_start_date);
+    const endDate = new Date(publishedReport.period.responsible_end_date);
+    
+    console.log("Periodo:", publishedReport.period);
+    console.log("Fecha actual:", now);
+    
+    if (startDate <= now && now >= endDate) {
       console.log("Periodo cerrado:", publishedReport.period);
       return res
         .status(403)
@@ -441,7 +444,12 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
     if (!publishedReport) {
       return res.status(404).json({ status: "Published Report not found" });
     }
+    const now = datetime_now();
     publishedReport.filled_reports[0].status = "En Revisión";
+    publishedReport.filled_reports[0].status_date = now
+
+    await moveDriveFolder(publishedReport.folder_id, `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${publishedReport.filled_reports[0].dimension.name}/${now.toISOString()}`);
+    
     publishedReport.save();
     res.status(200).json({ status: "Responsible report sent" });
   } catch(error) {

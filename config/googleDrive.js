@@ -18,10 +18,10 @@ const driveService = drive({
 const folderCache = new Map();
 
 const getOrCreateFolder = async (folderName, parentId) =>  {
-    const cacheKey = `${parentId}-${folderName}`;
-    if (folderCache.has(cacheKey)) {
-        return folderCache.get(cacheKey);
-    }
+    // const cacheKey = `${parentId}-${folderName}`;
+    // if (folderCache.has(cacheKey)) {
+    //     return folderCache.get(cacheKey);
+    // }
 
     const query = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and '${parentId}' in parents and trashed = false`;
     const res = await driveService.files.list({
@@ -50,7 +50,6 @@ const getOrCreateFolder = async (folderName, parentId) =>  {
         folderId = folder.data.id;
     }
 
-    folderCache.set(cacheKey, folderId);
     return folderId;
 };
 
@@ -122,6 +121,7 @@ const moveDriveFolder = async (folderId, destinationPath) => {
 
     await driveService.files.update({
         fileId: folderId,
+        name: folders[folders.length - 1],
         addParents: newParentId,
         removeParents: driveId,
         fields: 'parents',
