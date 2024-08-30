@@ -6,7 +6,7 @@ const Dimension = require("../models/dimensions");
 const {
   uploadFileToGoogleDrive,
   uploadFilesToGoogleDrive,
-  moveDriveFolder
+  moveDriveFolder,
 } = require("../config/googleDrive");
 
 const pubReportController = {};
@@ -17,7 +17,7 @@ const datetime_now = () => {
   const offset = -5; // GMT-5
   const dateWithOffset = new Date(now.getTime() + offset * 60 * 60 * 1000);
 
-    return new Date(dateWithOffset.setMilliseconds(now.getMilliseconds()));
+  return new Date(dateWithOffset.setMilliseconds(now.getMilliseconds()));
 };
 
 pubReportController.getPublishedReports = async (req, res) => {
@@ -31,11 +31,9 @@ pubReportController.getPublishedReports = async (req, res) => {
       isActive: true,
     });
     if (!user) {
-      return res
-        .status(403)
-        .json({
-          status: "User not found or isn't an Administrator or Producer",
-        });
+      return res.status(403).json({
+        status: "User not found or isn't an Administrator or Producer",
+      });
     }
 
     // Configurar paginación
@@ -67,6 +65,29 @@ pubReportController.getPublishedReports = async (req, res) => {
       })
       .exec();
 
+    publishedReports.forEach((report) => {
+      // Filtrar los filled_reports que no estén en "En Borrador"
+      report.filled_reports = report.filled_reports.filter(
+        (fr) => fr.status !== "En Borrador"
+      );
+
+      // Ordenar los filled_reports por fecha (asumiendo que tienen una propiedad 'date')
+      report.filled_reports.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      // Eliminar duplicados de filled_reports basados en 'dimension'
+      const uniqueFilledReports = [];
+      const seenDimensions = new Set();
+
+      report.filled_reports.forEach((fr) => {
+        if (!seenDimensions.has(fr.dimension.toString())) {
+          uniqueFilledReports.push(fr);
+          seenDimensions.add(fr.dimension.toString());
+        }
+      });
+
+      report.filled_reports = uniqueFilledReports;
+    });
+
     const totalReports = await PubReport.countDocuments(searchQuery);
 
     // Responder con los datos paginados y la información de paginación
@@ -79,12 +100,10 @@ pubReportController.getPublishedReports = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res
-      .status(500)
-      .json({
-        status: "Error getting published reports",
-        error: error.message,
-      });
+    res.status(500).json({
+      status: "Error getting published reports",
+      error: error.message,
+    });
   }
 };
 
@@ -131,18 +150,22 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
       .populate({
         path: "filled_reports.dimension",
         select: "name responsible",
-        match: { responsible: email }
+        match: { responsible: email },
       })
       .exec();
     //Gives only reports that the dimension haven't uploaded yet
     const publishedReportsFilter = publishedReports.map((report) => {
       report.filled_reports
         .filter((filledRep) => {
-          return filledRep.dimension !== null && filledRep.dimension.responsible !== undefined;
+          return (
+            filledRep.dimension !== null &&
+            filledRep.dimension.responsible !== undefined
+          );
         })
         .sort((a, b) => new Date(b.loaded_date) - new Date(a.loaded_date)); // Ordenar por fecha descendente
-        return report;
-      });
+      return report;
+    });
+    console.log(publishedReportsFilter[0].filled_reports);
 
     const totalReports = publishedReports.length;
     //const publishedReportsFilter = publishedReports.filter(report => report.filled_reports.dim);
@@ -156,12 +179,10 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res
-      .status(500)
-      .json({
-        status: "Error getting published reports",
-        error: error.message,
-      });
+    res.status(500).json({
+      status: "Error getting published reports",
+      error: error.message,
+    });
   }
 };
 
@@ -235,12 +256,10 @@ pubReportController.getLoadedReportsResponsible = async (req, res) => {
     });
   } catch (error) {
     console.log(error);
-    res
-      .status(500)
-      .json({
-        status: "Error getting published reports",
-        error: error.message,
-      });
+    res.status(500).json({
+      status: "Error getting published reports",
+      error: error.message,
+    });
   }
 };
 
@@ -276,12 +295,10 @@ pubReportController.publishReport = async (req, res) => {
     res.status(200).json({ status: "Published Report created" });
   } catch (error) {
     console.log(error);
-    res
-      .status(500)
-      .json({
-        status: "Error creating published report",
-        error: error.message,
-      });
+    res.status(500).json({
+      status: "Error creating published report",
+      error: error.message,
+    });
   }
 };
 
@@ -318,6 +335,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       : null;
     const attachments = req.files["attachments"] || [];
     const now = datetime_now();
+    const nowDate = new Date(now.toDateString());
 
     const user = await User.findOne({
       email,
@@ -339,12 +357,8 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
 
     const startDate = new Date(publishedReport.period.responsible_start_date);
     const endDate = new Date(publishedReport.period.responsible_end_date);
-    
-    console.log("Periodo:", publishedReport.period);
-    console.log("Fecha actual:", now);
-    
-    if (startDate <= now && now >= endDate) {
-      console.log("Periodo cerrado:", publishedReport.period);
+
+    if (nowDate < startDate || nowDate > endDate) {
       return res
         .status(403)
         .json({ status: "Period is closed for reports uploading" });
@@ -353,13 +367,13 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     const dimension = await Dimension.findOne({ responsible: email });
 
     if (
-      publishedReport.filled_reports.some((filledReport) =>
-        filledReport.dimension.equals(dimension._id)
+      publishedReport.filled_reports.some(
+        (filledReport) => filledReport.status === "Aprobado"
       )
     ) {
       return res
         .status(403)
-        .json({ status: "Dimension already uploaded report" });
+        .json({ status: "Dimension already has an approved report" });
     }
 
     if (!reportFile) {
@@ -411,52 +425,72 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       folder_id: attachment.parents[0],
     }));
 
-    publishedReport.filled_reports.push({
+    publishedReport.filled_reports.unshift({
       dimension: dimension._id,
       send_by: user,
-      loaded_date: datetime_now(),
+      loaded_date: now,
       report_file: reportFileData,
       attachments: attachmentsData,
+      folder_id: reportFileData.folder_id,
+      status_date: now,
     });
-
-    publishedReport.folder_id = reportFileDataHandle.reportFolderId;
     await publishedReport.save();
     res.status(201).json({ status: "Responsible report loaded" });
   } catch (error) {
     console.log(error);
-    res
-      .status(500)
-      .json({
-        status: "Error loading responsible report",
-        error: error.message,
-      });
+    res.status(500).json({
+      status: "Error loading responsible report",
+      error: error.message,
+    });
   }
 };
 
 pubReportController.sendResponsibleReportDraft = async (req, res) => {
   try {
-    const { email, reportId, loadedDate } = req.body;
-    const user = await User.findOne({ email, isActive: true, activeRole: "Responsable" });
+    const { email, reportId, filledRep, loadedDate } = req.body;
+    const user = await User.findOne({
+      email,
+      isActive: true,
+      activeRole: "Responsable",
+    });
     if (!user) {
-      return res.status(403).json({ status: "User not found or isn't an active responsible" });
+      return res
+        .status(403)
+        .json({ status: "User not found or isn't an active responsible" });
     }
-    const publishedReport = await PubReport.findById(reportId).populate("period").where("filled_reports").elemMatch({ loaded_date: loadedDate });
+    const publishedReport = await PubReport.findById(reportId)
+      .populate({
+        path: "dimensions",
+        select: "name responsible",
+        match: { responsible: email },
+      })
+      .populate("period")
+      .where("filled_reports")
+      .elemMatch({ loaded_date: loadedDate });
     if (!publishedReport) {
       return res.status(404).json({ status: "Published Report not found" });
     }
     const now = datetime_now();
     publishedReport.filled_reports[0].status = "En Revisión";
-    publishedReport.filled_reports[0].status_date = now
+    publishedReport.filled_reports[0].status_date = now;
 
-    await moveDriveFolder(publishedReport.folder_id, `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${publishedReport.filled_reports[0].dimension.name}/${now.toISOString()}`);
-    
+    await moveDriveFolder(
+      publishedReport.filled_reports[0].folder_id,
+      `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${
+        publishedReport.dimensions[0].name
+      }/${now.toISOString()}`
+    );
+
     publishedReport.save();
     res.status(200).json({ status: "Responsible report sent" });
-  } catch(error) {
+  } catch (error) {
     console.log(error);
-    res.status(500).json({ status: "Error sending responsible report", error: error.message });
+    res.status(500).json({
+      status: "Error sending responsible report",
+      error: error.message,
+    });
   }
-}
+};
 
 pubReportController.editFilledReport = async (req, res) => {
   try {

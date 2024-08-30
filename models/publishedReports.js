@@ -54,13 +54,16 @@ const filledReportSchema = new Schema({
         enum: ['En Borrador', 'En Revisión', 'Aprobado', 'Rechazado'],
         default: 'En Borrador'
     },
+    folder_id: {
+      type: String,
+      required: true
+    },
     //TODO Improve for required
     status_date: Date,
     observations: {
         type: String
     }
 }, {
-    _id: false,
     versionKey: false,
     timestamps: true
 });
