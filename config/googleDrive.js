@@ -111,12 +111,16 @@ const uploadFilesToGoogleDrive = async (files, destinationPath) => {
     return filesData;
   };
 
-const moveDriveFolder = async (folderId, destinationPath, sendDate) => {
+const moveDriveFolder = async (folderId, destinationPath) => {
     const folders = destinationPath.split('/');
     let newParentId = driveId;
+    let ancestorId;
 
     for (let i = 0; i < folders.length - 1; i++) {
         newParentId = await getOrCreateFolder(folders[i], newParentId);
+        if(i === folders.length - 3) {
+            ancestorId = newParentId
+        }
     }
 
     await driveService.files.update({
@@ -127,6 +131,8 @@ const moveDriveFolder = async (folderId, destinationPath, sendDate) => {
         fields: 'parents',
         supportsAllDrives: true,
     });
+
+    return ancestorId;
 }
 
 const deleteDriveFile = async (fileId) => {

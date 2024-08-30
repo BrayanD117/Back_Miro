@@ -474,12 +474,15 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
     publishedReport.filled_reports[0].status = "En Revisión";
     publishedReport.filled_reports[0].status_date = now;
 
-    await moveDriveFolder(
+    const ancestorId = await moveDriveFolder(
       publishedReport.filled_reports[0].folder_id,
       `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${
         publishedReport.dimensions[0].name
       }/${now.toISOString()}`
     );
+
+    if(!publishedReport.folder_id)
+    publishedReport.folder_id = ancestorId;
 
     publishedReport.save();
     res.status(200).json({ status: "Responsible report sent" });
