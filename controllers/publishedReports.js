@@ -330,6 +330,9 @@ pubReportController.feedOptionsForPublish = async (req, res) => {
 };
 
 pubReportController.loadResponsibleReportDraft = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { email, reportId } = req.body;
     const reportFile = req.files["reportFile"]
@@ -343,17 +346,21 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       email,
       isActive: true,
       activeRole: "Responsable",
-    });
+    }).session(session);
     if (!user) {
+      await session.abortTransaction();
+      session.endSession();
       return res
         .status(403)
         .json({ status: "User not found or isn't an active responsible" });
     }
 
-    const publishedReport = await PubReport.findById(reportId).populate(
-      "period"
-    );
+    const publishedReport = await PubReport.findById(reportId)
+      .populate("period")
+      .session(session);
     if (!publishedReport) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ status: "Published Report not found" });
     }
 
@@ -361,24 +368,30 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     const endDate = new Date(publishedReport.period.responsible_end_date);
 
     if (nowDate < startDate || nowDate > endDate) {
+      await session.abortTransaction();
+      session.endSession();
       return res
         .status(403)
         .json({ status: "Period is closed for reports uploading" });
     }
 
-    const dimension = await Dimension.findOne({ responsible: email });
+    const dimension = await Dimension.findOne({ responsible: email }).session(session);
 
     if (
       publishedReport.filled_reports.some(
         (filledReport) => filledReport.status === "Aprobado"
       )
     ) {
+      await session.abortTransaction();
+      session.endSession();
       return res
         .status(403)
         .json({ status: "Dimension already has an approved report" });
     }
 
     if (!reportFile) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ status: "No file attached" });
     }
 
@@ -386,6 +399,8 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       publishedReport.report.requieres_attachment &&
       attachments.length === 0
     ) {
+      await session.abortTransaction();
+      session.endSession();
       return res
         .status(400)
         .json({ status: "No attachments attached & are required" });
@@ -406,10 +421,9 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
               publishedReport.report.name
             }/${dimension.name}/${now.toISOString()}/Anexos`
           )
-        : Promise.resolve([]), // Si no se requieren adjuntos o no hay archivos adjuntos, devuelve una promesa resuelta con un array vacío
+        : Promise.resolve([]),
     ]);
 
-    // Procesa los datos del archivo del reporte
     const reportFileData = {
       id: reportFileDataHandle.id,
       name: reportFileDataHandle.name,
@@ -418,7 +432,6 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       folder_id: reportFileDataHandle.parents[0],
     };
 
-    // Procesa los datos de los archivos adjuntos si los hay
     const attachmentsData = attachmentsDataHandle.map((attachment) => ({
       id: attachment.id,
       name: attachment.name,
@@ -436,9 +449,15 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       folder_id: reportFileData.folder_id,
       status_date: now,
     });
-    await publishedReport.save();
+    await publishedReport.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
     res.status(201).json({ status: "Responsible report loaded" });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.log(error);
     res.status(500).json({
       status: "Error loading responsible report",
