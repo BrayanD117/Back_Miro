@@ -3,6 +3,8 @@ const Report = require("../models/reports");
 const User = require("../models/users");
 const Period = require("../models/periods");
 const Dimension = require("../models/dimensions");
+const mongoose = require("mongoose");
+
 const {
   uploadFileToGoogleDrive,
   uploadFilesToGoogleDrive,
@@ -446,18 +448,24 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
 };
 
 pubReportController.sendResponsibleReportDraft = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { email, reportId, filledRep, loadedDate } = req.body;
+
     const user = await User.findOne({
       email,
       isActive: true,
       activeRole: "Responsable",
-    });
+    }).session(session);
+
     if (!user) {
-      return res
-        .status(403)
-        .json({ status: "User not found or isn't an active responsible" });
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(403).json({ status: "User not found or isn't an active responsible" });
     }
+
     const publishedReport = await PubReport.findById(reportId)
       .populate({
         path: "dimensions",
@@ -466,27 +474,37 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
       })
       .populate("period")
       .where("filled_reports")
-      .elemMatch({ loaded_date: loadedDate });
+      .elemMatch({ loaded_date: loadedDate })
+      .session(session);
+
     if (!publishedReport) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ status: "Published Report not found" });
     }
+
     const now = datetime_now();
     publishedReport.filled_reports[0].status = "En Revisión";
     publishedReport.filled_reports[0].status_date = now;
 
     const ancestorId = await moveDriveFolder(
       publishedReport.filled_reports[0].folder_id,
-      `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${
-        publishedReport.dimensions[0].name
-      }/${now.toISOString()}`
+      `Reportes/${publishedReport.period.name}/${publishedReport.report.name}/${publishedReport.dimensions[0].name}/${now.toISOString()}`
     );
 
-    if(!publishedReport.folder_id)
-    publishedReport.folder_id = ancestorId;
+    if (!publishedReport.folder_id) {
+      publishedReport.folder_id = ancestorId;
+    }
 
-    publishedReport.save();
+    await publishedReport.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
     res.status(200).json({ status: "Responsible report sent" });
+
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.log(error);
     res.status(500).json({
       status: "Error sending responsible report",

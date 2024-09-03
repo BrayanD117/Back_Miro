@@ -59,7 +59,10 @@ const filledReportSchema = new Schema({
       required: true
     },
     //TODO Improve for required
-    status_date: Date,
+    status_date: {
+      type: Date,
+      required: true
+    },
     observations: {
         type: String
     }
