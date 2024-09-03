@@ -124,7 +124,9 @@ reportController.updateReport = async (req, res) => {
     const { name, description, requires_attachment, file_name } = req.body;
     const user = await User.findOne({ email, activeRole: "Administrador" });
 
-    if (!user || user.activeRole !== "Administrador") {
+    console.log(req.body)
+
+    if (!user) {
       return res
         .status(403)
         .json({ status: "User not found or isn't an Administrator" });
