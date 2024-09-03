@@ -60,6 +60,24 @@ const getOrCreateFolder = async (folderName, parentId) => {
   return folderId;
 };
 
+const mutex = {};
+const getOrCreateFolderWithLock = async (folderName, parentId) => {
+  const key = `${parentId}/${folderName}`;
+  if (!mutex[key]) {
+    mutex[key] = new Promise(async (resolve, reject) => {
+      try {
+        const folderId = await getOrCreateFolder(folderName, parentId);
+        resolve(folderId);
+      } catch (error) {
+        reject(error);
+      } finally {
+        delete mutex[key]; // Libera el lock después de la ejecución
+      }
+    });
+  }
+  return mutex[key];
+};
+
 const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
   const folders = destinationPath.split("/");
   let parentId = driveId;
@@ -74,7 +92,7 @@ const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
   console.log(files.data.parents);
 
   for (let i = 0; i < folders.length; i++) {
-    parentId = await getOrCreateFolder(folders[i], parentId);
+    parentId = await getOrCreateFolderWithLock(folders[i], parentId);
     if (i === folders.length - 2) {
       ancestorId = parentId;
     }
@@ -108,7 +126,7 @@ const uploadFilesToGoogleDrive = async (files, destinationPath) => {
 
   // Asegúrate de que la carpeta destino esté creada antes de cargar los archivos
   for (let i = 0; i < folders.length; i++) {
-    parentId = await getOrCreateFolder(folders[i], parentId);
+    parentId = await getOrCreateFolderWithLock(folders[i], parentId);
   }
 
   const uploadPromises = files.map((file) =>
@@ -194,4 +212,5 @@ module.exports = {
   moveDriveFolder,
   deleteDriveFiles,
   updateFileInGoogleDrive,
+  getOrCreateFolder
 };
