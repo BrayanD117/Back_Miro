@@ -4,7 +4,7 @@ const path = require("path");
 const fileUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      cb(null, '/uploads');
+      cb(null, '/home/miro/uploads');
     },
     filename: (req, file, cb) => {
       cb(null, file.originalname);
