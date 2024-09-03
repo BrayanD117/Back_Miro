@@ -176,11 +176,19 @@ const moveDriveFolder = async (folderId, destinationPath) => {
     }
   }
 
+  const file = await driveService.files.get({
+    fileId: folderId,
+    fields: 'parents',
+    supportsAllDrives: true,
+  });
+
+  const currentParents = file.data.parents;
+
   await driveService.files.update({
     fileId: folderId,
     name: folders[folders.length - 1],
     addParents: newParentId,
-    removeParents: driveId,
+    removeParents: currentParents.join(','),
     fields: "parents",
     supportsAllDrives: true,
   });
