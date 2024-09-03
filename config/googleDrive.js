@@ -211,6 +211,5 @@ module.exports = {
   uploadFilesToGoogleDrive,
   moveDriveFolder,
   deleteDriveFiles,
-  updateFileInGoogleDrive,
-  getOrCreateFolder
+  updateFileInGoogleDrive
 };
