@@ -495,7 +495,7 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
     if (!publishedReport.folder_id) {
       publishedReport.folder_id = ancestorId;
     }
-
+    deletedReport
     await publishedReport.save({ session });
 
     await session.commitTransaction();
