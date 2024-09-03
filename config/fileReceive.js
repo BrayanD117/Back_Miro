@@ -1,5 +1,5 @@
 const multer = require("multer");
-const os = require("os");
+const path = require("path");
 
 const fileUpload = multer({
   storage: multer.diskStorage({
