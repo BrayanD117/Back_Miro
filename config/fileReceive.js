@@ -1,10 +1,10 @@
 const multer = require("multer");
-const path = require("path");
+const os = require("os");
 
 const fileUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      cb(null, '/home/miro/uploads');
+      cb(null, os.tmpdir());
     },
     filename: (req, file, cb) => {
       cb(null, file.originalname);

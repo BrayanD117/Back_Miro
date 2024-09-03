@@ -168,7 +168,7 @@ const moveDriveFolder = async (folderId, destinationPath) => {
   let ancestorId;
 
   for (let i = 0; i < folders.length - 1; i++) {
-    newParentId = await getOrCreateFolder(folders[i], newParentId);
+    newParentId = await getOrCreateFolderWithLock(folders[i], newParentId);
     if (i === folders.length - 3) {
       ancestorId = newParentId;
     }
