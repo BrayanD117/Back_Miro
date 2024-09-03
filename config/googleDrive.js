@@ -112,6 +112,33 @@ const uploadFilesToGoogleDrive = async (files, destinationPath) => {
     return filesData;
   };
 
+const updateFileInGoogleDrive = async (fileId, file, newFileName) => {
+  try {
+    const fileMetadata = {
+      name: Buffer.from(newFileName, 'latin1').toString('utf8'), // Actualizar el nombre si es necesario
+    };
+
+    const media = {
+      mimeType: file.mimetype,
+      body: fs.createReadStream(file.path)
+    };
+
+    const response = await driveService.files.update({
+      fileId: fileId,
+      resource: fileMetadata,
+      media: media,
+      fields: 'id, name, webViewLink, webContentLink',
+      supportsAllDrives: true,
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error updating file:', error);
+    throw error;
+  }
+};
+  
+
 const moveDriveFolder = async (folderId, destinationPath) => {
     const folders = destinationPath.split('/');
     let newParentId = driveId;
@@ -156,4 +183,4 @@ const deleteDriveFiles = async (fileIds) => {
   }
 }
 
-module.exports = {uploadFileToGoogleDrive, uploadFilesToGoogleDrive, moveDriveFolder};
+module.exports = {uploadFileToGoogleDrive, uploadFilesToGoogleDrive, moveDriveFolder, deleteDriveFiles, updateFileInGoogleDrive};
