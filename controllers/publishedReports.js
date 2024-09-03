@@ -8,7 +8,7 @@ const mongoose = require("mongoose");
 const {
   uploadFileToGoogleDrive,
   uploadFilesToGoogleDrive,
-  moveDriveFolder,
+  moveDriveFolder
 } = require("../config/googleDrive");
 
 const pubReportController = {};
