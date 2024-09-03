@@ -8,7 +8,9 @@ const mongoose = require("mongoose");
 const {
   uploadFileToGoogleDrive,
   uploadFilesToGoogleDrive,
-  moveDriveFolder
+  moveDriveFolder,
+  deleteDriveFile,
+  deleteDriveFiles
 } = require("../config/googleDrive");
 
 const pubReportController = {};
@@ -466,6 +468,34 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
   }
 };
 
+pubReportController.updateSentReport = async (req, res) => {
+  const { email } = req.body;
+  const { reportId, filledRepId } = req.params;
+  const reportFile = req.files["reportFile"] ? req.files["reportFile"][0] : null;
+  const attachments = req.files["attachments"] || [];
+  const deletedAttachments = req.body.deletedAttachments || [];
+  const deletedReport = req.body.deletedReport || null;
+
+  const user = await User.findOne({ email, isActive: true, activeRole: "Responsable" });
+  if (!user) {
+    return res.status(403).json({ status: "User not found or isn't an active responsible" });
+  }
+
+  const publishedReport = await PubReport.findById(reportId).populate("period")
+
+  if(!reportFile && attachments.length === 0 && !deletedReport && deletedAttachments.length === 0) {
+    return res.status(400).json({ status: "Without changes" });
+  }
+  if(deletedReport && !reportFile) {
+    return res.status(400).json({ status: "Report file is required" });
+  }
+  if(deletedAttachments.length === attachments.length) {
+  }
+  deletedReport ? deleteDriveFile(deletedReport) : null;
+  deletedAttachments ? deleteDriveFiles(deletedAttachments) : null;
+
+}
+
 pubReportController.sendResponsibleReportDraft = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -532,18 +562,4 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
   }
 };
 
-pubReportController.editFilledReport = async (req, res) => {
-  try {
-    const { deletedAttachments, deletedReport, email, reportId } = req.body;
-    const reportFile = req.files["reportFile"]
-      ? req.files["reportFile"][0]
-      : null;
-  } catch (error) {
-    console.log(error);
-    res
-      .status(500)
-      .json({ status: "Error editing filled report", error: error.message });
-  }
-};
-
-module.exports = pubReportController;
+module.exports = pubReportController
