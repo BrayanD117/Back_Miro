@@ -15,6 +15,8 @@ const driveService = drive({
   auth: auth,
 });
 
+const folderCache = new Map();
+
 const getOrCreateFolder = async (folderName, parentId) => {
   const cacheKey = `${parentId}-${folderName}`;
 
