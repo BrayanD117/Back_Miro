@@ -3,7 +3,8 @@ module.exports = {
       {
         name: 'Back_Miro',
         script: 'index.js',
-        instances: 1,
+        instances: 'max',
+        exec_mode: 'cluster',
         autorestart: true,
         watch: false,
         max_memory_restart: '1G',

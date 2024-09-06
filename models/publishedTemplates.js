@@ -68,10 +68,6 @@ const publishedTemplateSchema = new Schema({
     published_date: {
         type: Date,
         required: true
-    },
-    completed: {
-        type: Boolean,
-        default: false
     }
 }, {
     versionKey: false,
