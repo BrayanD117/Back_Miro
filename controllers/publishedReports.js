@@ -528,7 +528,7 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { email, reportId, filledRep, loadedDate } = req.body;
+    const { email, reportId, loadedDate } = req.body;
 
     const user = await User.findOne({
       email,
@@ -571,7 +571,6 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
     if (!publishedReport.folder_id) {
       publishedReport.folder_id = ancestorId;
     }
-    deletedReport
     await publishedReport.save({ session });
 
     await session.commitTransaction();
