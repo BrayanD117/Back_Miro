@@ -338,7 +338,8 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
 
   try {
     const { email, reportId } = req.body;
-    const {deletedAttachments, deletedReport, filledRepId} = req.body;
+    const {deletedReport, filledRepId} = req.body;
+    const deletedAttachments =req.body.deletedAttachments ? JSON.parse(req.body.deletedAttachments) : undefined;
     const reportFile = req.files["reportFile"]
       ? req.files["reportFile"][0]
       : null;
@@ -399,19 +400,19 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
         .status(403)
         .json({ status: "Dimension already has an approved report" });
     }
-
+    console.log(publishedReport.filled_reports)
     const reportDraft = publishedReport.filled_reports.find(
-      (filledReport) => filledReport._id === filledRepId 
-        && filledReport.status === "En Borrador"
+      (filledReport) => filledReport._id.toString() === filledRepId 
+      && filledReport.status === "En Borrador"
     );
-
+    
     if (reportDraft) {
       if(deletedReport && !reportFile) {
         await session.abortTransaction();
         session.endSession();
         return res.status(400).json({ status: "Report file is required" });
       }
-      else if(deletedAttachments.length === reportDraft.attachments.length) {
+      else if(deletedAttachments.length === reportDraft.attachments.length && attachments.length === 0) {
         await session.abortTransaction();
         session.endSession();
         return res.status(400).json({ status: "You cannot delete all the attachments" });
@@ -456,7 +457,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
         reportFile,
         `Reportes/Borradores/${publishedReport.period.name}/${
           publishedReport.report.name
-        }/${dimension.name}/${now.toISOString()}`,
+        }/${dimension.name}/${reportDraft ? reportDraft.loaded_date.toISOString() : now.toISOString()}`,
         reportFile.originalname
       ) : Promise.resolve({}),
       publishedReport.report.requires_attachment && attachments.length > 0
@@ -464,41 +465,47 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
             attachments,
             `Reportes/Borradores/${publishedReport.period.name}/${
               publishedReport.report.name
-            }/${dimension.name}/${now.toISOString()}/Anexos`
+            }/${dimension.name}/${reportDraft ? reportDraft.loaded_date.toISOString() : now.toISOString()}/Anexos`
           )
         : Promise.resolve([]),
     ]);
-
-    const reportFileData = {
-      id: reportFileDataHandle.id,
-      name: reportFileDataHandle.name,
-      view_link: reportFileDataHandle.webViewLink,
-      download_link: reportFileDataHandle.webContentLink,
-      folder_id: reportFileDataHandle.parents[0],
-    };
-
-    const attachmentsData = attachmentsDataHandle.map((attachment) => ({
-      id: attachment.id,
-      name: attachment.name,
-      view_link: attachment.webViewLink,
-      download_link: attachment.webContentLink,
-      folder_id: attachment.parents[0],
-    }));
+    let reportFileData = {};
+    if(reportFile) {
+      reportFileData = {
+        id: reportFileDataHandle.id,
+        name: reportFileDataHandle.name,
+        view_link: reportFileDataHandle.webViewLink,
+        download_link: reportFileDataHandle.webContentLink,
+        folder_id: reportFileDataHandle.parents[0],
+      };
+    }
+    let attachmentsData = [];
+    if(attachments.length > 0) {
+      attachmentsData = attachmentsDataHandle.map((attachment) => ({
+        id: attachment.id,
+        name: attachment.name,
+        view_link: attachment.webViewLink,
+        download_link: attachment.webContentLink,
+        folder_id: attachment.parents[0],
+      }));
+    }
     if(!reportDraft) {
       publishedReport.filled_reports[0].report_file = reportFileData;
       publishedReport.filled_reports[0].attachments = attachmentsData;
       publishedReport.filled_reports[0].folder_id = reportFileData.folder_id;
     } else {
-      reportDraft.report_file = reportFileData;
-      reportDraft.attachments = attachmentsData;
-      reportDraft.folder_id = reportFileData.folder_id;
+      if(reportFile) reportDraft.report_file = reportFileData;
+      if(attachments.length > 0) reportDraft.attachments = attachmentsData;
       
       await PubReport.findOneAndUpdate({ 'filled_reports._id': filledRepId }, {
-        $set: { "filled_reports.$": reportDraft }
+        $set: { 
+          "filled_reports.$.report_file": reportDraft.report_file,
+          "filled_reports.$.attachments": reportDraft.attachments,
+          "updated_at": new Date()
+        }
       }, { session });
     }
     
-    await reportDraft.save({ session });
     await publishedReport.save({ session });
 
     await session.commitTransaction();

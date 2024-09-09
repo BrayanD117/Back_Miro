@@ -49,8 +49,7 @@ const filledReportSchema = new Schema(
       required: true,
     },
     report_file: {
-      type: driveFile,
-      required: true,
+      type: driveFile
     },
     attachments: {
       type: [driveFile],
@@ -61,8 +60,7 @@ const filledReportSchema = new Schema(
       default: "En Borrador",
     },
     folder_id: {
-      type: String,
-      required: true,
+      type: String
     },
     //TODO Improve for required
     status_date: {
