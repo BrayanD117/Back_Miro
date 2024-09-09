@@ -501,6 +501,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
         $set: { 
           "filled_reports.$.report_file": reportDraft.report_file,
           "filled_reports.$.attachments": reportDraft.attachments,
+          "filled_reports.$.loaded_date": now,
           "updated_at": new Date()
         }
       }, { session });
