@@ -593,7 +593,7 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
 
 pubReportController.setFilledReportStatus = async (req, res) => {
   try {
-    const { email, reportId, filledRepId } = req.body;
+    const { email, reportId, filledRepId, observations } = req.body;
 
     const user = await User.findOne({ email, isActive: true, activeRole: 'Administrador' })
     if (!user) {
@@ -614,15 +614,19 @@ pubReportController.setFilledReportStatus = async (req, res) => {
       return res.status(404).json({ status: "Filled Report not found" });
     }
 
+    console.log('This is the filled report ', filledReport);
+
     const now = datetime_now();
     filledReport.status = req.body.status;
     filledReport.status_date = now;
     if (req.body.status === "Rechazado" && !req.body.observations) {
       return res.status(400).json({ status: "Observations are required for rejected reports" });
     }
-    filledReport.observations = req.body.observations;
+    filledReport.observations = observations;
 
     await publishedReport.save();
+
+    res.status(200).json({ status: "Filled report status set" });
   } catch (error) {
     console.log(error);
     res.status(500).json({
