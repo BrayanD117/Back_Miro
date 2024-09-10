@@ -12,5 +12,6 @@ router.put("/responsible/send", controller.sendResponsibleReportDraft)
 router.get("/responsible/loaded", controller.getLoadedReportsResponsible)
 router.post("/publish", controller.publishReport)
 router.get("/feed", controller.feedOptionsForPublish)
+router.put("/status", controller.setFilledReportStatus)
 
 module.exports = router
