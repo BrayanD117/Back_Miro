@@ -8,8 +8,12 @@ const mongoose = require("mongoose");
 const {
   uploadFileToGoogleDrive,
   uploadFilesToGoogleDrive,
-  moveDriveFolder
+  moveDriveFolder,
+  deleteDriveFile,
+  deleteDriveFiles,
+  updateFileInGoogleDrive
 } = require("../config/googleDrive");
+const publishedReports = require("../models/publishedReports");
 
 const pubReportController = {};
 
@@ -330,8 +334,13 @@ pubReportController.feedOptionsForPublish = async (req, res) => {
 };
 
 pubReportController.loadResponsibleReportDraft = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { email, reportId } = req.body;
+    const {deletedReport, filledRepId} = req.body;
+    const deletedAttachments =req.body.deletedAttachments ? JSON.parse(req.body.deletedAttachments) : undefined;
     const reportFile = req.files["reportFile"]
       ? req.files["reportFile"][0]
       : null;
@@ -343,17 +352,21 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       email,
       isActive: true,
       activeRole: "Responsable",
-    });
+    }).session(session);
     if (!user) {
+      await session.abortTransaction();
+      session.endSession();
       return res
         .status(403)
         .json({ status: "User not found or isn't an active responsible" });
     }
 
-    const publishedReport = await PubReport.findById(reportId).populate(
-      "period"
-    );
+    const publishedReport = await PubReport.findById(reportId)
+      .populate("period")
+      .session(session);
     if (!publishedReport) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ status: "Published Report not found" });
     }
 
@@ -361,84 +374,150 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     const endDate = new Date(publishedReport.period.responsible_end_date);
 
     if (nowDate < startDate || nowDate > endDate) {
+      await session.abortTransaction();
+      session.endSession();
       return res
         .status(403)
         .json({ status: "Period is closed for reports uploading" });
     }
 
-    const dimension = await Dimension.findOne({ responsible: email });
+    const dimension = await Dimension.findOne({ responsible: email }).session(session);
+    if (!dimension) {
+      await session.abortTransaction();
+      session.endSession();
+      return res
+        .status(403)
+        .json({ status: "User is not responsible for any dimension" });
+    }
 
     if (
       publishedReport.filled_reports.some(
         (filledReport) => filledReport.status === "Aprobado"
       )
     ) {
+      await session.abortTransaction();
+      session.endSession();
       return res
         .status(403)
         .json({ status: "Dimension already has an approved report" });
     }
+    console.log(publishedReport.filled_reports)
+    const reportDraft = publishedReport.filled_reports.find(
+      (filledReport) => filledReport._id.toString() === filledRepId 
+      && filledReport.status === "En Borrador"
+    );
 
-    if (!reportFile) {
-      return res.status(400).json({ status: "No file attached" });
+    
+    if (reportDraft) {
+      if(deletedReport && !reportFile) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ status: "Report file is required" });
+      }
+      else if(deletedAttachments.length === reportDraft.attachments.length && attachments.length === 0) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ status: "You cannot delete all the attachments" });
+      }
+    } else {
+      if (!reportFile) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ status: "No file attached" });
+      }
+  
+      if (
+        publishedReport.report.requieres_attachment &&
+        attachments.length === 0
+      ) {
+        await session.abortTransaction();
+        session.endSession();
+        return res
+          .status(400)
+          .json({ status: "No attachments attached & are required" });
+      }
+
+      publishedReport.filled_reports.unshift({
+        dimension: dimension._id,
+        send_by: user,
+        loaded_date: now,
+        status_date: now,
+      });
+      await publishedReport.save({ session });
     }
 
-    if (
-      publishedReport.report.requieres_attachment &&
-      attachments.length === 0
-    ) {
-      return res
-        .status(400)
-        .json({ status: "No attachments attached & are required" });
+    if(reportDraft) {
+      if(deletedReport) await updateFileInGoogleDrive(deletedReport, reportFile, reportFile.originalname)
+      if(deletedAttachments) {
+        await deleteDriveFiles(deletedAttachments)
+        reportDraft.attachments = reportDraft.attachments.filter(attachment => !deletedAttachments.includes(attachment.id))
+      }
     }
 
     const [reportFileDataHandle, attachmentsDataHandle] = await Promise.all([
-      uploadFileToGoogleDrive(
+      reportFile ? uploadFileToGoogleDrive(
         reportFile,
         `Reportes/Borradores/${publishedReport.period.name}/${
           publishedReport.report.name
-        }/${dimension.name}/${now.toISOString()}`,
+        }/${dimension.name}/${reportDraft ? reportDraft.loaded_date.toISOString() : now.toISOString()}`,
         reportFile.originalname
-      ),
+      ) : Promise.resolve({}),
       publishedReport.report.requires_attachment && attachments.length > 0
         ? uploadFilesToGoogleDrive(
             attachments,
             `Reportes/Borradores/${publishedReport.period.name}/${
               publishedReport.report.name
-            }/${dimension.name}/${now.toISOString()}/Anexos`
+            }/${dimension.name}/${reportDraft ? reportDraft.loaded_date.toISOString() : now.toISOString()}/Anexos`
           )
-        : Promise.resolve([]), // Si no se requieren adjuntos o no hay archivos adjuntos, devuelve una promesa resuelta con un array vacío
+        : Promise.resolve([]),
     ]);
+    let reportFileData = {};
+    if(reportFile) {
+      reportFileData = {
+        id: reportFileDataHandle.id,
+        name: reportFileDataHandle.name,
+        view_link: reportFileDataHandle.webViewLink,
+        download_link: reportFileDataHandle.webContentLink,
+        folder_id: reportFileDataHandle.parents[0],
+      };
+    }
+    let attachmentsData = [];
+    if(attachments.length > 0) {
+      attachmentsData = attachmentsDataHandle.map((attachment) => ({
+        id: attachment.id,
+        name: attachment.name,
+        view_link: attachment.webViewLink,
+        download_link: attachment.webContentLink,
+        folder_id: attachment.parents[0],
+      }));
+    }
+    if(!reportDraft) {
+      publishedReport.filled_reports[0].report_file = reportFileData;
+      publishedReport.filled_reports[0].attachments = attachmentsData;
+      publishedReport.filled_reports[0].folder_id = reportFileData.folder_id;
+    } else {
+      if(reportFile) reportDraft.report_file = reportFileData;
+      if(attachments.length > 0) reportDraft.attachments = attachmentsData;
+      
+      await PubReport.findOneAndUpdate({ 'filled_reports._id': filledRepId }, {
+        $set: { 
+          "filled_reports.$.report_file": reportDraft.report_file,
+          "filled_reports.$.attachments": reportDraft.attachments,
+          "filled_reports.$.loaded_date": now,
+          "updated_at": new Date()
+        }
+      }, { session });
+    }
+    
+    await publishedReport.save({ session });
 
-    // Procesa los datos del archivo del reporte
-    const reportFileData = {
-      id: reportFileDataHandle.id,
-      name: reportFileDataHandle.name,
-      view_link: reportFileDataHandle.webViewLink,
-      download_link: reportFileDataHandle.webContentLink,
-      folder_id: reportFileDataHandle.parents[0],
-    };
+    await session.commitTransaction();
+    session.endSession();
 
-    // Procesa los datos de los archivos adjuntos si los hay
-    const attachmentsData = attachmentsDataHandle.map((attachment) => ({
-      id: attachment.id,
-      name: attachment.name,
-      view_link: attachment.webViewLink,
-      download_link: attachment.webContentLink,
-      folder_id: attachment.parents[0],
-    }));
-
-    publishedReport.filled_reports.unshift({
-      dimension: dimension._id,
-      send_by: user,
-      loaded_date: now,
-      report_file: reportFileData,
-      attachments: attachmentsData,
-      folder_id: reportFileData.folder_id,
-      status_date: now,
-    });
-    await publishedReport.save();
     res.status(201).json({ status: "Responsible report loaded" });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.log(error);
     res.status(500).json({
       status: "Error loading responsible report",
@@ -452,7 +531,7 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { email, reportId, filledRep, loadedDate } = req.body;
+    const { email, reportId, loadedDate } = req.body;
 
     const user = await User.findOne({
       email,
@@ -495,7 +574,6 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
     if (!publishedReport.folder_id) {
       publishedReport.folder_id = ancestorId;
     }
-
     await publishedReport.save({ session });
 
     await session.commitTransaction();
@@ -513,18 +591,49 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
   }
 };
 
-pubReportController.editFilledReport = async (req, res) => {
+pubReportController.setFilledReportStatus = async (req, res) => {
   try {
-    const { deletedAttachments, deletedReport, email, reportId } = req.body;
-    const reportFile = req.files["reportFile"]
-      ? req.files["reportFile"][0]
-      : null;
+    const { email, reportId, filledRepId, observations } = req.body;
+
+    const user = await User.findOne({ email, isActive: true, activeRole: 'Administrador' })
+    if (!user) {
+      return res.status(403).json({ status: "User not found or isn't an active administrator" });
+    }
+
+    const publishedReport = await PubReport.findById(reportId)
+      .where("filled_reports")
+      .elemMatch({ _id: filledRepId })
+      .exec();
+    
+    if (!publishedReport) {
+      return res.status(404).json({ status: "Published Report not found" });
+    }
+
+    const filledReport = publishedReport.filled_reports.id(filledRepId);
+    if (!filledReport) {
+      return res.status(404).json({ status: "Filled Report not found" });
+    }
+
+    console.log('This is the filled report ', filledReport);
+
+    const now = datetime_now();
+    filledReport.status = req.body.status;
+    filledReport.status_date = now;
+    if (req.body.status === "Rechazado" && !req.body.observations) {
+      return res.status(400).json({ status: "Observations are required for rejected reports" });
+    }
+    filledReport.observations = observations;
+
+    await publishedReport.save();
+
+    res.status(200).json({ status: "Filled report status set" });
   } catch (error) {
     console.log(error);
-    res
-      .status(500)
-      .json({ status: "Error editing filled report", error: error.message });
+    res.status(500).json({
+      status: "Error setting filled report status",
+      error: error.message,
+    });
   }
-};
+}
 
-module.exports = pubReportController;
+module.exports = pubReportController
