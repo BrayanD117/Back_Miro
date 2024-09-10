@@ -153,6 +153,7 @@ const updateFileInGoogleDrive = async (fileId, file, newFileName) => {
       fileId: fileId,
       resource: fileMetadata,
       media: media,
+      name: newFileName,
       fields: "id, name, webViewLink, webContentLink",
       supportsAllDrives: true,
     });
