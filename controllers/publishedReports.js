@@ -406,6 +406,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       && filledReport.status === "En Borrador"
     );
     
+    
     if (reportDraft) {
       if(deletedReport && !reportFile) {
         await session.abortTransaction();
