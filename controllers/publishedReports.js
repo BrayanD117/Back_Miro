@@ -13,6 +13,7 @@ const {
   deleteDriveFiles,
   updateFileInGoogleDrive
 } = require("../config/googleDrive");
+const publishedReports = require("../models/publishedReports");
 
 const pubReportController = {};
 
@@ -405,7 +406,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       (filledReport) => filledReport._id.toString() === filledRepId 
       && filledReport.status === "En Borrador"
     );
-    
+
     
     if (reportDraft) {
       if(deletedReport && !reportFile) {
@@ -589,5 +590,50 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
     });
   }
 };
+
+pubReportController.setFilledReportStatus = async (req, res) => {
+  try {
+    const { email, reportId, filledRepId, observations } = req.body;
+
+    const user = await User.findOne({ email, isActive: true, activeRole: 'Administrador' })
+    if (!user) {
+      return res.status(403).json({ status: "User not found or isn't an active administrator" });
+    }
+
+    const publishedReport = await PubReport.findById(reportId)
+      .where("filled_reports")
+      .elemMatch({ _id: filledRepId })
+      .exec();
+    
+    if (!publishedReport) {
+      return res.status(404).json({ status: "Published Report not found" });
+    }
+
+    const filledReport = publishedReport.filled_reports.id(filledRepId);
+    if (!filledReport) {
+      return res.status(404).json({ status: "Filled Report not found" });
+    }
+
+    console.log('This is the filled report ', filledReport);
+
+    const now = datetime_now();
+    filledReport.status = req.body.status;
+    filledReport.status_date = now;
+    if (req.body.status === "Rechazado" && !req.body.observations) {
+      return res.status(400).json({ status: "Observations are required for rejected reports" });
+    }
+    filledReport.observations = observations;
+
+    await publishedReport.save();
+
+    res.status(200).json({ status: "Filled report status set" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      status: "Error setting filled report status",
+      error: error.message,
+    });
+  }
+}
 
 module.exports = pubReportController
