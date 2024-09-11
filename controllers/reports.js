@@ -1,5 +1,7 @@
 const fs = require("fs");
 const { uploadFileToGoogleDrive, updateFileInGoogleDrive } = require("../config/googleDrive");
+const mongoose = require("mongoose");
+const { ObjectId } = mongoose.Types;
 
 const Report = require("../models/reports");
 const User = require("../models/users");
@@ -129,59 +131,59 @@ reportController.createReport = async (req, res) => {
 };
 
 reportController.updateReport = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { id } = req.params;
-    const { email } = req.body;
-    const { name, description, requires_attachment, file_name } = req.body;
-    const nowDate = datetime_now().toDateString()
+    const { email, name, description, requires_attachment, file_name } = req.body;
+    const nowDate = datetime_now().toDateString();
+    const pubReportsToUpdate = []
 
-    const user = await User.findOne({ email, activeRole: "Administrador" });
-
+    // Buscar al usuario
+    const user = await User.findOne({ email, activeRole: "Administrador" }).session(session);
     if (!user) {
-      return res
-        .status(403)
-        .json({ status: "User not found or isn't an Administrator" });
+      throw new Error("User not found or isn't an Administrator");
     }
 
-    const report = await Report.findById(id);
+    // Buscar el informe
+    const report = await Report.findById(id).session(session);
     if (!report) {
-      return res.status(404).json({ status: "Report not found" });
+      throw new Error("Report not found");
     }
 
+    // Buscar periodos activos
     const periods = await Period.find({
       is_active: true,
       responsible_start_date: { $lte: nowDate },
       responsible_end_date: { $gte: nowDate }
-    });
+    }).session(session);
 
     if (periods.length > 0) {
       const publishedReportsRelated = await PubReport.find({
-        'report._id': id,
+        'report._id': new ObjectId(id),
         period: { $in: periods.map(period => period._id) }
-      })
+      }).session(session);
 
-      publishedReportsRelated.map(async (pubReport) => {
-        if(pubReport.filled_reports.length > 0) {
-          return res.status(400).json({ status: "Hay un reporte publicado y activo con información cargada"});
+      for (const pubReport of publishedReportsRelated) {
+        if (pubReport.filled_reports.length > 0) {
+          res.status(400).json({ message: "Cannot update this report because it is already filled in a published report" });
+          return
         }
-        pubReport.report = report;
-        await pubReport.save();
-      })
+        pubReportsToUpdate.push(pubReport)
+      }
     }
 
+    // Manejo de archivo si existe
     if (req.file) {
-      // Define la ruta en Google Drive y sube el archivo
-      const fileData = await updateFileInGoogleDrive(
-        report.report_example_id,
-        req.file,
-        file_name
-      );
+      const fileData = await updateFileInGoogleDrive(report.report_example_id, req.file, file_name);
 
-      // Actualiza el informe con la información del archivo subido
+      // Actualiza los campos relacionados con el archivo
       report.report_example_id = fileData.id;
       report.report_example_link = fileData.webViewLink;
       report.report_example_download = fileData.webContentLink;
-      // Elimina el archivo local después de la subida exitosa
+
+      // Eliminar archivo local
       fs.unlinkSync(req.file.path);
     }
 
@@ -190,20 +192,30 @@ reportController.updateReport = async (req, res) => {
     report.description = description;
     report.requires_attachment = requires_attachment;
     report.file_name = file_name;
+      
+    await report.save({ session });
 
-    // Guarda los cambios en el informe
-    await report.save();
+    for (const pubReport of pubReportsToUpdate) {
+      pubReport.report = report;
+      await pubReport.save({ session });
+    }
 
-    res.status(200).json({ status: "Report updated" });
+    // Commit de la transacción
+    await session.commitTransaction();
+    res.status(200).json({ status: "Report updated successfully" });
   } catch (error) {
+    // Abortar transacción y limpiar si hay error
+    await session.abortTransaction();
     if (req.file) {
       fs.unlinkSync(req.file.path);
     }
-    console.log(error);
-    res
-      .status(500)
-      .json({ status: "Error updating report", error: error.message });
+    console.error(error);
+    res.status(400).json({ status: "Error updating report", error: error.message });
+  } finally {
+    // Finalizar la sesión de la transacción
+    session.endSession();
   }
 };
+
 
 module.exports = reportController;
