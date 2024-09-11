@@ -3,6 +3,17 @@ const { uploadFileToGoogleDrive, updateFileInGoogleDrive } = require("../config/
 
 const Report = require("../models/reports");
 const User = require("../models/users");
+const Period = require("../models/periods");
+const PubReport = require("../models/publishedReports");
+
+const datetime_now = () => {
+  const now = new Date();
+
+  const offset = -5; // GMT-5
+  const dateWithOffset = new Date(now.getTime() + offset * 60 * 60 * 1000);
+
+  return new Date(dateWithOffset.setMilliseconds(now.getMilliseconds()));
+};
 
 const reportController = {};
 
@@ -122,9 +133,9 @@ reportController.updateReport = async (req, res) => {
     const { id } = req.params;
     const { email } = req.body;
     const { name, description, requires_attachment, file_name } = req.body;
-    const user = await User.findOne({ email, activeRole: "Administrador" });
+    const nowDate = datetime_now().toDateString()
 
-    console.log(req.body)
+    const user = await User.findOne({ email, activeRole: "Administrador" });
 
     if (!user) {
       return res
@@ -135,6 +146,27 @@ reportController.updateReport = async (req, res) => {
     const report = await Report.findById(id);
     if (!report) {
       return res.status(404).json({ status: "Report not found" });
+    }
+
+    const periods = await Period.find({
+      is_active: true,
+      responsible_start_date: { $lte: nowDate },
+      responsible_end_date: { $gte: nowDate }
+    });
+
+    if (periods.length > 0) {
+      const publishedReportsRelated = await PubReport.find({
+        'report._id': id,
+        period: { $in: periods.map(period => period._id) }
+      })
+
+      publishedReportsRelated.map(async (pubReport) => {
+        if(pubReport.filled_reports.length > 0) {
+          return res.status(400).json({ status: "Hay un reporte publicado y activo con información cargada"});
+        }
+        pubReport.report = report;
+        await pubReport.save();
+      })
     }
 
     if (req.file) {
