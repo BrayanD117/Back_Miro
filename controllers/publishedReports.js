@@ -414,7 +414,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
         session.endSession();
         return res.status(400).json({ status: "Report file is required" });
       }
-      else if(deletedAttachments.length === reportDraft.attachments.length && attachments.length === 0) {
+      else if(deletedAttachments && deletedAttachments.length === reportDraft.attachments.length && attachments.length === 0) {
         await session.abortTransaction();
         session.endSession();
         return res.status(400).json({ status: "You cannot delete all the attachments" });
@@ -482,7 +482,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       };
     }
     let attachmentsData = [];
-    if(attachments.length > 0) {
+    if(attachments && attachments.length > 0) {
       attachmentsData = attachmentsDataHandle.map((attachment) => ({
         id: attachment.id,
         name: attachment.name,
