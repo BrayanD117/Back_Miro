@@ -636,4 +636,33 @@ pubReportController.setFilledReportStatus = async (req, res) => {
   }
 }
 
+pubReportController.deletePublishedReport = async (req, res) => {
+  try {
+    const { email, reportId } = req.body;
+
+    const user = await User.findOne({ email, isActive: true, activeRole: 'Administrador' })
+    if (!user) {
+      return res.status(403).json({ status: "User not found or isn't an active administrator" });
+    }
+
+    const publishedReport = await PubReport.findById(reportId);
+    if (!publishedReport) {
+      return res.status(404).json({ status: "Published Report not found" });
+    }
+
+    if(publishedReport.filled_reports.length > 0) {
+      return res.status(400).json({ status: "Cannot delete a published report with filled reports" });
+    }
+
+    await publishedReport.remove();
+    res.status(200).json({ status: "Published Report deleted" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      status: "Error deleting published report",
+      error: error.message
+    });
+  }
+}
+
 module.exports = pubReportController

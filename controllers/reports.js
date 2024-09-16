@@ -217,5 +217,25 @@ reportController.updateReport = async (req, res) => {
   }
 };
 
+reportController.deleteReport = async (req, res) => {
+
+  try {
+    const { id } = req.params;
+    const nowDate = datetime_now().toDateString();
+    const pubReportsToDelete = []
+
+    // Buscar el informe
+    const report = await Report.findByIdAndDelete(id);
+    if (!report) {
+      return res.status(404).json({ status: "Report not found" });
+    }
+
+    res.status(200).json({ status: "Report deleted" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "Error deleting report", error: error.message });
+  }
+}
+
 
 module.exports = reportController;
