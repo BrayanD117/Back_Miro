@@ -13,5 +13,6 @@ router.get("/responsible/loaded", controller.getLoadedReportsResponsible)
 router.post("/publish", controller.publishReport)
 router.get("/feed", controller.feedOptionsForPublish)
 router.put("/status", controller.setFilledReportStatus)
+router.delete("/delete/:reportId", controller.deletePublishedReport)
 
 module.exports = router

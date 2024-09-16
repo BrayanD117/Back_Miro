@@ -13,7 +13,6 @@ const {
   deleteDriveFiles,
   updateFileInGoogleDrive
 } = require("../config/googleDrive");
-const publishedReports = require("../models/publishedReports");
 
 const pubReportController = {};
 
@@ -632,6 +631,35 @@ pubReportController.setFilledReportStatus = async (req, res) => {
     res.status(500).json({
       status: "Error setting filled report status",
       error: error.message,
+    });
+  }
+}
+
+pubReportController.deletePublishedReport = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { email } = req.query;
+    const user = await User.findOne({ email, isActive: true, activeRole: 'Administrador' })
+    if (!user) {
+      return res.status(403).json({ status: "User not found or isn't an active administrator" });
+    }
+    console.log(req.params);
+    const publishedReport = await PubReport.findById(reportId);
+    if (!publishedReport) {
+      return res.status(404).json({ status: "Published Report not found" });
+    }
+
+    if(publishedReport.filled_reports.length > 0) {
+      return res.status(400).json({ status: "Cannot delete a published report with filled reports" });
+    }
+
+    await publishedReport.remove();
+    res.status(200).json({ status: "Published Report deleted" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      status: "Error deleting published report",
+      error: error.message
     });
   }
 }
