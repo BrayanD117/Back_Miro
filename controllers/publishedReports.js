@@ -13,7 +13,6 @@ const {
   deleteDriveFiles,
   updateFileInGoogleDrive
 } = require("../config/googleDrive");
-const publishedReports = require("../models/publishedReports");
 
 const pubReportController = {};
 
@@ -638,13 +637,13 @@ pubReportController.setFilledReportStatus = async (req, res) => {
 
 pubReportController.deletePublishedReport = async (req, res) => {
   try {
-    const { email, reportId } = req.body;
-
+    const { reportId } = req.params;
+    const { email } = req.query;
     const user = await User.findOne({ email, isActive: true, activeRole: 'Administrador' })
     if (!user) {
       return res.status(403).json({ status: "User not found or isn't an active administrator" });
     }
-
+    console.log(req.params);
     const publishedReport = await PubReport.findById(reportId);
     if (!publishedReport) {
       return res.status(404).json({ status: "Published Report not found" });
