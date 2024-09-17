@@ -622,7 +622,7 @@ pubReportController.setFilledReportStatus = async (req, res) => {
       return res.status(400).json({ status: "Observations are required for rejected reports" });
     }
     filledReport.observations = observations;
-
+    filledReport.evaluated_by = user;
     await publishedReport.save();
 
     res.status(200).json({ status: "Filled report status set" });
