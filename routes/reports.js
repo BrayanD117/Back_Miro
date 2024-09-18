@@ -9,4 +9,6 @@ router.post("/create", upload.single('report_example'), controller.createReport)
 
 router.put("/update/:id", upload.single('report_example'), controller.updateReport)
 
+router.delete("/delete/:id", controller.deleteReport)
+
 module.exports = router

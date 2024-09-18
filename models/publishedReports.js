@@ -25,7 +25,7 @@ const driveFile = new Schema(
     },
     comments: {
       type: String,
-    },
+    }
   },
   {
     _id: false,
@@ -66,6 +66,9 @@ const filledReportSchema = new Schema(
     status_date: {
       type: Date,
       required: true,
+    },
+    evaluated_by: {
+      type: {}
     },
     observations: {
       type: String,
