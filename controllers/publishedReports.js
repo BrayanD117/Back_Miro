@@ -666,7 +666,7 @@ pubReportController.deletePublishedReport = async (req, res) => {
 
 pubReportController.getFilledReport = async (req, res) => {
   try {
-    const { reportId, dimensionId } = req.params;
+    const { reportId, dimensionId } = req.query;
 
     const publishedReport = await PubReport.findById(reportId)
       .where("filled_reports")
