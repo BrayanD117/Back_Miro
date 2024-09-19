@@ -57,3 +57,5 @@ const logSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+module.exports = mongoose.model("logs", logSchema);
