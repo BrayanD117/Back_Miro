@@ -664,13 +664,14 @@ pubReportController.deletePublishedReport = async (req, res) => {
   }
 }
 
-pubReportController.getFilledReport = async (req, res) => {
+pubReportController.getHistory = async (req, res) => {
   try {
     const { reportId, dimensionId } = req.query;
 
     const publishedReport = await PubReport.findById(reportId)
       .where("filled_reports")
       .elemMatch({ dimension: dimensionId, status: { $ne: "En Borrador" }})
+      .populate(path = "filled_reports.dimension", select = "name")
       .exec();
 
     if (!publishedReport) {
