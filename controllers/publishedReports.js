@@ -664,4 +664,28 @@ pubReportController.deletePublishedReport = async (req, res) => {
   }
 }
 
+pubReportController.getHistory = async (req, res) => {
+  try {
+    const { reportId, dimensionId } = req.query;
+
+    const publishedReport = await PubReport.findById(reportId)
+      .where("filled_reports")
+      .elemMatch({ dimension: dimensionId, status: { $ne: "En Borrador" }})
+      .populate(path = "filled_reports.dimension", select = "name")
+      .exec();
+
+    if (!publishedReport) {
+      return res.status(404).json({ status: "Published Report not found" });
+    }
+
+    res.status(200).json(publishedReport.filled_reports);    
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      status: "Error getting filled report",
+      error: error.message,
+    });
+  }
+}
+
 module.exports = pubReportController
