@@ -18,4 +18,6 @@ router.delete("/:id", controller.deleteDimension);
 
 router.get("/producers/:id", controller.getProducers);
 
+router.get("/:id", controller.getDimensionById);
+
 module.exports = router;
