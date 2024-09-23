@@ -6,6 +6,7 @@ const Dependency = require('../models/dependencies.js')
 const User = require('../models/users.js')
 const Validator = require('./validators.js');
 const ValidatorModel = require('../models/validators');
+const Log = require('../models/logs');
 
 const publTempController = {};
 
@@ -269,11 +270,17 @@ publTempController.loadProducerData = async (req, res) => {
       return res.status(404).json({ status: 'User not found' });
     }
 
-    const pubTem = await PublishedTemplate.findById(pubTem_id);
+    const pubTem = await PublishedTemplate.findById(pubTem_id).populate('period');
     if (!pubTem) {
       return res.status(404).json({ status: 'Published template not found' });
     }
 
+    const now = new Date(datetime_now().toDateString());
+    const endDate = new Date(publishedReport.period.producer_end_date).toDateString();
+    if( endDate < now ) {
+      return res.status(403).json({ status: 'The period is closed' });
+    }
+    
     if (!pubTem.producers_dep_code.includes(user.dep_code)) {
       return res.status(403).json({ status: 'User is not assigned to this published template' });
     }
@@ -316,6 +323,15 @@ publTempController.loadProducerData = async (req, res) => {
     const validationErrors = validationResults.filter(v => v.status === false);
 
     if (validationErrors.length > 0) {
+      await Log.create({
+        user: user,
+        published_template: pubTem._id,
+        date: datetime_now(),
+        errors: validationErrors.map(err => ({
+          column: err.column,
+          description: err.errors
+        }))
+      })
       return res.status(400).json({ status: 'Validation error', details: validationErrors });
     }
 

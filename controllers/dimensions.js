@@ -125,4 +125,19 @@ dimensionController.getProducers = async (req, res) => {
   }
 }
 
+dimensionController.getDimensionById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const dimension = await Dimension.findById(id);
+    if (!dimension) {
+      return res.status(404).json({ error: "Dimension not found" });
+    }
+    res.status(200).json(dimension);
+  } catch (error) {
+    console.error('Error fetching dimension by id:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
 module.exports = dimensionController;

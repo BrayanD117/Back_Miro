@@ -50,6 +50,7 @@ apiRouter.use("/pTemplates", require('./routes/publishedTemplates'));
 apiRouter.use("/validators", require('./routes/validators'));
 apiRouter.use("/reports", require('./routes/reports'));
 apiRouter.use("/pReports", require('./routes/publishedReports'));
+apiRouter.use("/logs", require('./routes/logs'));
 
 app.use('/api/p', apiRouter);
 
