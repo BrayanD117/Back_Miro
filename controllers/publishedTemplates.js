@@ -6,6 +6,7 @@ const Dependency = require('../models/dependencies.js')
 const User = require('../models/users.js')
 const Validator = require('./validators.js');
 const ValidatorModel = require('../models/validators');
+const Log = require('../models/logs');
 
 const publTempController = {};
 
@@ -316,6 +317,15 @@ publTempController.loadProducerData = async (req, res) => {
     const validationErrors = validationResults.filter(v => v.status === false);
 
     if (validationErrors.length > 0) {
+      await Log.create({
+        user: user,
+        published_template: pubTem._id,
+        date: datetime_now(),
+        errors: validationErrors.map(err => ({
+          column: err.column,
+          description: err.errors
+        }))
+      })
       return res.status(400).json({ status: 'Validation error', details: validationErrors });
     }
 

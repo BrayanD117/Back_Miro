@@ -2,16 +2,6 @@ const Log = require('../models/logs');
 
 const logController = {}
 
-logController.create = async (req, res) => {
-  try {
-    const log = new Log(req.body);
-    await log.save();
-    res.status(201).send({ log });
-  } catch (e) {
-    res.status(400).send(e);
-  }
-}
-
 logController.get = async (req, res) => {
   try {
     const page = parseInt(req.query.page);

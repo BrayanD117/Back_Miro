@@ -25,7 +25,7 @@ const Error = new Schema({
     required: true,
   },
   description: {
-    type: ErrorDescription,
+    type: [ErrorDescription],
     required: true,
   },
 }, {
@@ -48,7 +48,7 @@ const logSchema = new mongoose.Schema(
       required: true
     },
     errors: {
-      type: Error,
+      type: [Error],
       required: true
     },
   },
