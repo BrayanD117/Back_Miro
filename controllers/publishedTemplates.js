@@ -270,11 +270,17 @@ publTempController.loadProducerData = async (req, res) => {
       return res.status(404).json({ status: 'User not found' });
     }
 
-    const pubTem = await PublishedTemplate.findById(pubTem_id);
+    const pubTem = await PublishedTemplate.findById(pubTem_id).populate('period');
     if (!pubTem) {
       return res.status(404).json({ status: 'Published template not found' });
     }
 
+    const now = new Date(datetime_now().toDateString());
+    const endDate = new Date(publishedReport.period.producer_end_date).toDateString();
+    if( endDate < now ) {
+      return res.status(403).json({ status: 'The period is closed' });
+    }
+    
     if (!pubTem.producers_dep_code.includes(user.dep_code)) {
       return res.status(403).json({ status: 'User is not assigned to this published template' });
     }
