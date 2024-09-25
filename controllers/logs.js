@@ -4,24 +4,37 @@ const logController = {}
 
 logController.get = async (req, res) => {
   try {
-    const page = parseInt(req.query.page);
-    const limit = parseInt(req.query.limit);
-    const search = req.query.search;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
     const skip = (page - 1) * limit;
 
-    const logs = await Log.find({
+    const query = {
       $or: [
-        { message: { $regex: search, $options: 'i' } },
-        { 'user.full_name': { $regex: search, $options: 'i' } }
-      ]
-    }).sort({ date: -1 }).skip(skip).limit(limit)
-    .populate('published_template', 'name');
+        { 'user.full_name': { $regex: search, $options: 'i' } },
+        { 'published_template.name': { $regex: search, $options: 'i' } },
+        { 'errors.column': { $regex: search, $options: 'i' } },
+      ],
+    };
 
-    res.status(201).send(logs);
+    const totalLogs = await Log.countDocuments(query);
+
+    const logs = await Log.find(query)
+      .sort({ date: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('published_template', 'name');
+
+    const totalPages = Math.ceil(totalLogs / limit);
+
+    res.status(200).send({
+      logs,
+      totalPages,
+    });
   } catch (e) {
     res.status(500).send();
   }
-}
+};
 
 logController.getById = async (req, res) => {
   const _id = req.params.id;

@@ -11,5 +11,6 @@ router.get("/all", controller.getValidators)
 router.get("/pagination", controller.getValidatorsWithPagination)
 router.delete("/delete", controller.deleteValidator)
 router.get("/id", controller.getValidatorById)
+router.get("/allValidators", controller.getAllValidators)
 
 module.exports = router

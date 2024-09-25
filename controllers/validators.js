@@ -369,4 +369,13 @@ validatorController.giveValidatorToExcel = async (name) => {
     }
 }
 
+validatorController.getAllValidators = async (req, res) => {
+    try {
+      const validators = await Validator.find({});
+      res.status(200).json({ validators });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  };
+
 module.exports = validatorController
