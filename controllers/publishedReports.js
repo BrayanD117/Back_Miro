@@ -391,14 +391,15 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
 
     if (
       publishedReport.filled_reports.some(
-        (filledReport) => filledReport.status === "Aprobado"
+        (filledReport) => filledReport.status === "Aprobado" 
+        || filledReport.status === "En Revisión"
       )
     ) {
       await session.abortTransaction();
       session.endSession();
       return res
         .status(403)
-        .json({ status: "Dimension already has an approved report" });
+        .json({ status: "Dimension already has an approved or under review report" });
     }
     console.log(publishedReport.filled_reports)
     const reportDraft = publishedReport.filled_reports.find(
@@ -560,6 +561,13 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
       session.endSession();
       return res.status(404).json({ status: "Published Report not found" });
     }
+
+    if(publishedReport.filled_reports[0].status === "Aprobado" 
+      || publishedReport.filled_reports[0].status === "En Revisión") {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ status: "Already sent a report" });
+      }
 
     const now = datetime_now();
     publishedReport.filled_reports[0].status = "En Revisión";
