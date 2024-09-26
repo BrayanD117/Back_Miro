@@ -611,12 +611,15 @@ publTempController.getTemplateById = async (req, res) => {
       return field;
     }));
 
+    console.log(publishedTemplate.template._doc)
+
     const response = {
       name: publishedTemplate.name,
       template: {
         ...publishedTemplate.template._doc,
         fields: fieldsWithValidatorIds,
       },
+      publishedTemplate: publishedTemplate
     };
 
     res.status(200).json(response);
