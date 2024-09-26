@@ -562,6 +562,13 @@ pubReportController.sendResponsibleReportDraft = async (req, res) => {
       return res.status(404).json({ status: "Published Report not found" });
     }
 
+    if(publishedReport.filled_reports[0].status === "Aprobado" 
+      || publishedReport.filled_reports[0].status === "En Revisión") {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ status: "Already sent a report" });
+      }
+
     const now = datetime_now();
     publishedReport.filled_reports[0].status = "En Revisión";
     publishedReport.filled_reports[0].status_date = now;
