@@ -274,9 +274,10 @@ publTempController.loadProducerData = async (req, res) => {
     if (!pubTem) {
       return res.status(404).json({ status: 'Published template not found' });
     }
+    
 
     const now = new Date(datetime_now().toDateString());
-    const endDate = new Date(publishedReport.period.producer_end_date).toDateString();
+    const endDate = new Date(pubTem.period.producer_end_date).toDateString();
     if( endDate < now ) {
       return res.status(403).json({ status: 'The period is closed' });
     }
