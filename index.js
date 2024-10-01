@@ -52,7 +52,11 @@ apiRouter.use("/reports", require('./routes/reports'));
 apiRouter.use("/pReports", require('./routes/publishedReports'));
 apiRouter.use("/logs", require('./routes/logs'));
 
-app.use('/api/p', apiRouter);
+if (process.env.NODE_ENV === 'production') {
+  app.use('/api/p', apiRouter);
+} else {
+  app.use('/api/d', apiRouter);
+}
 
 
 // Añadir Swagger UI en la ruta /api-docs
