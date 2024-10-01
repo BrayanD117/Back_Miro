@@ -51,17 +51,38 @@ logController.getById = async (req, res) => {
 }
 
 logController.deleteDateRange = async (req, res) => {
-  try {
-    await Log.deleteMany({
-      date: {
-        $gte: req.query.startDate,
-        $lte: req.query.endDate
-      }
-    });
-    res.status(200).send();
-  } catch (e) {
-    res.status(500).send();
+  const { startDate, endDate } = req.query;
+
+  if (!startDate || !endDate) {
+    return res.status(400).send({ message: 'Las fechas startDate y endDate son requeridas' });
   }
-}
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return res.status(400).send({ message: 'Formato de fecha inválido' });
+  }
+
+  if (start > end) {
+    return res.status(400).send({ message: 'startDate no puede ser mayor que endDate' });
+  }
+
+  try {
+    const result = await Log.deleteMany({
+      date: {
+        $gte: start,
+        $lte: end,
+      },
+    });
+
+    res.status(200).send({
+      message: 'Logs eliminados exitosamente',
+      deletedCount: result.deletedCount,
+    });
+  } catch (e) {
+    res.status(500).send({ message: 'Error al eliminar los logs', error: e.message });
+  }
+};
 
 module.exports = logController;
