@@ -34,7 +34,10 @@ const producersData = new Schema({
         type: Date,
         required: true
     },
-    filled_data: [filled_fields]
+    filled_data: {
+      type: [filled_fields],
+      required: true
+    }
 }, {
     _id: false
 })
