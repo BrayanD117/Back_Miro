@@ -36,7 +36,13 @@ const producersData = new Schema({
     },
     filled_data: {
       type: [filled_fields],
-      required: true
+      required: true,
+      validate: {
+        //Cannot be empty
+        validator: function(v) {
+          return v.length > 0;
+        } 
+      }
     }
 }, {
     _id: false
