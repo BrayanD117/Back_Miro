@@ -339,7 +339,9 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
   try {
     const { email, reportId } = req.body;
     const {deletedReport, filledRepId} = req.body;
-    const deletedAttachments =req.body.deletedAttachments ? JSON.parse(req.body.deletedAttachments) : undefined;
+    console.log(req.body.comments);
+    const comments = req.body.comments || [];
+    const deletedAttachments =req.body.deletedAttachments ? JSON.parse(req.body.deletedAttachments) : [];
     const reportFile = req.files["reportFile"]
       ? req.files["reportFile"][0]
       : null;
@@ -401,7 +403,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
         .status(403)
         .json({ status: "Dimension already has an approved or under review report" });
     }
-    console.log(publishedReport.filled_reports)
+
     const reportDraft = publishedReport.filled_reports.find(
       (filledReport) => filledReport._id.toString() === filledRepId 
       && filledReport.status === "En Borrador"
@@ -425,7 +427,8 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
         session.endSession();
         return res.status(400).json({ status: "No file attached" });
       }
-  
+      console.log(publishedReport.filled_reports)
+
       if (
         publishedReport.report.requieres_attachment &&
         attachments.length === 0
@@ -448,7 +451,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
 
     if(reportDraft) {
       if(deletedReport) await updateFileInGoogleDrive(deletedReport, reportFile, reportFile.originalname)
-      if(deletedAttachments) {
+      if(deletedAttachments.length > 0) {
         await deleteDriveFiles(deletedAttachments)
         reportDraft.attachments = reportDraft.attachments.filter(attachment => !deletedAttachments.includes(attachment.id))
       }
@@ -478,17 +481,18 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
         name: reportFileDataHandle.name,
         view_link: reportFileDataHandle.webViewLink,
         download_link: reportFileDataHandle.webContentLink,
-        folder_id: reportFileDataHandle.parents[0],
+        folder_id: reportFileDataHandle.parents[0]
       };
     }
     let attachmentsData = [];
     if(attachments && attachments.length > 0) {
-      attachmentsData = attachmentsDataHandle.map((attachment) => ({
+      attachmentsData = attachmentsDataHandle.map((attachment, index) => ({
         id: attachment.id,
         name: attachment.name,
         view_link: attachment.webViewLink,
         download_link: attachment.webContentLink,
         folder_id: attachment.parents[0],
+        description: comments[index+(reportDraft?.attachments?.length || 0)-deletedAttachments.length]
       }));
     }
     if(!reportDraft) {
@@ -497,7 +501,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       publishedReport.filled_reports[0].folder_id = reportFileData.folder_id;
     } else {
       if(reportFile) reportDraft.report_file = reportFileData;
-      if(attachments.length > 0) reportDraft.attachments = attachmentsData;
+      if(attachments.length > 0) reportDraft.attachments = [...reportDraft.attachments, ...attachmentsData];
       
       await PubReport.findOneAndUpdate({ 'filled_reports._id': filledRepId }, {
         $set: { 
