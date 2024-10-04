@@ -345,6 +345,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
   //All report must have, a report file and an array 
   //of attachments with the corresponding description
   //Something like this if new: [ {file?: {...}, description: ...} ]
+  //It is only possible if: no previous draft, status is draft, status is rejected 
 };
 
 pubReportController.setFilledReportStatus = async (req, res) => {
