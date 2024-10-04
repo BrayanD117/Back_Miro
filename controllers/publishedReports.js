@@ -335,8 +335,16 @@ pubReportController.feedOptionsForPublish = async (req, res) => {
 pubReportController.loadResponsibleReportDraft = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-
   //TODO Method for loading drafts
+
+  //Save report in google drive and return data
+  //Save attachments in google drive and return data
+  //Check if is first load or update
+  //If is update, check which have to be deleted and/or added
+  //Save report in db
+  //All report must have, a report file and an array 
+  //of attachments with the corresponding description
+  //Something like this if new: [ {file?: {...}, description: ...} ]
 };
 
 pubReportController.setFilledReportStatus = async (req, res) => {

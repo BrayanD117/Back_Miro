@@ -28,7 +28,6 @@ const driveFile = new Schema(
     }
   },
   {
-    _id: false,
     versionKey: false,
   }
 );
