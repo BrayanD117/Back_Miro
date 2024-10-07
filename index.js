@@ -51,6 +51,7 @@ apiRouter.use("/validators", require('./routes/validators'));
 apiRouter.use("/reports", require('./routes/reports'));
 apiRouter.use("/pReports", require('./routes/publishedReports'));
 apiRouter.use("/logs", require('./routes/logs'));
+apiRouter.use("/homeInfo", require('./routes/homeInfo'));
 
 if (process.env.NODE_ENV === 'production') {
   app.use('/api/p', apiRouter);
