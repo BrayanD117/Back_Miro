@@ -7,7 +7,11 @@ const app = express();
 
 require('dotenv').config();
 
-const allowedOrigins = ['http://localhost:3000', 'https://miro.unibague.edu.co'];
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://miro.unibague.edu.co',
+  'https://mirodev.unibague.edu.co'
+];
 
 // Configurar Express para entender que está detrás de un proxy inverso
 app.set('trust proxy', true); 
