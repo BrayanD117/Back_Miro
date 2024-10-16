@@ -13,6 +13,9 @@ const {
   deleteDriveFiles,
   updateFileInGoogleDrive
 } = require("../config/googleDrive");
+const UserService = require("../services/users");
+const PublishedReportService = require("../services/publishedReports");
+const { attachment } = require("express/lib/response");
 
 const pubReportController = {};
 
@@ -335,8 +338,27 @@ pubReportController.feedOptionsForPublish = async (req, res) => {
 pubReportController.loadResponsibleReportDraft = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
-  //TODO Method for loading drafts
 
+  try {
+    const { email, publishedReportId, filledDraftId  } = req.body
+
+    const user = UserService.findUserByEmailAndRole(email, "Responsable", session);
+    if (!user) throw new Error("User not found or isn't an active responsible");
+
+    const pubRep = PublishedReportService.findPublishedReportById(publishedReportId, session)
+    if (!pubRep) throw new Error("Published Report not found")
+    
+    const draft = PublishedReportService.findDraft(pubRep, filledDraftId, session)
+    
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      status: "Error loading responsible report draft",
+      error: error.message
+    });
+  }
+  //TODO Method for loading drafts
   //Save report in google drive and return data
   //Save attachments in google drive and return data
   //Check if is first load or update

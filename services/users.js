@@ -10,3 +10,5 @@ class UserService {
       .session(session);
   }
 }
+
+module.exports = UserService;
