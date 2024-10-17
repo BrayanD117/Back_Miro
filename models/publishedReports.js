@@ -23,7 +23,7 @@ const driveFile = new Schema(
       type: String,
       required: true,
     },
-    comments: {
+    description: {
       type: String,
     }
   },
