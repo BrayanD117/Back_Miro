@@ -52,8 +52,9 @@ dimensionController.getDimensionsByResponsible = async (req, res) => {
 
 dimensionController.createDimension = async (req, res) => {
   try {
+    const name = req.body.name;
     const nameLowerCase = req.body.name.toLowerCase();
-    const existingDimension = await Dimension.findOne({ name: nameLowerCase });
+    const existingDimension = await Dimension.findOne({ name: { $regex: new RegExp(`^${nameLowerCase}$`, 'i') } });
     
     if (existingDimension) {
       return res.status(400).json({ error: "La dimensión con ese nombre ya existe" });
@@ -61,7 +62,7 @@ dimensionController.createDimension = async (req, res) => {
 
     const dimension = new Dimension({
       ...req.body,
-      name: nameLowerCase
+      name: name
     });
 
     await dimension.save();
