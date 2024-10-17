@@ -363,8 +363,14 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     };
 
     if (draft) {
-      draft = await PublishedReportService.updateDraft(
-        draft,reportFile,attachments,deletedReport,deletedAttachments,paths);
+      const files = await PublishedReportService.updateDraftFiles(
+        draft,reportFile,attachments,deletedReport,deletedAttachments,paths
+      );
+    } else {
+      const files = await PublishedReportService.uploadDraftFiles(
+        pubRep,reportFile,attachments,nowtime,paths
+      );
+      pubRep.filled_reports.push(draft);
     }
   } catch (error) {
     console.log(error);

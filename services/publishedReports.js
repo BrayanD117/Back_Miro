@@ -57,18 +57,17 @@ class PublishedReportService {
     };
   }
 
-  static async uploadReportDraft(pubReport, reportFile, attachments, nowDate, paths) {
+  static async uploadDraftFiles(pubReport, reportFile, attachments, paths) {
     const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, paths);
     return {
       report_file: this.mapFileData(reportFileData),
       attachments: attachmentsData.map(this.mapFileData),
-      status_date: nowDate
     };
   }
 
-  static async updateDraft(draft, reportFile, attachments, deletedReport, deletedAttachments, paths) {
+  static async updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, paths) {
     const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, paths);
-    draft.attachments.unshift(...attachmentsData.map(this.mapFileData))
+    draft.attachments.push(...attachmentsData.map(this.mapFileData))
     if(deletedReport) {
       await deleteDriveFile(deletedReport);
       delete draft.report_file
@@ -81,6 +80,24 @@ class PublishedReportService {
       draft.report_file = this.mapFileData(reportFileData);
     }
     return draft;
+  }
+
+  static async upsertReportDraft(
+    pubReport, filledRepId, reportFile, attachments, deletedReport, deletedAttachments, nowDate, 
+    paths, session
+  ) {
+    const draft = await this.findDraft(pubReport, filledRepId);
+    if(draft) {
+      const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments);
+      pubReport.filled_reports.id(filledRepId).set(updatedDraft);
+    } else {
+      const newDraft = await this.uploadDraftFiles(pubReport, reportFile, attachments, paths);
+      newDraft.dimension = pubReport.dimensions[0];
+      newDraft.send_by = pubReport.dimensions[0].responsible;
+      newDraft.loaded_date = nowDate
+      pubReport.filled_reports.push(newDraft);
+    }
+    return await pubReport.save({ session });
   }
 }
 
