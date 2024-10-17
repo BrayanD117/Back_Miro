@@ -68,22 +68,30 @@ reportController.getReports = async (req, res) => {
 };
 
 reportController.createReport = async (req, res) => {
+  const session = await mongoose.startSession(); // Inicia una sesión de MongoDB
+  session.startTransaction(); // Inicia una transacción
+
   try {
     const { email } = req.body;
     const { name, description, requires_attachment, file_name } = req.body;
-    const user = await User.findOne({ email, activeRole: "Administrador" });
+
+    const user = await User.findOne({ email, activeRole: "Administrador" }).session(session); // Incluir la sesión en las consultas
 
     if (!user || user.activeRole !== "Administrador") {
+      await session.abortTransaction(); // Aborta la transacción si falla
+      session.endSession();
       return res
         .status(403)
         .json({ status: "User not found or isn't an Administrator" });
     }
 
     if (!req.file) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ status: "No file attached" });
     }
 
-    // Crea el informe
+    // Crea el informe, dentro de la sesión
     const newReport = new Report({
       name,
       description,
@@ -92,8 +100,8 @@ reportController.createReport = async (req, res) => {
       created_by: user,
     });
 
-    // Guarda el informe en la base de datos
-    await newReport.save();
+    // Guarda el informe en la base de datos dentro de la transacción
+    await newReport.save({ session });
 
     // Define la ruta en Google Drive y sube el archivo
     const destinationPath = `Reportes/Formatos`;
@@ -108,8 +116,12 @@ reportController.createReport = async (req, res) => {
     newReport.report_example_link = fileData.webViewLink;
     newReport.report_example_download = fileData.webContentLink;
 
-    // Guarda los cambios en el informe
-    await newReport.save();
+    // Guarda los cambios en el informe, también dentro de la transacción
+    await newReport.save({ session });
+
+    // Confirma la transacción solo si todo fue exitoso
+    await session.commitTransaction();
+    session.endSession();
 
     // Elimina el archivo local después de la subida exitosa
     fs.unlinkSync(req.file.path);
@@ -117,6 +129,10 @@ reportController.createReport = async (req, res) => {
     res.status(201).json({ status: "Report created" });
   } catch (error) {
     console.log(error);
+
+    // Aborta la transacción en caso de error y revierte los cambios
+    await session.abortTransaction();
+    session.endSession();
 
     // En caso de error, elimina el archivo si existe
     if (req.file) {
@@ -128,6 +144,7 @@ reportController.createReport = async (req, res) => {
       .json({ status: "Error creating report", error: error.message });
   }
 };
+
 
 reportController.updateReport = async (req, res) => {
   const session = await mongoose.startSession();
