@@ -417,11 +417,18 @@ publTempController.getFilledDataMergedForDimension = async (req, res) => {
       return res.status(404).json({ status: 'Published template not found' });
     }
 
+    const dependencies = await Dependency.find({ dep_code: { $in: template.loaded_data.map(data => data.dependency) } });
+
+    const depCodeToNameMap = dependencies.reduce((acc, dep) => {
+      acc[dep.dep_code] = dep.name;
+      return acc;
+    }, {});
+
     const data = template.loaded_data.map(data => {
       const filledData = data.filled_data.reduce((acc, item) => {
         item.values.forEach((value, index) => {
           if (!acc[index]) {
-            acc[index] = {Dependencia: data.dependency};
+            acc[index] = { Dependencia: depCodeToNameMap[data.dependency] || data.dependency };
           }
           acc[index][item.field_name] = value.$numberInt || value;
         });

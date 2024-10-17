@@ -341,7 +341,8 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
 
   try {
     const { email, publishedReportId, filledDraftId  } = req.body
-
+    const nowtime = datetime_now()
+    const nowdate = new Date(nowtime.toDateString())
     const user = UserService.findUserByEmailAndRole(email, "Responsable", session);
     if (!user) throw new Error("User not found or isn't an active responsible");
 

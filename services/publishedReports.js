@@ -1,6 +1,27 @@
+const Dimension = require("../models/dimensions");
+const PubReport = require("../models/publishedReports");
+
 class PublishedReportService {
-  static async findPublishedReportById(id, session) {
-    return await PubReport.findById(id).session(session);
+  static async findPublishedReportById(id, email, session) {
+    const pubReport = await PubReport
+      .findById(id)
+      .populate("period")
+      .populate({
+        path: "dimensions",
+        select: "name responsible",
+        match: { responsible: email },
+      })
+      .populate({
+        path: "filled_reports.dimension",
+        select: "name responsible",
+        match: { responsible: email },
+      })
+      .session(session);
+    
+    if(!pubReport.dimensions.length===0) {
+      throw new Error("User does not have access to this report.");
+    }
+    return pubReport;
   }
 
   static async findPublishedReports(session) {
@@ -31,7 +52,10 @@ class PublishedReportService {
     };
   }
 
-  static async uploadReportDraft(reportFile, attachments, nowDate, paths) {
+  static async uploadReportDraft(pubReport, reportFile, attachments, nowDate, paths) {
+    if(!reportFile) {
+      throw new Error("El archivo del reporte es requerido.");
+    }
     const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, paths);
     return {
       report_file: this.mapFileData(reportFileData),
@@ -40,7 +64,7 @@ class PublishedReportService {
     };
   }
 
-  static async updateDraft(draft, reportFile, attachments, paths) {
+  static async updateDraft(draft, reportFile, attachments, deletedReport, deletedAttachments, paths) {
     const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, paths);
     draft.report_file = this.mapFileData(reportFileData);
     draft.attachments = attachmentsData.map(this.mapFileData);
