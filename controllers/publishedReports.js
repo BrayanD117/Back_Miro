@@ -11,7 +11,7 @@ const {
   moveDriveFolder,
   deleteDriveFile,
   deleteDriveFiles,
-  updateFileInGoogleDrive
+  updateFileInGoogleDrive,
 } = require("../config/googleDrive");
 const UserService = require("../services/users");
 const PublishedReportService = require("../services/publishedReports");
@@ -340,23 +340,37 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { email, publishedReportId, filledDraftId  } = req.body
-    const nowtime = datetime_now()
-    const nowdate = new Date(nowtime.toDateString())
-    const user = UserService.findUserByEmailAndRole(email, "Responsable", session);
-    if (!user) throw new Error("User not found or isn't an active responsible");
+    const { email, publishedReportId, filledDraftId } = req.body;
+    const reportFile = req.files["reportFile"]
+      ? req.files["reportFile"][0]
+      : null;
+    const attachments = req.files["attachments"] || [];
+    const deletedReport = req.body.deletedReport ?? null;
+    const deletedAttachments = req.body.deletedAttachments ?? [];
 
-    const pubRep = PublishedReportService.findPublishedReportById(publishedReportId, session)
-    if (!pubRep) throw new Error("Published Report not found")
-    
-    const draft = PublishedReportService.findDraft(pubRep, filledDraftId, session)
-    
+    const user = await UserService.findUserByEmailAndRole(email, "Responsable", session);
+    const pubRep = await PublishedReportService.findPublishedReportById(publishedReportId,session);
+    let draft = await PublishedReportService.findDraft(pubRep,filledDraftId,session);
 
+    const nowtime = datetime_now();
+    const nowdate = new Date(nowtime.toDateString());
+    const basePath = `Reportes/Borradores/${pubRep.period.name}/${pubRep.report.name}
+      /${pubRep.dimensions[0].name}/${reportDraft ? reportDraft.loaded_date.toISOString() 
+      : now.toISOString()}`;
+    const paths = {
+      reportFilePath: basePath,
+      attachmentsPath: `${basePath}/Anexos`,
+    };
+
+    if (draft) {
+      draft = await PublishedReportService.updateDraft(
+        draft,reportFile,attachments,deletedReport,deletedAttachments,paths);
+    }
   } catch (error) {
     console.log(error);
     res.status(500).json({
       status: "Error loading responsible report draft",
-      error: error.message
+      error: error.message,
     });
   }
   //TODO Method for loading drafts
@@ -365,7 +379,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
   //Check if is first load or update
   //If is update, check which have to be deleted and/or added
   //Save report in db
-  //All report must have, a report file and an array 
+  //All report must have, a report file and an array
   //of attachments with the corresponding description
   //Something like this if new: [ {file?: {...}, description: ...} ]
   //It is only possible if: no previous draft, status is draft, status is rejected
@@ -375,16 +389,22 @@ pubReportController.setFilledReportStatus = async (req, res) => {
   try {
     const { email, reportId, filledRepId, observations } = req.body;
 
-    const user = await User.findOne({ email, isActive: true, activeRole: 'Administrador' })
+    const user = await User.findOne({
+      email,
+      isActive: true,
+      activeRole: "Administrador",
+    });
     if (!user) {
-      return res.status(403).json({ status: "User not found or isn't an active administrator" });
+      return res
+        .status(403)
+        .json({ status: "User not found or isn't an active administrator" });
     }
 
     const publishedReport = await PubReport.findById(reportId)
       .where("filled_reports")
       .elemMatch({ _id: filledRepId })
       .exec();
-    
+
     if (!publishedReport) {
       return res.status(404).json({ status: "Published Report not found" });
     }
@@ -394,13 +414,15 @@ pubReportController.setFilledReportStatus = async (req, res) => {
       return res.status(404).json({ status: "Filled Report not found" });
     }
 
-    console.log('This is the filled report ', filledReport);
+    console.log("This is the filled report ", filledReport);
 
     const now = datetime_now();
     filledReport.status = req.body.status;
     filledReport.status_date = now;
     if (req.body.status === "Rechazado" && !req.body.observations) {
-      return res.status(400).json({ status: "Observations are required for rejected reports" });
+      return res
+        .status(400)
+        .json({ status: "Observations are required for rejected reports" });
     }
     filledReport.observations = observations;
     filledReport.evaluated_by = user;
@@ -414,15 +436,21 @@ pubReportController.setFilledReportStatus = async (req, res) => {
       error: error.message,
     });
   }
-}
+};
 
 pubReportController.deletePublishedReport = async (req, res) => {
   try {
     const { reportId } = req.params;
     const { email } = req.query;
-    const user = await User.findOne({ email, isActive: true, activeRole: 'Administrador' })
+    const user = await User.findOne({
+      email,
+      isActive: true,
+      activeRole: "Administrador",
+    });
     if (!user) {
-      return res.status(403).json({ status: "User not found or isn't an active administrator" });
+      return res
+        .status(403)
+        .json({ status: "User not found or isn't an active administrator" });
     }
     console.log(req.params);
     const publishedReport = await PubReport.findById(reportId);
@@ -430,8 +458,12 @@ pubReportController.deletePublishedReport = async (req, res) => {
       return res.status(404).json({ status: "Published Report not found" });
     }
 
-    if(publishedReport.filled_reports.length > 0) {
-      return res.status(400).json({ status: "Cannot delete a published report with filled reports" });
+    if (publishedReport.filled_reports.length > 0) {
+      return res
+        .status(400)
+        .json({
+          status: "Cannot delete a published report with filled reports",
+        });
     }
 
     await publishedReport.remove();
@@ -440,10 +472,10 @@ pubReportController.deletePublishedReport = async (req, res) => {
     console.log(error);
     res.status(500).json({
       status: "Error deleting published report",
-      error: error.message
+      error: error.message,
     });
   }
-}
+};
 
 pubReportController.getHistory = async (req, res) => {
   try {
@@ -451,15 +483,15 @@ pubReportController.getHistory = async (req, res) => {
 
     const publishedReport = await PubReport.findById(reportId)
       .where("filled_reports")
-      .elemMatch({ dimension: dimensionId, status: { $ne: "En Borrador" }})
-      .populate(path = "filled_reports.dimension", select = "name")
+      .elemMatch({ dimension: dimensionId, status: { $ne: "En Borrador" } })
+      .populate((path = "filled_reports.dimension"), (select = "name"))
       .exec();
 
     if (!publishedReport) {
       return res.status(404).json({ status: "Published Report not found" });
     }
 
-    res.status(200).json(publishedReport.filled_reports);    
+    res.status(200).json(publishedReport.filled_reports);
   } catch (error) {
     console.log(error);
     res.status(500).json({
@@ -467,6 +499,6 @@ pubReportController.getHistory = async (req, res) => {
       error: error.message,
     });
   }
-}
+};
 
-module.exports = pubReportController
+module.exports = pubReportController;

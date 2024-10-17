@@ -1,3 +1,4 @@
+const { uploadFileToGoogleDrive, uploadFilesToGoogleDrive, deleteDriveFile, deleteDriveFiles } = require("../config/googleDrive");
 const Dimension = require("../models/dimensions");
 const PubReport = require("../models/publishedReports");
 
@@ -18,7 +19,11 @@ class PublishedReportService {
       })
       .session(session);
     
-    if(!pubReport.dimensions.length===0) {
+    if(!pubReport) {
+      throw new Error("Report not found.");
+    }
+
+    if(pubReport.dimensions.length===0) {
       throw new Error("User does not have access to this report.");
     }
     return pubReport;
@@ -53,9 +58,6 @@ class PublishedReportService {
   }
 
   static async uploadReportDraft(pubReport, reportFile, attachments, nowDate, paths) {
-    if(!reportFile) {
-      throw new Error("El archivo del reporte es requerido.");
-    }
     const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, paths);
     return {
       report_file: this.mapFileData(reportFileData),
@@ -66,8 +68,18 @@ class PublishedReportService {
 
   static async updateDraft(draft, reportFile, attachments, deletedReport, deletedAttachments, paths) {
     const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, paths);
-    draft.report_file = this.mapFileData(reportFileData);
-    draft.attachments = attachmentsData.map(this.mapFileData);
+    draft.attachments.unshift(...attachmentsData.map(this.mapFileData))
+    if(deletedReport) {
+      await deleteDriveFile(deletedReport);
+      delete draft.report_file
+    }
+    if(deletedAttachments) {
+      await deleteDriveFiles(deletedAttachments);
+      draft.attachments = draft.attachments.filter((attachment) => !deletedAttachments.includes(attachment.id));
+    }
+    if(report_file) {
+      draft.report_file = this.mapFileData(reportFileData);
+    }
     return draft;
   }
 }
