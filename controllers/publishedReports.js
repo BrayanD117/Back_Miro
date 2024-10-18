@@ -273,12 +273,9 @@ pubReportController.getLoadedReportsResponsible = async (req, res) => {
 };
 
 pubReportController.getPublishedReport = async (req, res) => {
-  const { id } = req.params;
+  const { id, email } = req.query;
   try {
-    const publishedReport = await PubReport.findById(id);
-    if (!publishedReport) {
-      return res.status(404).json({ status: "Published Report not found" });
-    }
+    const publishedReport = await PublishedReportService.findPublishedReportById(id, email, null);
     res.status(200).json(publishedReport);
   } catch (error) {
     console.log(error);
