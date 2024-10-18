@@ -33,9 +33,9 @@ class PublishedReportService {
     return await PubReport.find().session(session);
   }
 
-  static async findDraft(publishedReport, filledRepId) {
+  static async findDraft(publishedReport) {
     return publishedReport.filled_reports.find(
-      (filledReport) => filledReport._id.toString() === filledRepId && filledReport.status === "En Borrador"
+      (filledReport) => filledReport.status === "En Borrador"
     );
   }
 
@@ -57,7 +57,7 @@ class PublishedReportService {
     };
   }
 
-  static async uploadDraftFiles(pubReport, reportFile, attachments, paths) {
+  static async uploadDraftFiles(reportFile, attachments, paths) {
     const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, paths);
     return {
       report_file: this.mapFileData(reportFileData),
@@ -89,15 +89,19 @@ class PublishedReportService {
     const draft = await this.findDraft(pubReport, filledRepId);
     if(draft) {
       const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments);
-      pubReport.filled_reports.id(filledRepId).set(updatedDraft);
+      const existingReport = pubReport.filled_reports.id(filledRepId);
+      const updatedReport = Object.assign(
+        existingReport, updatedDraft, { loaded_date: nowDate }
+      );
+      pubReport.filled_reports.id(filledRepId).set(updatedReport);
     } else {
-      const newDraft = await this.uploadDraftFiles(pubReport, reportFile, attachments, paths);
+      const newDraft = await this.uploadDraftFiles(reportFile, attachments, paths);
       newDraft.dimension = pubReport.dimensions[0];
       newDraft.send_by = pubReport.dimensions[0].responsible;
       newDraft.loaded_date = nowDate
       pubReport.filled_reports.push(newDraft);
     }
-    return await pubReport.save({ session });
+    await pubReport.save({ session });
   }
 }
 

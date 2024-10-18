@@ -348,8 +348,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     const deletedReport = req.body.deletedReport ?? null;
     const deletedAttachments = req.body.deletedAttachments ?? [];
 
-    const user = await UserService.findUserByEmailAndRole(email, "Responsable", session);
-    const pubRep = await PublishedReportService.findPublishedReportById(publishedReportId,session);
+    const pubRep = await PublishedReportService.findPublishedReportById(publishedReportId, email, session);
     let draft = await PublishedReportService.findDraft(pubRep,filledDraftId,session);
 
     const nowtime = datetime_now();
@@ -362,17 +361,14 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       attachmentsPath: `${basePath}/Anexos`,
     };
 
-    if (draft) {
-      const files = await PublishedReportService.updateDraftFiles(
-        draft,reportFile,attachments,deletedReport,deletedAttachments,paths
-      );
-    } else {
-      const files = await PublishedReportService.uploadDraftFiles(
-        pubRep,reportFile,attachments,nowtime,paths
-      );
-      pubRep.filled_reports.push(draft);
-    }
+    await PublishedReportService.upsertReportDraft(pubRep, draft, reportFile, attachments, deletedReport, deletedAttachments, paths, session);
+
+    await session.commitTransaction();
+    session.endSession();
+    res.status(200).json({ status: "Responsible report draft loaded" });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.log(error);
     res.status(500).json({
       status: "Error loading responsible report draft",
