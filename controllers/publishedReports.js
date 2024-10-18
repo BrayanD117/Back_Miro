@@ -16,6 +16,7 @@ const {
 const UserService = require("../services/users");
 const PublishedReportService = require("../services/publishedReports");
 const { attachment } = require("express/lib/response");
+const PeriodService = require("../services/period");
 
 const pubReportController = {};
 
@@ -348,20 +349,24 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     const deletedReport = req.body.deletedReport ?? null;
     const deletedAttachments = req.body.deletedAttachments ?? [];
 
-    const pubRep = await PublishedReportService.findPublishedReportById(publishedReportId, email, session);
-    let draft = await PublishedReportService.findDraft(pubRep,filledDraftId,session);
-
     const nowtime = datetime_now();
     const nowdate = new Date(nowtime.toDateString());
+
+    const pubRep = await PublishedReportService.findPublishedReportById(publishedReportId, email, session);
+    await PeriodService.validatePeriodResponsible(pubRep, nowdate);
+    
+    const draft = await PublishedReportService.findDraft(pubRep,filledDraftId,session);
     const basePath = `Reportes/Borradores/${pubRep.period.name}/${pubRep.report.name}
       /${pubRep.dimensions[0].name}/${reportDraft ? reportDraft.loaded_date.toISOString() 
-      : now.toISOString()}`;
+      : nowtime.toISOString()}`;
     const paths = {
       reportFilePath: basePath,
       attachmentsPath: `${basePath}/Anexos`,
     };
 
-    await PublishedReportService.upsertReportDraft(pubRep, draft, reportFile, attachments, deletedReport, deletedAttachments, paths, session);
+    await PublishedReportService.upsertReportDraft(pubRep, draft, reportFile, attachments, 
+      deletedReport, deletedAttachments, nowtime, paths, session
+    );
 
     await session.commitTransaction();
     session.endSession();
@@ -383,7 +388,6 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
   //Save report in db
   //All report must have, a report file and an array
   //of attachments with the corresponding description
-  //Something like this if new: [ {file?: {...}, description: ...} ]
   //It is only possible if: no previous draft, status is draft, status is rejected
 };
 

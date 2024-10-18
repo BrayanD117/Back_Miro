@@ -15,3 +15,5 @@ class PeriodService {
     }
   }
 }
+
+module.exports = PeriodService;
