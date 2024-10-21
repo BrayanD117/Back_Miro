@@ -164,6 +164,39 @@ userController.getProducers = async (req, res) => {
     
 }
 
+userController.updateUsersToProducer = async (req, res) => {
+    const rolesToUpdate = req.body;
+    try {
+        const updatePromises = rolesToUpdate.map(async ({ email, roles }) => {
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            throw new Error(`User not found: ${email}`);
+        }
+
+        const updatedRoles = new Set(user.roles);
+
+        if (roles.includes("Productor")) {
+            updatedRoles.add("Productor");
+        } else {
+            updatedRoles.delete("Productor");
+        }
+
+        user.roles = Array.from(updatedRoles);
+        await user.save();
+
+        return user;
+        });
+
+        const updatedUsers = await Promise.all(updatePromises);
+
+        res.status(200).json({ message: "Roles updated successfully", users: updatedUsers });
+    } catch (error) {
+        console.error("Error updating roles:", error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
 userController.updateUserActiveRole = async (req, res) => {
     const email = req.body.email;
     const activeRole = req.body.activeRole;
