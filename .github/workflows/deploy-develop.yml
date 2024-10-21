@@ -66,8 +66,7 @@ jobs:
       run: |
         sshpass -p "${{ secrets.INTERNAL_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ secrets.INTERNAL_USER }}@${{ secrets.INTERNAL_RESOURCE_IP }} '
           cd ~/MIRO_TEST/Back_Miro_Test;
-          pm2 stop Back_Dev;
-          pm2 startOrRestart ecosystem.config.js --env development;
+          pm2 restart Back_Dev;
           exit;'
 
     - name: Post Checkout repository
