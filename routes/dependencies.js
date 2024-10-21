@@ -8,6 +8,8 @@ router.get("/all", controller.getDependencies)
 
 router.get("/", controller.getDependency)
 
+router.get("/responsible", controller.getDependencyByResponsible);
+
 router.get("/:id", controller.getDependencyById);
 
 router.post("/updateAll", controller.loadDependencies)

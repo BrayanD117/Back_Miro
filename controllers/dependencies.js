@@ -42,6 +42,23 @@ dependencyController.getDependency = async (req, res) => {
   }
 };
 
+dependencyController.getDependencyByResponsible = async (req, res) => {
+  const email = req.query.email;
+  console.log("Fetching dependency for responsible:", email);
+  try {
+    const dependency = await Dependency.findOne({ responsible: email });
+    if (!dependency) {
+      console.log(`No dependency found for responsible: ${email}`);
+      return res.status(404).json({ status: "Dependency not found" });
+    }
+    console.log("Found dependency:", dependency);
+    res.status(200).json(dependency);
+  } catch (error) {
+    console.error("Error fetching dependency by responsible:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 dependencyController.getDependencyById = async (req, res) => {
   const { id } = req.params;
   try {
