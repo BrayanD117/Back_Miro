@@ -76,7 +76,7 @@ class PublishedReportService {
       await deleteDriveFiles(deletedAttachments);
       draft.attachments = draft.attachments.filter((attachment) => !deletedAttachments.includes(attachment.id));
     }
-    if(report_file) {
+    if(reportFile) {
       draft.report_file = this.mapFileData(reportFileData);
     }
     return draft;
@@ -103,6 +103,7 @@ class PublishedReportService {
     }
     await pubReport.save({ session });
   }
+
 }
 
 module.exports = PublishedReportService;

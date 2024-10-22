@@ -338,7 +338,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { email, publishedReportId, filledDraftId } = req.body;
+    const { email, publishedReportId, filledDraft } = req.body;
     const reportFile = req.files["reportFile"]
       ? req.files["reportFile"][0]
       : null;
@@ -352,14 +352,23 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     const pubRep = await PublishedReportService.findPublishedReportById(publishedReportId, email, session);
     await PeriodService.validatePeriodResponsible(pubRep, nowdate);
     
-    const draft = await PublishedReportService.findDraft(pubRep,filledDraftId,session);
+    const draft = await PublishedReportService.findDraft(pubRep, filledDraft._id,session);
     const basePath = `Reportes/Borradores/${pubRep.period.name}/${pubRep.report.name}
-      /${pubRep.dimensions[0].name}/${reportDraft ? reportDraft.loaded_date.toISOString() 
+      /${pubRep.dimensions[0].name}/${draft ? draft.loaded_date.toISOString() 
       : nowtime.toISOString()}`;
     const paths = {
       reportFilePath: basePath,
       attachmentsPath: `${basePath}/Anexos`,
     };
+
+    draft.attachments.forEach((draftAttachment) => {
+      const filledAttachment = filledDraft?.attachments?.find(
+        (attachment) => attachment._id.toString() === draftAttachment._id.toString()
+      );
+      if (filledAttachment) {
+        draftAttachment.description = filledAttachment.description;
+      }
+    });
 
     await PublishedReportService.upsertReportDraft(pubRep, draft, reportFile, attachments, 
       deletedReport, deletedAttachments, nowtime, paths, session
@@ -372,20 +381,12 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     await session.abortTransaction();
     session.endSession();
     console.log(error);
+    
     res.status(500).json({
       status: "Error loading responsible report draft",
       error: error.message,
     });
   }
-  //TODO Method for loading drafts
-  //Save report in google drive and return data
-  //Save attachments in google drive and return data
-  //Check if is first load or update
-  //If is update, check which have to be deleted and/or added
-  //Save report in db
-  //All report must have, a report file and an array
-  //of attachments with the corresponding description
-  //It is only possible if: no previous draft, status is draft, status is rejected
 };
 
 pubReportController.setFilledReportStatus = async (req, res) => {

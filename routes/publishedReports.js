@@ -4,7 +4,7 @@ const fileUpload = require('../config/fileReceive')
 
 router.get("/all", controller.getPublishedReports)
 router.get("/responsible", controller.getPublishedReportsResponsible)
-router.put("/responsible/load", fileUpload.fields([
+router.put("/responsible/loadDraft", fileUpload.fields([
     { name: 'reportFile', maxCount: 1 },
     { name: 'attachments' }
 ]), controller.loadResponsibleReportDraft)
