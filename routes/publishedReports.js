@@ -8,7 +8,7 @@ router.put("/responsible/loadDraft", fileUpload.fields([
     { name: 'reportFile', maxCount: 1 },
     { name: 'attachments' }
 ]), controller.loadResponsibleReportDraft)
-//router.put("/responsible/send", controller.sendResponsibleReportDraft)
+router.put("/responsible/sendReport", controller.sendResponsibleReport)
 router.get("/responsible/loaded", controller.getLoadedReportsResponsible)
 router.post("/publish", controller.publishReport)
 router.get("/feed", controller.feedOptionsForPublish)

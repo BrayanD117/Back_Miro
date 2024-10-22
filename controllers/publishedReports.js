@@ -338,7 +338,10 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { email, publishedReportId, newAttachmentsDescriptions } = req.body;
+    let { email, publishedReportId, newAttachmentsDescriptions } = req.body;
+    if (!Array.isArray(newAttachmentsDescriptions)) {
+      newAttachmentsDescriptions = [newAttachmentsDescriptions];
+    }
     const filledDraft = JSON.parse(req.body.filledDraft ?? "");
     const reportFile = req.files["reportFile"]
       ? req.files["reportFile"][0]
@@ -366,7 +369,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
       attachmentsPath: `${basePath}/Anexos`,
     };
 
-    draft.attachments.forEach((draftAttachment) => {
+    draft?.attachments?.forEach((draftAttachment) => {
       const filledAttachment = filledDraft?.attachments?.find(
         (attachment) => attachment._id.toString() === draftAttachment._id.toString()
       );
@@ -393,6 +396,30 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     });
   }
 };
+
+pubReportController.sendResponsibleReport = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { email, publishedReportId, filledDraftId } = req.body;
+    
+    await PublishedReportService.sendResponsibleReportDraft(email, publishedReportId, filledDraftId, datetime_now(), session)
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(200).json({ status: "Responsible report draft sent" });
+  } catch(error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.log(error);
+    res.status(500).json({
+      status: "Error sending responsible report draft",
+      error: error.message,
+    });
+  }
+}
 
 pubReportController.setFilledReportStatus = async (req, res) => {
   try {

@@ -1,6 +1,7 @@
-const { uploadFileToGoogleDrive, uploadFilesToGoogleDrive, deleteDriveFile, deleteDriveFiles } = require("../config/googleDrive");
+const { uploadFileToGoogleDrive, uploadFilesToGoogleDrive, deleteDriveFile, deleteDriveFiles, moveDriveFolder } = require("../config/googleDrive");
 const Dimension = require("../models/dimensions");
 const PubReport = require("../models/publishedReports");
+const UserService = require("./users");
 
 class PublishedReportService {
   static async findPublishedReportById(id, email, session) {
@@ -39,6 +40,10 @@ class PublishedReportService {
     );
   }
 
+  static async findDraftById(publishedReport, filledRepId) {
+    return publishedReport.filled_reports.id(filledRepId);
+  }
+
   static async uploadReportAndAttachments(reportFile, attachments, paths) {
     return Promise.all([
       reportFile ? uploadFileToGoogleDrive(reportFile, paths.reportFilePath, reportFile.originalname) : Promise.resolve({}),
@@ -62,6 +67,7 @@ class PublishedReportService {
     return {
       report_file: this.mapFileData(reportFileData),
       attachments: attachmentsData.map(this.mapFileData),
+      folder_id: reportFileData.parents[0]
     };
   }
 
@@ -91,7 +97,7 @@ class PublishedReportService {
       const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, paths);
       const existingReport = pubReport.filled_reports.id(filledRepId);
       const updatedReport = Object.assign(
-        existingReport, updatedDraft, { loaded_date: nowDate }
+        existingReport, updatedDraft, { loaded_date: nowDate, status_date: nowDate }
       );
       pubReport.filled_reports.id(filledRepId).set(updatedReport);
     } else {
@@ -99,9 +105,47 @@ class PublishedReportService {
       newDraft.dimension = pubReport.dimensions[0];
       newDraft.send_by = pubReport.dimensions[0].responsible;
       newDraft.loaded_date = nowDate
+      newDraft.status_date = nowDate
       pubReport.filled_reports.push(newDraft);
     }
     await pubReport.save({ session });
+  }
+
+  static async sendResponsibleReportDraft(email, publishedReportId, filledDraftId, nowtime, session) {
+    const user = await UserService.findUserByEmailAndRole(email, "Responsable");
+    const pubRep = await this.findPublishedReportById(publishedReportId, email, session);
+    const draft = await this.findDraftById(pubRep, filledDraftId);
+
+    console.log(filledDraftId)
+
+
+    const ancestorId = await moveDriveFolder(draft.folder_id,
+      `Reportes/${pubRep.period.name}/${pubRep.report.name}/${pubRep.dimensions[0].name}/${nowtime.toISOString()}`);
+
+    if (!draft.report_file) {
+      throw new Error("Draft must have a report file.");
+    }
+
+    if (pubRep.report.requires_attachment && 
+      (!draft.attachments || draft.attachments.length === 0)) {
+      throw new Error("Draft must have at least one attachment.");
+    }
+
+    draft.attachments.forEach((attachment) => {
+      if (!attachment.description || attachment.description.trim() === "") {
+      throw new Error("Each attachment must have a non-empty description.");
+      }
+    });
+
+    draft.status = "En Revisión";
+    draft.loaded_date = nowtime;
+    draft.send_by = user;
+
+    if(!pubRep.folder_id) {
+      pubRep.folder_id = ancestorId;
+    }
+
+    await pubRep.save({ session });
   }
 
 }
