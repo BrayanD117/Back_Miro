@@ -338,13 +338,18 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { email, publishedReportId, filledDraft } = req.body;
+    const { email, publishedReportId, newAttachmentsDescriptions } = req.body;
+    const filledDraft = JSON.parse(req.body.filledDraft ?? "");
     const reportFile = req.files["reportFile"]
       ? req.files["reportFile"][0]
       : null;
     const attachments = req.files["attachments"] || [];
     const deletedReport = req.body.deletedReport ?? null;
     const deletedAttachments = req.body.deletedAttachments ?? [];
+
+    attachments.forEach((attachment, index) => {
+      attachment.description = newAttachmentsDescriptions[index] || "";
+    });
 
     const nowtime = datetime_now();
     const nowdate = new Date(nowtime.toDateString());
@@ -369,7 +374,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
         draftAttachment.description = filledAttachment.description;
       }
     });
-
+    console.log(filledDraft)
     await PublishedReportService.upsertReportDraft(pubRep, draft, reportFile, attachments, 
       deletedReport, deletedAttachments, nowtime, paths, session
     );

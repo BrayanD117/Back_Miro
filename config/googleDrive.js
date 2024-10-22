@@ -86,6 +86,8 @@ const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
   console.log(Buffer.from(name, "utf8").toString());
   let ancestorId;
 
+  console.log("File keys", Object.keys(file));
+
   for (let i = 0; i < folders.length; i++) {
     parentId = await getOrCreateFolderWithLock(folders[i], parentId);
     if (i === folders.length - 2) {

@@ -88,7 +88,7 @@ class PublishedReportService {
   ) {
     const draft = await this.findDraft(pubReport, filledRepId);
     if(draft) {
-      const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments);
+      const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, paths);
       const existingReport = pubReport.filled_reports.id(filledRepId);
       const updatedReport = Object.assign(
         existingReport, updatedDraft, { loaded_date: nowDate }
