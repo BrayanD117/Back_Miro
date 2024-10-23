@@ -106,7 +106,7 @@ class PublishedReportService {
       newDraft.send_by = pubReport.dimensions[0].responsible;
       newDraft.loaded_date = nowDate
       newDraft.status_date = nowDate
-      pubReport.filled_reports.push(newDraft);
+      pubReport.filled_reports.unshift(newDraft);
     }
     await pubReport.save({ session });
   }
