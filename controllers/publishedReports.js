@@ -116,6 +116,77 @@ pubReportController.getPublishedReports = async (req, res) => {
   }
 };
 
+pubReportController.getAdminPublishedReportById = async (req, res) => {
+  try {
+    const { email, reportId } = req.query;
+
+    // Verificar si el usuario es un administrador o Productor activo
+    const user = await User.findOne({
+      email,
+      activeRole: { $in: ["Administrador"] },
+      isActive: true,
+    });
+    if (!user) {
+      return res.status(403).json({
+        status: "User not found or isn't an Administrator or Producer",
+      });
+    }
+
+    // Buscar el reporte por su id
+    const report = await PubReport.findById(reportId)
+      .populate("period")
+      .populate({
+        path: "dimensions",
+        select: "name responsible",
+      })
+      .populate({
+        path: "filled_reports.dimension",
+        select: "name responsible",
+      })
+      .exec();
+
+    if (!report) {
+      return res.status(404).json({
+        status: "Report not found",
+      });
+    }
+
+    // Filtrar los filled_reports que no estén en "En Borrador"
+    report.filled_reports = report.filled_reports.filter(
+      (fr) => fr.status !== "En Borrador"
+    );
+
+    // Ordenar los filled_reports por fecha (asumiendo que tienen una propiedad 'date')
+    report.filled_reports.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Eliminar duplicados de filled_reports basados en 'dimension'
+    const uniqueFilledReports = [];
+    const seenDimensions = new Set();
+
+    report.filled_reports.forEach((fr) => {
+      if (!seenDimensions.has(fr.dimension.toString())) {
+        uniqueFilledReports.push(fr);
+        seenDimensions.add(fr.dimension.toString());
+      }
+    });
+
+    report.filled_reports = uniqueFilledReports;
+
+    // Responder con el reporte encontrado
+    res.status(200).json({
+      status: "success",
+      report,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      status: "Error getting the report",
+      error: error.message,
+    });
+  }
+};
+
+
 pubReportController.getPublishedReportsResponsible = async (req, res) => {
   try {
     const { email, page = 1, limit = 10, search = "" } = req.query;
