@@ -76,7 +76,8 @@ class PublishedReportService {
     draft.attachments.push(...attachmentsData.map(this.mapFileData))
     if(deletedReport) {
       await deleteDriveFile(deletedReport);
-      delete draft.report_file
+      draft.report_file = undefined
+      console.log("Geeasdad", draft)
     }
     if(deletedAttachments) {
       await deleteDriveFiles(deletedAttachments);
