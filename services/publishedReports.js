@@ -53,12 +53,12 @@ class PublishedReportService {
   
   static mapFileData(fileHandle) {
     return {
-      id: fileHandle.id,
-      name: fileHandle.name,
-      view_link: fileHandle.webViewLink,
-      download_link: fileHandle.webContentLink,
-      folder_id: fileHandle.parents[0],
-      description: fileHandle.description
+      id: fileHandle?.id,
+      name: fileHandle?.name,
+      view_link: fileHandle?.webViewLink,
+      download_link: fileHandle?.webContentLink,
+      folder_id: fileHandle?.parents[0],
+      description: fileHandle?.description
     };
   }
 
