@@ -67,7 +67,7 @@ class PublishedReportService {
     return {
       report_file: this.mapFileData(reportFileData),
       attachments: attachmentsData.map(this.mapFileData),
-      folder_id: reportFileData?.parents[0]
+      folder_id: reportFileData.folder_id
     };
   }
 
