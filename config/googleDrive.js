@@ -86,12 +86,7 @@ const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
   console.log(Buffer.from(name, "utf8").toString());
   let ancestorId;
 
-  const files = await driveService.files.get({
-    fileId: "1Vjmmc-W-36ZRArgzs0jAm9g-yIBWrqcJ",
-    fields: "parents",
-  });
-
-  console.log(files.data.parents);
+  console.log("File keys", Object.keys(file));
 
   for (let i = 0; i < folders.length; i++) {
     parentId = await getOrCreateFolderWithLock(folders[i], parentId);
@@ -119,7 +114,7 @@ const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
     supportsAllDrives: true,
   });
 
-  return { ...response.data, reportFolderId: ancestorId };
+  return { ...response.data, reportFolderId: ancestorId, description: file.description };
 };
 
 const uploadFilesToGoogleDrive = async (files, destinationPath) => {
@@ -221,6 +216,7 @@ module.exports = {
   uploadFileToGoogleDrive,
   uploadFilesToGoogleDrive,
   moveDriveFolder,
+  deleteDriveFile,
   deleteDriveFiles,
   updateFileInGoogleDrive
 };
