@@ -10,8 +10,9 @@ const fileUpload = multer({
       cb(null, file.originalname);
     },
   }),
+  //50 MB limit size
   limits: {
-    fileSize: 1024 * 1024 * 5,
+    fileSize: 1024 * 1024 * 50,
   },
 });
 
