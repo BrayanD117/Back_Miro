@@ -65,7 +65,7 @@ class PublishedReportService {
   static async uploadDraftFiles(reportFile, attachments, paths) {
     const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, paths);
     return {
-      report_file: this.mapFileData(reportFileData),
+      report_file: reportFile ? this.mapFileData(reportFileData) : undefined,
       attachments: attachmentsData.map(this.mapFileData),
       folder_id: reportFileData.folder_id
     };
