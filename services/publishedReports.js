@@ -57,7 +57,7 @@ class PublishedReportService {
       name: fileHandle?.name,
       view_link: fileHandle?.webViewLink,
       download_link: fileHandle?.webContentLink,
-      folder_id: fileHandle?.parents[0],
+      folder_id: fileHandle?.parents ? fileHandle.parents[0] : undefined,
       description: fileHandle?.description
     };
   }
