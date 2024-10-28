@@ -432,13 +432,9 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     await PeriodService.validatePeriodResponsible(pubRep, nowdate);
     
     const draft = await PublishedReportService.findDraft(pubRep, filledDraft._id,session);
-    const basePath = `Reportes/Borradores/${pubRep.period.name}/${pubRep.report.name}
+    const path = `Reportes/Borradores/${pubRep.period.name}/${pubRep.report.name}
       /${pubRep.dimensions[0].name}/${draft ? draft.loaded_date.toISOString() 
       : nowtime.toISOString()}`;
-    const paths = {
-      reportFilePath: basePath,
-      attachmentsPath: `${basePath}/Anexos`,
-    };
 
     draft?.attachments?.forEach((draftAttachment) => {
       const filledAttachment = filledDraft?.attachments?.find(
@@ -450,7 +446,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     });
     console.log(filledDraft)
     await PublishedReportService.upsertReportDraft(pubRep, draft, reportFile, attachments, 
-      deletedReport, deletedAttachments, nowtime, paths, session
+      deletedReport, deletedAttachments, nowtime, path, session
     );
 
     await session.commitTransaction();

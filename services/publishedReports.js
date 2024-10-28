@@ -44,10 +44,10 @@ class PublishedReportService {
     return publishedReport.filled_reports.id(filledRepId);
   }
 
-  static async uploadReportAndAttachments(reportFile, attachments, paths) {
+  static async uploadReportAndAttachments(reportFile, attachments, path) {
     return Promise.all([
-      reportFile ? uploadFileToGoogleDrive(reportFile, paths.reportFilePath, reportFile.originalname) : Promise.resolve({}),
-      attachments.length > 0 ? uploadFilesToGoogleDrive(attachments, paths.attachmentsPath) : Promise.resolve([])
+      reportFile ? uploadFileToGoogleDrive(reportFile, path, reportFile.originalname) : Promise.resolve({}),
+      attachments.length > 0 ? uploadFilesToGoogleDrive(attachments, path) : Promise.resolve([])
     ]);
   }
   
@@ -62,17 +62,17 @@ class PublishedReportService {
     };
   }
 
-  static async uploadDraftFiles(reportFile, attachments, paths) {
-    const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, paths);
+  static async uploadDraftFiles(reportFile, attachments, path) {
+    const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, path);
     return {
       report_file: reportFile ? this.mapFileData(reportFileData) : undefined,
       attachments: attachmentsData.map(this.mapFileData),
-      folder_id: reportFileData.folder_id
+      folder_id: reportFileData.folder_id ? reportFileData.folder_id : attachmentsData[0].folder_id
     };
   }
 
-  static async updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, paths) {
-    const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, paths);
+  static async updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, path) {
+    const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, path);
     draft.attachments.push(...attachmentsData.map(this.mapFileData))
     if(deletedReport) {
       await deleteDriveFile(deletedReport);
@@ -91,18 +91,18 @@ class PublishedReportService {
 
   static async upsertReportDraft(
     pubReport, filledRepId, reportFile, attachments, deletedReport, deletedAttachments, nowDate, 
-    paths, session
+    path, session
   ) {
     const draft = await this.findDraft(pubReport, filledRepId);
     if(draft) {
-      const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, paths);
+      const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, path);
       const existingReport = pubReport.filled_reports.id(filledRepId);
       const updatedReport = Object.assign(
         existingReport, updatedDraft, { loaded_date: nowDate, status_date: nowDate }
       );
       pubReport.filled_reports.id(filledRepId).set(updatedReport);
     } else {
-      const newDraft = await this.uploadDraftFiles(reportFile, attachments, paths);
+      const newDraft = await this.uploadDraftFiles(reportFile, attachments, path);
       newDraft.dimension = pubReport.dimensions[0];
       newDraft.send_by = pubReport.dimensions[0].responsible;
       newDraft.loaded_date = nowDate

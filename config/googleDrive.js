@@ -15,17 +15,15 @@ const driveService = drive({
   auth: auth,
 });
 
-const folderCache = new Map();
+const mutex = {};
 
-const getOrCreateFolder = async (folderName, parentId) => {
-  const cacheKey = `${parentId}-${folderName}`;
-
-  // Revisa si la carpeta ya está en la caché
-  if (folderCache.has(cacheKey)) {
-    return folderCache.get(cacheKey);
+const getOrCreateFolder = async (folderName, parentId, folderId = null) => {
+  // Usa el folderId directamente si está disponible
+  if (folderId) {
+    return folderId;
   }
 
-  // Realiza la búsqueda de la carpeta en Google Drive
+  // Si no hay folderId, realiza la búsqueda en Google Drive
   const query = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and '${parentId}' in parents and trashed = false`;
   const res = await driveService.files.list({
     q: query,
@@ -34,13 +32,9 @@ const getOrCreateFolder = async (folderName, parentId) => {
     includeItemsFromAllDrives: true,
   });
 
-  let folderId;
-
-  // Si la carpeta existe, obten el ID
   if (res.data.files.length > 0) {
-    folderId = res.data.files[0].id;
+    return res.data.files[0].id;
   } else {
-    // Si no existe, crea la carpeta
     const folderMetadata = {
       name: folderName,
       mimeType: "application/vnd.google-apps.folder",
@@ -53,43 +47,34 @@ const getOrCreateFolder = async (folderName, parentId) => {
       supportsAllDrives: true,
     });
 
-    folderId = folder.data.id; // Asigna el ID del folder creado
+    return folder.data.id;
   }
-
-  // Almacena el folderId en la caché
-  folderCache.set(cacheKey, folderId);
-
-  return folderId;
 };
 
-const mutex = {};
-const getOrCreateFolderWithLock = async (folderName, parentId) => {
+const getOrCreateFolderWithLock = async (folderName, parentId, folderId = null) => {
   const key = `${parentId}/${folderName}`;
   if (!mutex[key]) {
     mutex[key] = new Promise(async (resolve, reject) => {
       try {
-        const folderId = await getOrCreateFolder(folderName, parentId);
-        resolve(folderId);
+        const id = await getOrCreateFolder(folderName, parentId, folderId);
+        resolve(id);
       } catch (error) {
         reject(error);
       } finally {
-        delete mutex[key]; // Libera el lock después de la ejecución
+        delete mutex[key];
       }
     });
   }
   return mutex[key];
 };
 
-const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
+const uploadFileToGoogleDrive = async (file, destinationPath, name, folderId = null) => {
   const folders = destinationPath.split("/");
   let parentId = driveId;
-  console.log(Buffer.from(name, "utf8").toString());
   let ancestorId;
 
-  console.log("File keys", Object.keys(file));
-
   for (let i = 0; i < folders.length; i++) {
-    parentId = await getOrCreateFolderWithLock(folders[i], parentId);
+    parentId = await getOrCreateFolderWithLock(folders[i], parentId, folderId);
     if (i === folders.length - 2) {
       ancestorId = parentId;
     }
@@ -117,17 +102,17 @@ const uploadFileToGoogleDrive = async (file, destinationPath, name) => {
   return { ...response.data, reportFolderId: ancestorId, description: file.description };
 };
 
-const uploadFilesToGoogleDrive = async (files, destinationPath) => {
+const uploadFilesToGoogleDrive = async (files, destinationPath, folderId = null) => {
   const folders = destinationPath.split("/");
   let parentId = driveId;
 
   // Asegúrate de que la carpeta destino esté creada antes de cargar los archivos
   for (let i = 0; i < folders.length; i++) {
-    parentId = await getOrCreateFolderWithLock(folders[i], parentId);
+    parentId = await getOrCreateFolderWithLock(folders[i], parentId, folderId);
   }
 
   const uploadPromises = files.map((file) =>
-    uploadFileToGoogleDrive(file, destinationPath, file.originalname)
+    uploadFileToGoogleDrive(file, destinationPath, file.originalname, folderId)
   );
   const filesData = await Promise.all(uploadPromises);
   return filesData;
@@ -160,13 +145,13 @@ const updateFileInGoogleDrive = async (fileId, file, newFileName) => {
   }
 };
 
-const moveDriveFolder = async (folderId, destinationPath) => {
+const moveDriveFolder = async (folderId, destinationPath, parentFolderId = null) => {
   const folders = destinationPath.split("/");
   let newParentId = driveId;
   let ancestorId;
 
   for (let i = 0; i < folders.length - 1; i++) {
-    newParentId = await getOrCreateFolderWithLock(folders[i], newParentId);
+    newParentId = await getOrCreateFolderWithLock(folders[i], newParentId, parentFolderId);
     if (i === folders.length - 3) {
       ancestorId = newParentId;
     }
