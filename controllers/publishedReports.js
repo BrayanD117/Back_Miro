@@ -218,20 +218,28 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
         }
       : {};
 
-    const publishedReports = await PubReport.find(searchQuery)
+      const publishedReports = await PubReport.find(searchQuery)
       .skip(skip)
       .limit(pageSize)
       .populate("period")
       .populate({
         path: "dimensions",
         select: "name responsible",
-        match: { responsible: email },
+        populate: {
+          path: "responsible",
+          match: { responsible: email }, // Filtra el campo "responsible" de la dependencia
+          select: "name email", // Ajusta los campos que necesitas traer de la dependencia
+        },
       })
       .populate({
         path: "filled_reports.dimension",
         select: "name responsible",
-        match: { responsible: email },
-      })
+        populate: {
+          path: "responsible",
+          match: { responsible: email }, // Filtra el campo "responsible" de la dependencia
+          select: "name email", // Ajusta los campos que necesitas traer de la dependencia
+        },
+      })    
       .exec();
     //Gives only reports that the dimension haven't uploaded yet
     const publishedReportsFilter = publishedReports.map((report) => {

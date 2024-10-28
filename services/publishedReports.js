@@ -11,12 +11,20 @@ class PublishedReportService {
       .populate({
         path: "dimensions",
         select: "name responsible",
-        match: { responsible: email },
+        populate: {
+          path: "responsible",
+          match: { responsible: email }, // Filtra el campo "responsible" de la dependencia
+          select: "name email", // Ajusta los campos que necesitas traer de la dependencia
+        },
       })
       .populate({
         path: "filled_reports.dimension",
         select: "name responsible",
-        match: { responsible: email },
+        populate: {
+          path: "responsible",
+          match: { responsible: email }, // Filtra el campo "responsible" de la dependencia
+          select: "name email", // Ajusta los campos que necesitas traer de la dependencia
+        },
       })
       .session(session);
     

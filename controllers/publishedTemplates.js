@@ -64,7 +64,10 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
       return res.status(404).json({ status: 'User not found' });
     }
 
-    const dimensions = await Dimension.find({ responsible: email });
+    const dimensions = await Dimension.find().populate({
+      path: 'responsible',
+      match: { responsible: email }
+    });
 
     const activeRole = user.activeRole;
 

@@ -24,7 +24,7 @@ dimensionController.getDimensionsPagination = async (req, res) => {
         ]
       }
       : {};
-    const dimensions = await Dimension.find(query).skip(skip).limit(limit);
+    const dimensions = await Dimension.find(query).populate('responsible').skip(skip).limit(limit);
     const total = await Dimension.countDocuments(query);
 
     res.status(200).json({
@@ -42,8 +42,11 @@ dimensionController.getDimensionsPagination = async (req, res) => {
 dimensionController.getDimensionsByResponsible = async (req, res) => {
   const email = req.query.email;
   try {
-    const dimensions = await Dimension.find({ responsible: email });
-    res.status(200).json(dimensions);
+    const dimensions = await Dimension.find().populate({
+      path: 'responsible',
+      match: { responsible: email }
+    });
+      res.status(200).json(dimensions);
   } catch (error) {
     console.error('Error fetching dimensions by responsible:', error);
     res.status(500).json({ error: 'Internal Server Error' });
