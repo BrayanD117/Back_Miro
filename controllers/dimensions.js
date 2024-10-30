@@ -24,7 +24,16 @@ dimensionController.getDimensionsPagination = async (req, res) => {
         ]
       }
       : {};
-    const dimensions = await Dimension.find(query).populate('responsible').skip(skip).limit(limit);
+    const dimensions = await Dimension
+      .find(query)
+      .populate({
+        path: 'responsible',
+        populate: {
+          path: 'responsible',
+        },
+      })
+      .skip(skip)
+      .limit(limit);
     const total = await Dimension.countDocuments(query);
 
     res.status(200).json({

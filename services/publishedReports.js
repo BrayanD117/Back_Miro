@@ -128,7 +128,7 @@ class PublishedReportService {
     console.log(filledDraftId)
 
 
-    const ancestorId = await moveDriveFolder(draft.folder_id,
+    const ancestorId = await moveDriveFolder(draft.report_file.folder_id,
       `Reportes/${pubRep.period.name}/${pubRep.report.name}/${pubRep.dimensions[0].name}/${nowtime.toISOString()}`);
 
     if (!draft.report_file) {
