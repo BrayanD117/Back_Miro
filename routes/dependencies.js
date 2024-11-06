@@ -6,11 +6,11 @@ const controller = require('../controllers/dependencies.js')
 
 router.get("/all", controller.getDependencies)
 
+router.get("/responsible", controller.getDependencyByResponsible);
+
 router.get("/:email", controller.getAllDependencies)
 
 router.get("/", controller.getDependency)
-
-router.get("/responsible", controller.getDependencyByResponsible);
 
 router.get("/:id", controller.getDependencyById);
 
