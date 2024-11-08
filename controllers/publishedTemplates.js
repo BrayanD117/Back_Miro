@@ -7,6 +7,7 @@ const User = require('../models/users.js')
 const Validator = require('./validators.js');
 const ValidatorModel = require('../models/validators');
 const Log = require('../models/logs');
+const UserService = require('../services/users.js');
 
 const publTempController = {};
 
@@ -18,8 +19,8 @@ datetime_now = () => {
 }
 
 publTempController.publishTemplate = async (req, res) => {
-  template_id = req.body.template_id
-  email = req.body.user_email
+  const template_id = req.body.template_id
+  const email = req.body.user_email
 
   try {
       const template = await Template.findById(template_id)
@@ -68,18 +69,18 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
       path: 'responsible',
       match: { responsible: email }
     });
+    
 
     const activeRole = user.activeRole;
 
     let query = {
       name: { $regex: search, $options: 'i' }
     };
-
     
     if (activeRole !== 'Administrador') {
       const dimensionIds = dimensions.map(dim => dim._id);
       if (dimensionIds.length > 0) {
-        query['template.dimension'] = { $in: dimensionIds };
+        query['template.dimensions'] = { $in: dimensionIds };
       } else {
         return res.status(403).json({ status: 'Access denied' });
       }
@@ -92,11 +93,11 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
       .populate({
         path: 'template',
         populate: {
-          path: 'dimension',
+          path: 'dimensions',
           model: 'dimensions'
         }
-      })
-
+      });
+    
     const total = await PublishedTemplate.countDocuments(query);
     
     const updated_templates = await Promise.all(published_templates.map(async template => {
@@ -237,23 +238,13 @@ publTempController.feedOptionsToPublishTemplate = async (req, res) => {
   const email = req.query.email;
 
   try {
-      const dimension = await Dimension.findOne({ responsible: email });
-      if (!dimension) {
-          return res.status(404).json({ status: 'Dimension not found' });
-      }
-      const user = await User.findOne({ email });
-      if (!user) {
-          return res.status(404).json({ status: 'User not found' });
-      }
-      if (!dimension.producers.includes(user.dep_code) && !user.roles.includes('Administrador' || 'Responsable')) {
-          return res.status(403).json({ status: 'User is not responsible of this dimension' });
-      }
+      await UserService.findUserByEmailAndRole(email, 'Administrador');
 
       // Get active periods
-      const periods = await Period.find({ is_active: true });
+      const periods = await Period.find().sort({ updatedAt: -1 })
 
       // Get dependencie producers
-      const producers = await Dependency.find({ dep_code: { $in: dimension.producers } });
+      const producers = await Dependency.find();
 
       res.status(200).json({ periods, producers });
 
@@ -273,11 +264,20 @@ publTempController.loadProducerData = async (req, res) => {
       return res.status(404).json({ status: 'User not found' });
     }
 
-    const pubTem = await PublishedTemplate.findById(pubTem_id).populate('period');
+    const pubTem = await PublishedTemplate
+      .findById(pubTem_id)
+      .populate('period')
+      .populate({
+        path: 'template',
+        populate: {
+          path: 'producers',
+          model: 'dependencies'
+        }
+      })
+    console.log(pubTem.template.producers)
     if (!pubTem) {
       return res.status(404).json({ status: 'Published template not found' });
     }
-    
 
     const now = new Date(datetime_now().toDateString());
     const endDate = new Date(pubTem.period.producer_end_date).toDateString();
@@ -285,7 +285,8 @@ publTempController.loadProducerData = async (req, res) => {
       return res.status(403).json({ status: 'The period is closed' });
     }
     
-    if (!pubTem.producers_dep_code.includes(user.dep_code)) {
+    const producer = pubTem.template?.producers.find(p => p.members.includes(user.email));
+    if (!producer) {
       return res.status(403).json({ status: 'User is not assigned to this published template' });
     }
 
@@ -473,7 +474,7 @@ publTempController.getUploadedTemplatesByProducer = async (req, res) => {
       .populate({
         path: 'template',
         populate: {
-          path: 'dimension',
+          path: 'dimensions',
           model: 'dimensions'
         }
       });
@@ -516,13 +517,9 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
   const skip = (page - 1) * limit;
 
   try {
-    const user = await User.findOne({ email });
-    if (!user || !user.roles.includes('Productor')) {
-      return res.status(404).json({ status: 'User not found' });
-    }
+    const user = await UserService.findUserByEmailAndRole(email, 'Productor');
 
     const query = {
-      producers_dep_code: user.dep_code,
       name: { $regex: search, $options: 'i' }
     };
 
@@ -533,14 +530,24 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
       .populate({
         path: 'template',
         populate: {
-          path: 'dimension',
+          path: 'dimensions',
           model: 'dimensions'
+        }
+      })
+      .populate({
+        path: 'template',
+        populate: {
+          path: 'producers',
+          model: 'dependencies'
         }
       });
 
+      console.log(templates[0].template.producers)
+    
     // Filtrar las plantillas que ya han sido cargadas por el productor
     const filteredTemplates = templates.filter(t => 
       !t.loaded_data.some(ld => ld.send_by.dep_code === user.dep_code)
+        || !t.template.producers.some(p => p.members.includes(user.email))
     );
 
     const templatesWithValidators = await Promise.all(
@@ -582,10 +589,15 @@ publTempController.getTemplateById = async (req, res) => {
       .populate({
         path: 'template',
         populate: {
-          path: 'dimension',
+          path: 'dimensions',
           model: 'dimensions'
+        },
+        populate: {
+          path: 'producers',
+          model: 'dependencies'
         }
-      });
+      })
+
 
     if (!publishedTemplate) {
       return res.status(404).json({ status: 'Template not found' });
@@ -621,8 +633,6 @@ publTempController.getTemplateById = async (req, res) => {
       }
       return field;
     }));
-
-    console.log(publishedTemplate.template._doc)
 
     const response = {
       name: publishedTemplate.name,

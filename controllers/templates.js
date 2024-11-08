@@ -5,6 +5,7 @@ const User = require("../models/users");
 const Dimension = require("../models/dimensions");
 const Validator = require("./validators");
 const mongoose = require("mongoose");
+const UserService = require("../services/users");
 const { ObjectId } = mongoose.Types;
 
 const datetime_now = () => {
@@ -34,7 +35,7 @@ templateController.getPlantillas = async (req, res) => {
           ],
         }
       : {};
-    const templates = await Template.find(query).skip(skip).limit(limit);
+    const templates = await Template.find(query).populate('dimensions').skip(skip).limit(limit);
 
     const total = await Template.countDocuments(query);
 
@@ -141,12 +142,8 @@ templateController.createPlantilla = async (req, res) => {
             "El nombre de la plantilla ya existe. Por favor, elija otro nombre.",
         });
     }
-
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) {
-      return res.status(404).json({ mensaje: "Usuario no encontrado" });
-    }
-
+    console.log('Body ', req.body);
+    const user = await UserService.findUserByEmailAndRole(req.body.email, "Administrador");
     const plantilla = new Template({ ...req.body, created_by: user });
     await plantilla.save();
     res.status(200).json({ status: "Plantilla creada" });
@@ -170,6 +167,7 @@ templateController.createPlantilla = async (req, res) => {
 };
 
 templateController.updatePlantilla = async (req, res) => {
+  console.log(req.body);
   const session = await mongoose.startSession();
   session.startTransaction();
   try {
