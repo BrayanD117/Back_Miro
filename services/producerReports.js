@@ -1,6 +1,16 @@
 const ProducerReport = require("../models/producerReports");
 
 class ProducerReports {
+  static async getReports() {
+    try {
+      const reports = await ProducerReport.find();
+      return reports;
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+      throw new Error('Internal Server Error');
+    }
+  }
+
   static async getReportsPagination (page, limit, filter) {
     const skip = (page - 1) * limit;
     try {
