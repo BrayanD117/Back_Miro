@@ -43,16 +43,35 @@ const reportSchema = new Schema(
     },
     report_example: {
       type: driveFile,
-      required: true,
+    },
+    requires_attachment: {
+      type: Boolean,
+      required: true
     },
     created_by: {
       type: {},
       required: true,
     },
-    deadline: {
-      type: Date,
-      required: false,
-    }
+    dimensions: {
+      type: [Schema.Types.ObjectId],
+      ref: "dimensions",
+      required: true,
+      validate: {
+        validator: function(v) {
+          return v.length > 0;
+        } 
+      }
+    },
+    producers: {
+      type: [Schema.Types.ObjectId],
+      ref: "dependencies",
+      required: true,
+      validate: {
+        validator: function(v) {
+          return v.length > 0;
+        } 
+      }
+    },
   },
   {
     versionKey: false,

@@ -1,6 +1,7 @@
+const { uploadFileToGoogleDrive } = require("../config/googleDrive");
 const ProducerReport = require("../models/producerReports");
 
-class ProducerReports {
+class ProducerReportsService {
   static async getReports() {
     try {
       const reports = await ProducerReport.find();
@@ -19,13 +20,11 @@ class ProducerReports {
           $or: [
             { name: { $regex: filter, $options: 'i' } },
             { description: { $regex: filter, $options: 'i' } },
-            { period: { $regex: filter, $options: 'i' } }
           ]
         }
         : {};
       const reports = await ProducerReport
         .find(query)
-        .populate('period')
         .skip(skip)
         .limit(limit);
       const total = await ProducerReport.countDocuments(query);
@@ -51,6 +50,41 @@ class ProducerReports {
       throw new Error('Internal Server Error');
     }
   }
+
+  static async createReport(user, name, description, file, fileName, dimensions, producers, requiresAttachment, session) {
+    if (!file) {
+      throw new Error('File is required');
+    }
+    
+    const report = new ProducerReport({
+      name,
+      description,
+      created_by: user,
+      requires_attachment: requiresAttachment,
+      dimensions,
+      producers
+    })
+
+    await report.save({ session });
+
+    const fileData = await uploadFileToGoogleDrive(file, 'Reportes/Productores/Formatos', fileName);
+
+    if(!fileData) {
+      throw new Error('Error uploading file');
+    }
+
+    const fileInfo = {
+      id: fileData.id,
+      name: fileData.name,
+      view_link: fileData.webViewLink,
+      download_link: fileData.webContentLink,
+      folder_id: fileData.parents[0]
+    };
+
+    report.report_example = fileInfo;
+
+    await report.save({ session });
+  }
 }
 
-module.exports = ProducerReports;
+module.exports = ProducerReportsService;
