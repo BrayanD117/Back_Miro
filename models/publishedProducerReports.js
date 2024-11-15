@@ -90,10 +90,13 @@ const publishedReportSchema = new Schema(
       ref: "periods",
       required: true,
     },
+    deadline: {
+      type: Date,
+      required: true,
+    },
     filled_reports: {
       type: [filledReportSchema],
-    },
-    folder_id: String,
+    }
   },
   {
     versionKey: false,
@@ -101,4 +104,4 @@ const publishedReportSchema = new Schema(
   }
 );
 
-module.exports = mongoose.model("publishedReports", publishedReportSchema);
+module.exports = mongoose.model("publishedProducerReports", publishedReportSchema);

@@ -5,14 +5,6 @@ const Period = require("../models/periods");
 const Dimension = require("../models/dimensions");
 const mongoose = require("mongoose");
 
-const {
-  uploadFileToGoogleDrive,
-  uploadFilesToGoogleDrive,
-  moveDriveFolder,
-  deleteDriveFile,
-  deleteDriveFiles,
-  updateFileInGoogleDrive,
-} = require("../config/googleDrive");
 const UserService = require("../services/users");
 const PublishedReportService = require("../services/publishedReports");
 const { attachment } = require("express/lib/response");
@@ -120,7 +112,6 @@ pubReportController.getAdminPublishedReportById = async (req, res) => {
   try {
     const { email, reportId } = req.query;
 
-    // Verificar si el usuario es un administrador o Productor activo
     const user = await User.findOne({
       email,
       activeRole: { $in: ["Administrador"] },

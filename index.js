@@ -55,6 +55,7 @@ apiRouter.use("/validators", require('./routes/validators'));
 apiRouter.use("/reports", require('./routes/reports'));
 apiRouter.use("/pReports", require('./routes/publishedReports'));
 apiRouter.use("/producerReports", require('./routes/producerReports'));
+apiRouter.use("/pProducerReports", require('./routes/publishedProducerReports'));
 apiRouter.use("/logs", require('./routes/logs'));
 apiRouter.use("/homeInfo", require('./routes/homeInfo'));
 

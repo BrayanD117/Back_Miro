@@ -15,7 +15,7 @@ class UserService {
   }
 
   static async findUserByEmailAndRoles(email, roles) {
-    return User.findOne({ email, role: { $in: roles } });
+    return User.findOne({ email, roles: { $in: roles } });
   }
 }
 
