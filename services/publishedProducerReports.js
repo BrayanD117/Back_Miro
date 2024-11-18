@@ -85,12 +85,83 @@ class PublishedReportService {
 
     const totalReports = reports.length;
     return {
-      total: totalReports,
+      totalPages: totalReports,
       page,
       limit,
       totalPages: Math.ceil(totalReports / limit),
       publishedReports: reports
     };
+  }
+
+  static async findPublishedReportsProducer(user, page = 1, limit = 10, search = "", session) {
+    const skip = (page - 1) * limit;
+    const query = search ? { "report.name": { $regex: search, $options: "i" } } : {};
+    let reports;
+    reports = await PubReport.find(query)
+      .populate({
+        path: 'report.dimensions',
+        model: 'dimensions',
+      })
+      .populate('period')
+      .populate({
+        path: 'report.producers',
+        model: 'dependencies',
+        select: 'name',
+        match: { members: {$in: user.email} }
+      })
+      .populate({
+        path: 'filled_reports.dependency',
+        select: 'name responsible',
+        match: { members: {$in: user.email} }
+      })
+      .skip(skip)
+      .limit(limit)
+      .session(session);
+
+    reports = reports.filter(report =>
+      report.report.producers.some(
+        dep => dep !== null
+      )
+    );
+    
+    const totalReports = reports.length;
+    return {
+      totalPages: totalReports,
+      page,
+      limit,
+      totalPages: Math.ceil(totalReports / limit),
+      publishedReports: reports
+    };
+  }
+
+  static async findPublishedReportProducer(user, id, session) {
+    const report = await PubReport
+    .findById(id)
+    .populate("period")
+    .populate({
+      path: "report.dimensions",
+      select: "name",
+      model: "dimensions",
+    })
+    .populate({
+      path: "filled_reports.dependency",
+      select: "name responsible",
+      match: { members: {$in: user.email} }
+    })
+    .populate({
+      path: "report.producers",
+      select: "name",
+      model: "dependencies",
+      match: { members: {$in: user.email} }
+    })
+
+    if (report?.filled_reports) {
+      report.filled_reports = report.filled_reports.filter(
+      (filledReport) => filledReport.dependency !== null
+      );
+    }
+
+    return report;
   }
 
   static async findDraft(publishedReport) {
@@ -112,6 +183,12 @@ class PublishedReportService {
       console.error('Error publishing report:', error);
       throw new Error('Internal Server Error');
     }
+  }
+  
+  static async findDraft(publishedReport) {
+    return publishedReport.filled_reports.find(
+      (filledReport) => filledReport.status === "En Borrador"
+    );
   }
 
   static async findDraftById(publishedReport, filledRepId) {
@@ -138,10 +215,11 @@ class PublishedReportService {
 
   static async uploadDraftFiles(reportFile, attachments, path) {
     const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, path);
+    reportFileData
     return {
       report_file: reportFile ? this.mapFileData(reportFileData) : undefined,
       attachments: attachmentsData.map(this.mapFileData),
-      folder_id: reportFileData.folder_id ? reportFileData.folder_id : attachmentsData[0].folder_id
+      folder_id: reportFileData.folder_id ? reportFileData.folder_id : attachmentsData[0]?.folder_id
     };
   }
 
@@ -151,7 +229,6 @@ class PublishedReportService {
     if(deletedReport) {
       await deleteDriveFile(deletedReport);
       draft.report_file = undefined
-      console.log("Geeasdad", draft)
     }
     if(deletedAttachments) {
       await deleteDriveFiles(deletedAttachments);
@@ -165,20 +242,20 @@ class PublishedReportService {
 
   static async upsertReportDraft(
     pubReport, filledRepId, reportFile, attachments, deletedReport, deletedAttachments, nowDate, 
-    path, session
+    path, user, session
   ) {
     const draft = await this.findDraft(pubReport, filledRepId);
     if(draft) {
       const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, path);
       const existingReport = pubReport.filled_reports.id(filledRepId);
       const updatedReport = Object.assign(
-        existingReport, updatedDraft, { loaded_date: nowDate, status_date: nowDate }
+        existingReport, updatedDraft, { status_date: nowDate }
       );
       pubReport.filled_reports.id(filledRepId).set(updatedReport);
     } else {
       const newDraft = await this.uploadDraftFiles(reportFile, attachments, path);
-      newDraft.dimension = pubReport.dimensions[0];
-      newDraft.send_by = pubReport.dimensions[0].responsible;
+      newDraft.dependency = pubReport.report.producers[0];
+      newDraft.send_by = user;
       newDraft.loaded_date = nowDate
       newDraft.status_date = nowDate
       pubReport.filled_reports.unshift(newDraft);
@@ -186,16 +263,22 @@ class PublishedReportService {
     await pubReport.save({ session });
   }
 
-  static async sendResponsibleReportDraft(email, publishedReportId, filledDraftId, nowtime, session) {
-    const user = await UserService.findUserByEmailAndRole(email, "Responsable");
-    const pubRep = await this.findPublishedReportById(publishedReportId, email, session);
+  static async sendProductorReportDraft(email, publishedReportId, filledDraftId, nowtime, session) {
+    const user = await UserService.findUserByEmailAndRole(email, "Productor");
+    const pubRep = await this.findPublishedReportProducer(user, publishedReportId, session);
     const draft = await this.findDraftById(pubRep, filledDraftId);
 
     console.log(filledDraftId)
 
+    const nowdate = new Date(nowtime.toDateString());
+    const pubRepDeadlineDate = new Date(pubRep.deadline.toDateString());
+    const pubRepStartDate = new Date(pubRep.period.producer_start_date.toDateString());
+    if(pubRepDeadlineDate < nowdate || pubRepStartDate > nowdate) {
+      throw new Error("The report period is already closed");
+    }
 
     const ancestorId = await moveDriveFolder(draft.report_file.folder_id,
-      `Reportes/${pubRep.period.name}/${pubRep.report.name}/${pubRep.dimensions[0].name}/${nowtime.toISOString()}`);
+      `${pubRep.period.name}/Informes/Productores/Definitivos/${pubRep.report.name}/${pubRep.report.producers[0].name}/${nowtime.toISOString()}`);
 
     if (!draft.report_file) {
       throw new Error("Draft must have a report file.");

@@ -15,7 +15,9 @@ class UserService {
   }
 
   static async findUserByEmailAndRoles(email, roles) {
-    return User.findOne({ email, roles: { $in: roles } });
+    const user = await User.findOne({ email, activeRole: { $in: roles } });
+    if (!user) throw new Error("User not found.");
+    return user;
   }
 }
 
