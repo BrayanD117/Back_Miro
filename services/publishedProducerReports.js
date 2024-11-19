@@ -72,6 +72,29 @@ class PublishedReportService {
           dimension => dimension.responsible !== null
         )
       );
+
+      reports.forEach((report) => {
+        // Filtrar los filled_reports que no estén en "En Borrador"
+        report.filled_reports = report.filled_reports.filter(
+          (fr) => fr.status !== "En Borrador"
+        );
+  
+        // Ordenar los filled_reports por fecha (asumiendo que tienen una propiedad 'date')
+        report.filled_reports.sort((a, b) => new Date(b.date) - new Date(a.date));
+  
+        // Eliminar duplicados de filled_reports basados en 'dimension'
+        const uniqueFilledReports = [];
+        const seenDependencies = new Set();
+  
+        report.filled_reports.forEach((fr) => {
+          if (!seenDependencies.has(fr.dependency.toString())) {
+            uniqueFilledReports.push(fr);
+            seenDependencies.add(fr.dependency.toString());
+          }
+        });
+  
+        report.filled_reports = uniqueFilledReports;
+      });
     } else {
       reports = await PubReport.find(query)
         .populate({
@@ -81,6 +104,29 @@ class PublishedReportService {
         .skip(skip)
         .limit(limit)
         .session(session);
+
+        reports.forEach((report) => {
+          // Filtrar los filled_reports que no estén en "En Borrador"
+          report.filled_reports = report.filled_reports.filter(
+            (fr) => fr.status !== "En Borrador"
+          );
+    
+          // Ordenar los filled_reports por fecha (asumiendo que tienen una propiedad 'date')
+          report.filled_reports.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+          // Eliminar duplicados de filled_reports basados en 'dimension'
+          const uniqueFilledReports = [];
+          const seenDependencies = new Set();
+    
+          report.filled_reports.forEach((fr) => {
+            if (!seenDependencies.has(fr.dependency.toString())) {
+              uniqueFilledReports.push(fr);
+              seenDependencies.add(fr.dependency.toString());
+            }
+          });
+    
+          report.filled_reports = uniqueFilledReports;
+        });
     }
 
     const totalReports = reports.length;

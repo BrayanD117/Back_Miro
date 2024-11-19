@@ -3,6 +3,7 @@ const PeriodService = require("../services/period");
 const ProducerReportsService = require("../services/producerReports");
 const PublishedReportService = require("../services/publishedProducerReports");
 const UserService = require("../services/users");
+const PubProdReport = require("../models/publishedProducerReports");
 
 const datetime_now = () => {
   const now = new Date();
@@ -179,7 +180,7 @@ pubProdReportController.setFilledReportStatus = async (req, res) => {
 
     const user = await UserService.findUserByEmailAndRole(email, "Administrador");
 
-    const publishedReport = await PubReport.findById(reportId)
+    const publishedReport = await PubProdReport.findById(reportId)
       .where("filled_reports")
       .elemMatch({ _id: filledRepId })
       .exec();
