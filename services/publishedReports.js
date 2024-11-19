@@ -106,7 +106,7 @@ class PublishedReportService {
       const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, path);
       const existingReport = pubReport.filled_reports.id(filledRepId);
       const updatedReport = Object.assign(
-        existingReport, updatedDraft, { loaded_date: nowDate, status_date: nowDate }
+        existingReport, updatedDraft, { status_date: nowDate }
       );
       pubReport.filled_reports.id(filledRepId).set(updatedReport);
     } else {
@@ -129,7 +129,7 @@ class PublishedReportService {
 
 
     const ancestorId = await moveDriveFolder(draft.report_file.folder_id,
-      `Reportes/${pubRep.period.name}/${pubRep.report.name}/${pubRep.dimensions[0].name}/${nowtime.toISOString()}`);
+      `${pubRep.period.name}/Informes/Definitivos/${pubRep.report.name}/${pubRep.dimensions[0].name}/${nowtime.toISOString()}`);
 
     if (!draft.report_file) {
       throw new Error("Draft must have a report file.");

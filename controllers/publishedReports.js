@@ -431,7 +431,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     await PeriodService.validatePeriodResponsible(pubRep, nowdate);
     
     const draft = await PublishedReportService.findDraft(pubRep, filledDraft._id,session);
-    const path = `Reportes/Borradores/${pubRep.period.name}/${pubRep.report.name}
+    const path = `${pubRep.period.name}/Informes/Borradores/${pubRep.report.name}
       /${pubRep.dimensions[0].name}/${draft ? draft.loaded_date.toISOString() 
       : nowtime.toISOString()}`;
 
