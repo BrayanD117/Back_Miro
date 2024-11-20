@@ -104,7 +104,7 @@ reportController.createReport = async (req, res) => {
     await newReport.save({ session });
 
     // Define la ruta en Google Drive y sube el archivo
-    const destinationPath = `Reportes/Formatos`;
+    const destinationPath = `Reportes/Dimensiones/Formatos`;
     const fileData = await uploadFileToGoogleDrive(
       req.file,
       destinationPath,
