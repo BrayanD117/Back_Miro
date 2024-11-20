@@ -1,5 +1,6 @@
 const { uploadFileToGoogleDrive, uploadFilesToGoogleDrive, deleteDriveFile, deleteDriveFiles, moveDriveFolder } = require("../config/googleDrive");
 const PubReport = require("../models/publishedProducerReports");
+const Dependency = require("../models/dependencies");
 const UserService = require("./users");
 
 class PublishedReportService {
@@ -163,12 +164,19 @@ class PublishedReportService {
       .skip(skip)
       .limit(limit)
       .session(session);
-
     reports = reports.filter(report =>
       report.report.producers.some(
         dep => dep !== null
       )
     );
+
+    reports.forEach(report => {
+      report.filled_reports = report.filled_reports.filter(filledReport => {
+        return filledReport.dependency !== null;
+      });
+    });
+
+    console.log(reports[0].filled_reports)
     
     const totalReports = reports.length;
     return {
@@ -291,30 +299,32 @@ class PublishedReportService {
     path, user, session
   ) {
     const draft = await this.findDraft(pubReport, filledRepId);
+    const fullPubReport = await PubReport.findById(pubReport._id).session(session);
     if(draft) {
       const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, path);
       const existingReport = pubReport.filled_reports.id(filledRepId);
       const updatedReport = Object.assign(
         existingReport, updatedDraft, { status_date: nowDate }
       );
-      pubReport.filled_reports.id(filledRepId).set(updatedReport);
+      fullPubReport.filled_reports.id(filledRepId).set(updatedReport);
     } else {
       const newDraft = await this.uploadDraftFiles(reportFile, attachments, path);
       newDraft.dependency = pubReport.report.producers[0];
       newDraft.send_by = user;
       newDraft.loaded_date = nowDate
       newDraft.status_date = nowDate
-      pubReport.filled_reports.unshift(newDraft);
+      fullPubReport.filled_reports.unshift(newDraft);
     }
-    await pubReport.save({ session });
+    await fullPubReport.save({ session });
   }
 
   static async sendProductorReportDraft(email, publishedReportId, filledDraftId, nowtime, session) {
     const user = await UserService.findUserByEmailAndRole(email, "Productor");
-    const pubRep = await this.findPublishedReportProducer(user, publishedReportId, session);
+    const pubRep = await PubReport.findById(publishedReportId)
+      .populate('filled_reports.dependency')
+      .populate('period')
+      .session(session);
     const draft = await this.findDraftById(pubRep, filledDraftId);
-
-    console.log(filledDraftId)
 
     const nowdate = new Date(nowtime.toDateString());
     const pubRepDeadlineDate = new Date(pubRep.deadline.toDateString());
@@ -324,7 +334,7 @@ class PublishedReportService {
     }
 
     const ancestorId = await moveDriveFolder(draft.report_file.folder_id,
-      `${pubRep.period.name}/Informes/Productores/Definitivos/${pubRep.report.name}/${pubRep.report.producers[0].name}/${nowtime.toISOString()}`);
+      `${pubRep.period.name}/Informes/Productores/Definitivos/${pubRep.report.name}/${draft.dependency.name}/${nowtime.toISOString()}`);
 
     if (!draft.report_file) {
       throw new Error("Draft must have a report file.");

@@ -102,34 +102,38 @@ class PublishedReportService {
     path, session
   ) {
     const draft = await this.findDraft(pubReport, filledRepId);
+    const fullReport = await PubReport.findById(pubReport._id).session(session);
     if(draft) {
       const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, path);
       const existingReport = pubReport.filled_reports.id(filledRepId);
       const updatedReport = Object.assign(
         existingReport, updatedDraft, { status_date: nowDate }
       );
-      pubReport.filled_reports.id(filledRepId).set(updatedReport);
+      fullReport.filled_reports.id(filledRepId).set(updatedReport);
     } else {
       const newDraft = await this.uploadDraftFiles(reportFile, attachments, path);
       newDraft.dimension = pubReport.dimensions[0];
       newDraft.send_by = pubReport.dimensions[0].responsible;
       newDraft.loaded_date = nowDate
       newDraft.status_date = nowDate
-      pubReport.filled_reports.unshift(newDraft);
+      fullReport.filled_reports.unshift(newDraft);
     }
-    await pubReport.save({ session });
+    await fullReport.save({ session });
   }
 
   static async sendResponsibleReportDraft(email, publishedReportId, filledDraftId, nowtime, session) {
     const user = await UserService.findUserByEmailAndRole(email, "Responsable");
-    const pubRep = await this.findPublishedReportById(publishedReportId, email, session);
+    const pubRep = await PubReport.findById(publishedReportId)
+      .populate('filled_reports.dimension')
+      .populate('period')
+      .session(session);
     const draft = await this.findDraftById(pubRep, filledDraftId);
 
     console.log(filledDraftId)
 
 
     const ancestorId = await moveDriveFolder(draft.report_file.folder_id,
-      `${pubRep.period.name}/Informes/Definitivos/${pubRep.report.name}/${pubRep.dimensions[0].name}/${nowtime.toISOString()}`);
+      `${pubRep.period.name}/Informes/Definitivos/${pubRep.report.name}/${draft.dimension.name}/${nowtime.toISOString()}`);
 
     if (!draft.report_file) {
       throw new Error("Draft must have a report file.");

@@ -60,7 +60,7 @@ pubProdReportController.getPublishedProducerReportsProducer = async (req, res) =
     const {email, page, limit, search} = req.query
 
     const user = await UserService.findUserByEmailAndRole(email, "Productor");
-    const reports = await PublishedReportService.findPublishedReports(user, page, limit, search);
+    const reports = await PublishedReportService.findPublishedReportsProducer(user, page, limit, search);
     res.status(200).json(reports);
   } catch (error) {
     console.error('Error fetching published producer reports:', error);

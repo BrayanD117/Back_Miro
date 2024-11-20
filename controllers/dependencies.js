@@ -79,6 +79,7 @@ dependencyController.getDependencyById = async (req, res) => {
 dependencyController.getAllDependencies = async (req, res) => {
   try {
     const email = req.params.email;
+    console.log("Fetching dependencies for user:", email);
     await UserService.findUserByEmail(email);
     const dependencies = await Dependency.find();
     res.status(200).json(dependencies);

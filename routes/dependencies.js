@@ -8,11 +8,11 @@ router.get("/all", controller.getDependencies)
 
 router.get("/responsible", controller.getDependencyByResponsible);
 
-router.get("/:email", controller.getAllDependencies)
+router.get("/:id", controller.getDependencyById);
+
+router.get("/all/:email", controller.getAllDependencies)
 
 router.get("/", controller.getDependency)
-
-router.get("/:id", controller.getDependencyById);
 
 router.post("/updateAll", controller.loadDependencies)
 
