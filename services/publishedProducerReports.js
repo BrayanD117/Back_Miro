@@ -175,8 +175,6 @@ class PublishedReportService {
         return filledReport.dependency !== null;
       });
     });
-
-    console.log(reports[0].filled_reports)
     
     const totalReports = reports.length;
     return {
