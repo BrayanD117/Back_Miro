@@ -90,17 +90,8 @@ const publishedReportSchema = new Schema(
       ref: "periods",
       required: true,
     },
-    dimensions: {
-      type: [Schema.Types.ObjectId],
-      ref: "dimensions",
-      validate: [
-        {
-          validator: function (v) {
-            return v.length > 0;
-          },
-          message: "At least one dimension is required",
-        },
-      ],
+    deadline: {
+      type: Date,
       required: true,
     },
     filled_reports: {

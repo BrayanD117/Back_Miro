@@ -9,8 +9,9 @@ class PublishedReportService {
       .findById(id)
       .populate("period")
       .populate({
-        path: "dimensions",
+        path: "report.dimensions",
         select: "name responsible",
+        model: "dimensions",
         populate: {
           path: "responsible",
           match: { responsible: email }, // Filtra el campo "responsible" de la dependencia
@@ -32,7 +33,9 @@ class PublishedReportService {
       throw new Error("Report not found.");
     }
 
-    if(pubReport.dimensions.length===0) {
+    pubReport.report.dimensions = pubReport.report.dimensions.filter((dimension) => dimension.responsible);
+
+    if(pubReport.report.dimensions.length === 0) {
       throw new Error("User does not have access to this report.");
     }
     return pubReport;
@@ -75,7 +78,7 @@ class PublishedReportService {
     return {
       report_file: reportFile ? this.mapFileData(reportFileData) : undefined,
       attachments: attachmentsData.map(this.mapFileData),
-      folder_id: reportFileData.folder_id ? reportFileData.folder_id : attachmentsData[0].folder_id
+      folder_id: reportFileData.folder_id ? reportFileData.folder_id : attachmentsData[0]?.folder_id
     };
   }
 
@@ -99,7 +102,7 @@ class PublishedReportService {
 
   static async upsertReportDraft(
     pubReport, filledRepId, reportFile, attachments, deletedReport, deletedAttachments, nowDate, 
-    path, session
+    path, user, session
   ) {
     const draft = await this.findDraft(pubReport, filledRepId);
     const fullReport = await PubReport.findById(pubReport._id).session(session);
@@ -112,8 +115,8 @@ class PublishedReportService {
       fullReport.filled_reports.id(filledRepId).set(updatedReport);
     } else {
       const newDraft = await this.uploadDraftFiles(reportFile, attachments, path);
-      newDraft.dimension = pubReport.dimensions[0];
-      newDraft.send_by = pubReport.dimensions[0].responsible;
+      newDraft.dimension = pubReport.report.dimensions[0];
+      newDraft.send_by = user;
       newDraft.loaded_date = nowDate
       newDraft.status_date = nowDate
       fullReport.filled_reports.unshift(newDraft);
@@ -133,7 +136,7 @@ class PublishedReportService {
 
 
     const ancestorId = await moveDriveFolder(draft.report_file.folder_id,
-      `${pubRep.period.name}/Informes/Definitivos/${pubRep.report.name}/${draft.dimension.name}/${nowtime.toISOString()}`);
+      `${pubRep.period.name}/Informes/ vos/${pubRep.report.name}/${draft.dimension.name}/${nowtime.toISOString()}`);
 
     if (!draft.report_file) {
       throw new Error("Draft must have a report file.");

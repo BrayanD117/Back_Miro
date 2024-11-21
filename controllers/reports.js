@@ -73,7 +73,7 @@ reportController.createReport = async (req, res) => {
 
   try {
     const { email } = req.body;
-    const { name, description, requires_attachment, file_name } = req.body;
+    const { name, description, requires_attachment, file_name, dimensions } = req.body;
 
     const user = await User.findOne({ email, activeRole: "Administrador" }).session(session); // Incluir la sesión en las consultas
 
@@ -98,13 +98,14 @@ reportController.createReport = async (req, res) => {
       requires_attachment,
       file_name,
       created_by: user,
+      dimensions
     });
 
     // Guarda el informe en la base de datos dentro de la transacción
     await newReport.save({ session });
 
     // Define la ruta en Google Drive y sube el archivo
-    const destinationPath = `Reportes/Dimensiones/Formatos`;
+    const destinationPath = `Formatos/Informes/Dimensiones`;
     const fileData = await uploadFileToGoogleDrive(
       req.file,
       destinationPath,
@@ -152,7 +153,7 @@ reportController.updateReport = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { email, name, description, requires_attachment, file_name } = req.body;
+    const { email, name, description, requires_attachment, file_name, dimensions } = req.body;
     const nowDate = datetime_now().toDateString();
     const pubReportsToUpdate = []
 
@@ -208,6 +209,7 @@ reportController.updateReport = async (req, res) => {
     report.description = description;
     report.requires_attachment = requires_attachment;
     report.file_name = file_name;
+    report.dimensions = dimensions;
       
     await report.save({ session });
 

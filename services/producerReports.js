@@ -67,7 +67,7 @@ class ProducerReportsService {
 
     await report.save({ session });
 
-    const fileData = await uploadFileToGoogleDrive(file, 'Reportes/Productores/Formatos', fileName);
+    const fileData = await uploadFileToGoogleDrive(file, 'Formatos/Informes/Productores', fileName);
 
     if(!fileData) {
       throw new Error('Error uploading file');

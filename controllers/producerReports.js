@@ -72,8 +72,6 @@ reportController.createReport = async (req, res) => {
       throw new Error("All fields are required");
     }
 
-    const destinationPath = `Reportes/Productores/Formatos`;
-
     await ProducerReportsService.createReport(user, name, description, req.file, file_name, 
       dimensions, producers, requires_attachment, session);
 
