@@ -34,9 +34,9 @@ const driveFile = new Schema(
 
 const filledReportSchema = new Schema(
   {
-    dimension: {
+    dependency: {
       type: Schema.Types.ObjectId,
-      ref: "dimensions",
+      ref: "dependencies",
       required: true,
     },
     send_by: {
@@ -96,8 +96,7 @@ const publishedReportSchema = new Schema(
     },
     filled_reports: {
       type: [filledReportSchema],
-    },
-    folder_id: String,
+    }
   },
   {
     versionKey: false,
@@ -105,4 +104,4 @@ const publishedReportSchema = new Schema(
   }
 );
 
-module.exports = mongoose.model("publishedReports", publishedReportSchema);
+module.exports = mongoose.model("publishedProducerReports", publishedReportSchema);

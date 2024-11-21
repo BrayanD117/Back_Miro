@@ -23,8 +23,7 @@ function validateDataType(value) {
 const fieldSchema = new Schema({
     name: { 
         type: String,
-        required: true,
-        unique: true
+        required: true
     },
     datatype: { 
         type: String, 
@@ -74,9 +73,15 @@ const templateSchema = new Schema({
         type: {},
         required: true
     },
-    dimension: {
-        type: Schema.Types.ObjectId,
-        ref: 'dimensions',
+    dimensions: {
+      type: [Schema.Types.ObjectId],
+      ref: 'dimensions',
+      required: true
+    },
+    producers: {
+      type: [Schema.Types.ObjectId],
+      ref: 'dependencies',
+      required: true
     }
 }, 
 {

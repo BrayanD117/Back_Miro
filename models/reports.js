@@ -31,6 +31,19 @@ const reportSchema = new Schema({
     created_by: {
         type: {},
         required: true
+    },
+    dimensions: {
+      type: [Schema.Types.ObjectId],
+      ref: "dimensions",
+      validate: [
+        {
+          validator: function (v) {
+            return v.length > 0;
+          },
+          message: "At least one dimension is required",
+        },
+      ],
+      required: true,
     }
 }, {
     versionKey: false,

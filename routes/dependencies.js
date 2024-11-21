@@ -6,11 +6,13 @@ const controller = require('../controllers/dependencies.js')
 
 router.get("/all", controller.getDependencies)
 
-router.get("/", controller.getDependency)
-
 router.get("/responsible", controller.getDependencyByResponsible);
 
 router.get("/:id", controller.getDependencyById);
+
+router.get("/all/:email", controller.getAllDependencies)
+
+router.get("/", controller.getDependency)
 
 router.post("/updateAll", controller.loadDependencies)
 

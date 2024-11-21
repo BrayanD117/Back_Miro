@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const User = require('./users.js')
-const Dependency = require('./dependencies.js')
 const Template = require('./templates.js')
+const Dependency = require('./dependencies.js')
 
 const filled_fields = new Schema({
     field_name: {
@@ -58,10 +58,6 @@ const publishedTemplateSchema = new Schema({
     period: {
         type: Schema.Types.ObjectId,
         ref: 'periods',
-        required: true
-    },
-    producers_dep_code: {
-        type: [String],
         required: true
     },
     loaded_data: {

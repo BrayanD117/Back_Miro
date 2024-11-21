@@ -1,6 +1,7 @@
 const axios = require("axios");
 const Dependency = require("../models/dependencies");
 const User = require("../models/users");
+const UserService = require("../services/users");
 
 const dependencyController = {};
 
@@ -74,6 +75,20 @@ dependencyController.getDependencyById = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+dependencyController.getAllDependencies = async (req, res) => {
+  try {
+    const email = req.params.email;
+    console.log("Fetching dependencies for user:", email);
+    await UserService.findUserByEmail(email);
+    const dependencies = await Dependency.find();
+    res.status(200).json(dependencies);
+  } catch (error) {
+    console.error("Error fetching dependencies:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 
 // Get all dependencies existing into the DB with pagination
 dependencyController.getDependencies = async (req, res) => {

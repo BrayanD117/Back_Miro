@@ -13,6 +13,12 @@ class UserService {
     if (!user) throw new Error("User not found.")
     return user;
   }
+
+  static async findUserByEmailAndRoles(email, roles) {
+    const user = await User.findOne({ email, activeRole: { $in: roles } });
+    if (!user) throw new Error("User not found.");
+    return user;
+  }
 }
 
 module.exports = UserService;

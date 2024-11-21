@@ -9,14 +9,23 @@ class PublishedReportService {
       .findById(id)
       .populate("period")
       .populate({
-        path: "dimensions",
+        path: "report.dimensions",
         select: "name responsible",
-        match: { responsible: email },
+        model: "dimensions",
+        populate: {
+          path: "responsible",
+          match: { responsible: email }, // Filtra el campo "responsible" de la dependencia
+          select: "name email", // Ajusta los campos que necesitas traer de la dependencia
+        },
       })
       .populate({
         path: "filled_reports.dimension",
         select: "name responsible",
-        match: { responsible: email },
+        populate: {
+          path: "responsible",
+          match: { responsible: email }, // Filtra el campo "responsible" de la dependencia
+          select: "name email", // Ajusta los campos que necesitas traer de la dependencia
+        },
       })
       .session(session);
     
@@ -24,7 +33,9 @@ class PublishedReportService {
       throw new Error("Report not found.");
     }
 
-    if(pubReport.dimensions.length===0) {
+    pubReport.report.dimensions = pubReport.report.dimensions.filter((dimension) => dimension.responsible);
+
+    if(pubReport.report.dimensions.length === 0) {
       throw new Error("User does not have access to this report.");
     }
     return pubReport;
@@ -44,35 +55,35 @@ class PublishedReportService {
     return publishedReport.filled_reports.id(filledRepId);
   }
 
-  static async uploadReportAndAttachments(reportFile, attachments, paths) {
+  static async uploadReportAndAttachments(reportFile, attachments, path) {
     return Promise.all([
-      reportFile ? uploadFileToGoogleDrive(reportFile, paths.reportFilePath, reportFile.originalname) : Promise.resolve({}),
-      attachments.length > 0 ? uploadFilesToGoogleDrive(attachments, paths.attachmentsPath) : Promise.resolve([])
+      reportFile ? uploadFileToGoogleDrive(reportFile, path, reportFile.originalname) : Promise.resolve({}),
+      attachments.length > 0 ? uploadFilesToGoogleDrive(attachments, path) : Promise.resolve([])
     ]);
   }
   
   static mapFileData(fileHandle) {
     return {
-      id: fileHandle.id,
-      name: fileHandle.name,
-      view_link: fileHandle.webViewLink,
-      download_link: fileHandle.webContentLink,
-      folder_id: fileHandle.parents[0],
-      description: fileHandle.description
+      id: fileHandle?.id,
+      name: fileHandle?.name,
+      view_link: fileHandle?.webViewLink,
+      download_link: fileHandle?.webContentLink,
+      folder_id: fileHandle?.parents ? fileHandle.parents[0] : undefined,
+      description: fileHandle?.description
     };
   }
 
-  static async uploadDraftFiles(reportFile, attachments, paths) {
-    const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, paths);
+  static async uploadDraftFiles(reportFile, attachments, path) {
+    const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, path);
     return {
-      report_file: this.mapFileData(reportFileData),
+      report_file: reportFile ? this.mapFileData(reportFileData) : undefined,
       attachments: attachmentsData.map(this.mapFileData),
-      folder_id: reportFileData?.parents[0]
+      folder_id: reportFileData.folder_id ? reportFileData.folder_id : attachmentsData[0]?.folder_id
     };
   }
 
-  static async updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, paths) {
-    const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, paths);
+  static async updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, path) {
+    const [reportFileData, attachmentsData] = await this.uploadReportAndAttachments(reportFile, attachments, path);
     draft.attachments.push(...attachmentsData.map(this.mapFileData))
     if(deletedReport) {
       await deleteDriveFile(deletedReport);
@@ -91,37 +102,41 @@ class PublishedReportService {
 
   static async upsertReportDraft(
     pubReport, filledRepId, reportFile, attachments, deletedReport, deletedAttachments, nowDate, 
-    paths, session
+    path, user, session
   ) {
     const draft = await this.findDraft(pubReport, filledRepId);
+    const fullReport = await PubReport.findById(pubReport._id).session(session);
     if(draft) {
-      const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, paths);
+      const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, path);
       const existingReport = pubReport.filled_reports.id(filledRepId);
       const updatedReport = Object.assign(
-        existingReport, updatedDraft, { loaded_date: nowDate, status_date: nowDate }
+        existingReport, updatedDraft, { status_date: nowDate }
       );
-      pubReport.filled_reports.id(filledRepId).set(updatedReport);
+      fullReport.filled_reports.id(filledRepId).set(updatedReport);
     } else {
-      const newDraft = await this.uploadDraftFiles(reportFile, attachments, paths);
-      newDraft.dimension = pubReport.dimensions[0];
-      newDraft.send_by = pubReport.dimensions[0].responsible;
+      const newDraft = await this.uploadDraftFiles(reportFile, attachments, path);
+      newDraft.dimension = pubReport.report.dimensions[0];
+      newDraft.send_by = user;
       newDraft.loaded_date = nowDate
       newDraft.status_date = nowDate
-      pubReport.filled_reports.unshift(newDraft);
+      fullReport.filled_reports.unshift(newDraft);
     }
-    await pubReport.save({ session });
+    await fullReport.save({ session });
   }
 
   static async sendResponsibleReportDraft(email, publishedReportId, filledDraftId, nowtime, session) {
     const user = await UserService.findUserByEmailAndRole(email, "Responsable");
-    const pubRep = await this.findPublishedReportById(publishedReportId, email, session);
+    const pubRep = await PubReport.findById(publishedReportId)
+      .populate('filled_reports.dimension')
+      .populate('period')
+      .session(session);
     const draft = await this.findDraftById(pubRep, filledDraftId);
 
     console.log(filledDraftId)
 
 
-    const ancestorId = await moveDriveFolder(draft.folder_id,
-      `Reportes/${pubRep.period.name}/${pubRep.report.name}/${pubRep.dimensions[0].name}/${nowtime.toISOString()}`);
+    const ancestorId = await moveDriveFolder(draft.report_file.folder_id,
+      `${pubRep.period.name}/Informes/ vos/${pubRep.report.name}/${draft.dimension.name}/${nowtime.toISOString()}`);
 
     if (!draft.report_file) {
       throw new Error("Draft must have a report file.");

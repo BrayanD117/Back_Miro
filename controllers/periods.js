@@ -76,7 +76,7 @@ periodController.deletePeriod = async (req, res) => {
 
 periodController.getActivePeriods = async (req, res) => {
     try {
-        const periods = await Period.find({ is_active: true });
+        const periods = await Period.find();
         res.status(200).json(periods);
     } catch (error) {
         res.status(500).json({ error: error.message });

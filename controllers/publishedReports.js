@@ -5,14 +5,6 @@ const Period = require("../models/periods");
 const Dimension = require("../models/dimensions");
 const mongoose = require("mongoose");
 
-const {
-  uploadFileToGoogleDrive,
-  uploadFilesToGoogleDrive,
-  moveDriveFolder,
-  deleteDriveFile,
-  deleteDriveFiles,
-  updateFileInGoogleDrive,
-} = require("../config/googleDrive");
 const UserService = require("../services/users");
 const PublishedReportService = require("../services/publishedReports");
 const { attachment } = require("express/lib/response");
@@ -65,7 +57,7 @@ pubReportController.getPublishedReports = async (req, res) => {
       .limit(pageSize)
       .populate("period")
       .populate({
-        path: "dimensions",
+        path: "report.dimensions",
         select: "name responsible",
       })
       .populate({
@@ -120,7 +112,6 @@ pubReportController.getAdminPublishedReportById = async (req, res) => {
   try {
     const { email, reportId } = req.query;
 
-    // Verificar si el usuario es un administrador o Productor activo
     const user = await User.findOne({
       email,
       activeRole: { $in: ["Administrador"] },
@@ -136,15 +127,16 @@ pubReportController.getAdminPublishedReportById = async (req, res) => {
     const report = await PubReport.findById(reportId)
       .populate("period")
       .populate({
-        path: "dimensions",
+        path: "report.dimensions",
         select: "name responsible",
+        model: "dimensions"
       })
       .populate({
         path: "filled_reports.dimension",
         select: "name responsible",
       })
       .exec();
-
+    
     if (!report) {
       return res.status(404).json({
         status: "Report not found",
@@ -218,21 +210,38 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
         }
       : {};
 
-    const publishedReports = await PubReport.find(searchQuery)
+    let publishedReports = await PubReport.find(searchQuery)
       .skip(skip)
       .limit(pageSize)
       .populate("period")
       .populate({
-        path: "dimensions",
+        path: "report.dimensions",
         select: "name responsible",
-        match: { responsible: email },
+        model: "dimensions",
+        populate: {
+          path: "responsible",
+          match: { responsible: email },
+          select: "name email",
+          model: "dependencies"
+        },
       })
       .populate({
         path: "filled_reports.dimension",
         select: "name responsible",
-        match: { responsible: email },
-      })
+        populate: {
+          path: "responsible",
+          match: { responsible: email }, // Filtra el campo "responsible" de la dependencia
+          select: "name email", // Ajusta los campos que necesitas traer de la dependencia
+        },
+      })    
       .exec();
+    
+    publishedReports = publishedReports.filter((report) => {
+      return report.report.dimensions.some((dimension) => {
+        return dimension.responsible !== null;
+      })
+    });
+
     //Gives only reports that the dimension haven't uploaded yet
     const publishedReportsFilter = publishedReports.map((report) => {
       report.filled_reports
@@ -245,7 +254,6 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
         .sort((a, b) => new Date(b.loaded_date) - new Date(a.loaded_date)); // Ordenar por fecha descendente
       return report;
     });
-    console.log(publishedReportsFilter[0].filled_reports);
 
     const totalReports = publishedReports.length;
     //const publishedReportsFilter = publishedReports.filter(report => report.filled_reports.dim);
@@ -357,7 +365,7 @@ pubReportController.getPublishedReport = async (req, res) => {
 };
 
 pubReportController.publishReport = async (req, res) => {
-  const { reportId, periodId, dimensionsId } = req.body;
+  const { reportId, periodId, deadline } = req.body;
   try {
     const report = await Report.findById(reportId);
     if (!report) {
@@ -366,7 +374,7 @@ pubReportController.publishReport = async (req, res) => {
     const publishedReport = new PubReport({
       report,
       period: periodId,
-      dimensions: dimensionsId,
+      deadline
     });
     await publishedReport.save();
     res.status(200).json({ status: "Published Report created" });
@@ -393,7 +401,7 @@ pubReportController.feedOptionsForPublish = async (req, res) => {
         .json({ status: "User not found or isn't an active administrator" });
     }
     //TODO FILTER ONLY ACTIVE PERIODS
-    const periods = await Period.find({ is_active: true }).select("name");
+    const periods = await Period.find({ is_active: true }).select("name responsible_end_date");
     const dimensions = await Dimension.find({}).select("name");
     res.status(200).json({ periods, dimensions });
   } catch (error) {
@@ -428,17 +436,15 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     const nowtime = datetime_now();
     const nowdate = new Date(nowtime.toDateString());
 
+    const user = await UserService.findUserByEmailAndRole(email, "Responsable", session);
+
     const pubRep = await PublishedReportService.findPublishedReportById(publishedReportId, email, session);
     await PeriodService.validatePeriodResponsible(pubRep, nowdate);
     
     const draft = await PublishedReportService.findDraft(pubRep, filledDraft._id,session);
-    const basePath = `Reportes/Borradores/${pubRep.period.name}/${pubRep.report.name}
-      /${pubRep.dimensions[0].name}/${draft ? draft.loaded_date.toISOString() 
+    const path = `${pubRep.period.name}/Informes/Dimensiones/Borradores/${pubRep.report.name}
+      /${pubRep.report.dimensions[0].name}/${draft ? draft.loaded_date.toISOString() 
       : nowtime.toISOString()}`;
-    const paths = {
-      reportFilePath: basePath,
-      attachmentsPath: `${basePath}/Anexos`,
-    };
 
     draft?.attachments?.forEach((draftAttachment) => {
       const filledAttachment = filledDraft?.attachments?.find(
@@ -450,7 +456,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     });
     console.log(filledDraft)
     await PublishedReportService.upsertReportDraft(pubRep, draft, reportFile, attachments, 
-      deletedReport, deletedAttachments, nowtime, paths, session
+      deletedReport, deletedAttachments, nowtime, path, user, session
     );
 
     await session.commitTransaction();
