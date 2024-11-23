@@ -511,6 +511,7 @@ publTempController.getUploadedTemplatesByProducer = async (req, res) => {
 
 publTempController.getAvailableTemplatesToProductor = async (req, res) => {
   const email = req.query.email;
+  const periodId = req.query.periodId;
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const search = req.query.search || '';
@@ -520,8 +521,12 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
     const user = await UserService.findUserByEmailAndRole(email, 'Productor');
 
     const query = {
-      name: { $regex: search, $options: 'i' }
+      name: { $regex: search, $options: 'i' },
     };
+
+    if (periodId) {
+      query.period = periodId;
+    }
 
     const templates = await PublishedTemplate.find(query)
       .skip(skip)
@@ -531,36 +536,34 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
         path: 'template',
         populate: {
           path: 'dimensions',
-          model: 'dimensions'
-        }
+          model: 'dimensions',
+        },
       })
       .populate({
         path: 'template',
         populate: {
           path: 'producers',
-          model: 'dependencies'
-        }
+          model: 'dependencies',
+        },
       });
 
-      console.log(templates[0].template.producers)
-    
-    // Filtrar las plantillas que ya han sido cargadas por el productor
-    const filteredTemplates = templates.filter(t => 
-      !t.loaded_data.some(ld => ld.send_by.dep_code === user.dep_code)
-        || !t.template.producers.some(p => p.members.includes(user.email))
+    const filteredTemplates = templates.filter(
+      (t) =>
+        !t.loaded_data.some((ld) => ld.send_by.dep_code === user.dep_code) ||
+        !t.template.producers.some((p) => p.members.includes(user.email))
     );
 
     const templatesWithValidators = await Promise.all(
       filteredTemplates.map(async (template) => {
         const validators = await Promise.all(
-          template.template.fields.map(async (field) => {
-            return Validator.giveValidatorToExcel(field.validate_with);
-          })
+          template.template.fields.map(async (field) =>
+            Validator.giveValidatorToExcel(field.validate_with)
+          )
         );
 
         template = template.toObject();
-        validatorsFiltered = validators.filter(v => v !== undefined)
-        template.validators = validatorsFiltered // Añadir validators al objeto
+        const validatorsFiltered = validators.filter((v) => v !== undefined);
+        template.validators = validatorsFiltered;
 
         return template;
       })
