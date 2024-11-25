@@ -41,6 +41,7 @@ publTempController.publishTemplate = async (req, res) => {
           template: template,
           period: req.body.period_id,
           producers_dep_code: req.body.producers_dep_code,
+          deadline: req.body.deadline,
           published_date: datetime_now()
       })
 
@@ -241,7 +242,11 @@ publTempController.feedOptionsToPublishTemplate = async (req, res) => {
       await UserService.findUserByEmailAndRole(email, 'Administrador');
 
       // Get active periods
-      const periods = await Period.find().sort({ updatedAt: -1 })
+      const periods = await Period.find({
+        is_active: true,
+        producer_end_date: { $gte: datetime_now() }
+      })
+      .sort({ updatedAt: -1 })
 
       // Get dependencie producers
       const producers = await Dependency.find();
@@ -280,7 +285,7 @@ publTempController.loadProducerData = async (req, res) => {
     }
 
     const now = new Date(datetime_now().toDateString());
-    const endDate = new Date(pubTem.period.producer_end_date).toDateString();
+    const endDate = new Date(pubTem.deadline).toDateString();
     if( endDate < now ) {
       return res.status(403).json({ status: 'The period is closed' });
     }

@@ -401,7 +401,11 @@ pubReportController.feedOptionsForPublish = async (req, res) => {
         .json({ status: "User not found or isn't an active administrator" });
     }
     //TODO FILTER ONLY ACTIVE PERIODS
-    const periods = await Period.find({ is_active: true }).select("name responsible_end_date");
+    const periods = await Period.find({ 
+      is_active: true, 
+      responsible_end_date: { $gte: datetime_now() }
+     })
+     .select("name responsible_end_date");
     const dimensions = await Dimension.find({}).select("name");
     res.status(200).json({ periods, dimensions });
   } catch (error) {
@@ -565,7 +569,6 @@ pubReportController.deletePublishedReport = async (req, res) => {
         .status(403)
         .json({ status: "User not found or isn't an active administrator" });
     }
-    console.log(req.params);
     const publishedReport = await PubReport.findById(reportId);
     if (!publishedReport) {
       return res.status(404).json({ status: "Published Report not found" });
@@ -573,13 +576,19 @@ pubReportController.deletePublishedReport = async (req, res) => {
 
     if (publishedReport.filled_reports.length > 0) {
       return res
-        .status(400)
+        .status(401)
         .json({
           status: "Cannot delete a published report with filled reports",
         });
     }
 
-    await publishedReport.remove();
+    if (publishedReport.deadline < datetime_now()) {
+      return res
+        .status(400)
+        .json({ status: "Cannot delete a published report from finished periods" });
+    }
+
+    await publishedReport.deleteOne()
     res.status(200).json({ status: "Published Report deleted" });
   } catch (error) {
     console.log(error);

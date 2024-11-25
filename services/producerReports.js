@@ -1,4 +1,5 @@
 const { uploadFileToGoogleDrive } = require("../config/googleDrive");
+const Period = require("../models/periods");
 const ProducerReport = require("../models/producerReports");
 
 class ProducerReportsService {
@@ -43,7 +44,9 @@ class ProducerReportsService {
 
   static async getReport(id) {
     try {
-      const report = await ProducerReport.findById(id);
+      const report = await ProducerReport.findById(id)
+      .populate('dimensions')
+      .populate('producers');
       return report;
     } catch (error) {
       console.error('Error fetching report:', error);
@@ -85,6 +88,67 @@ class ProducerReportsService {
 
     await report.save({ session });
   }
+
+  static async updateReport(id, name, description, file, file_name, dimensions, producers, requires_attachment, session) {
+    let fileInfo = null;
+    const pubReportsToUpdate = [];
+    
+    if (file) {
+        const fileData = await uploadFileToGoogleDrive(file, 'Formatos/Informes/Productores', file_name);
+        if (!fileData) {
+            throw new Error('Error uploading file');
+        }
+
+        fileInfo = {
+            id: fileData.id,
+            name: fileData.name,
+            view_link: fileData.webViewLink,
+            download_link: fileData.webContentLink,
+            folder_id: fileData.parents[0],
+        };
+    }
+
+    const periods = await Period.find({
+      responsible_start_date: { $lte: nowDate },
+      responsible_end_date: { $gte: nowDate }
+    }).session(session);
+
+    if (periods.length > 0) {
+      const publishedReportsRelated = await ProducerReport.find({
+        'report._id': new ObjectId(id),
+        period: { $in: periods.map(period => period._id) }
+      }).session(session);
+
+      for (const pubReport of publishedReportsRelated) {
+        if (pubReport.filled_reports.length > 0) {
+          const error = new Error('Cannot update this report because it is already filled in a published report');
+          error.status = 401;
+          throw error;
+        }
+        pubReportsToUpdate.push(pubReport)
+      }
+    }
+
+    const updateData = {
+        name,
+        description,
+        requires_attachment,
+        dimensions,
+        producers,
+        file_name
+    };
+
+    if (fileInfo) {
+        updateData.report_example = fileInfo;
+    }
+
+    await ProducerReport.findByIdAndUpdate(id, updateData, { session });
+    for (const pubReport of pubReportsToUpdate) {
+      pubReport.report = report;
+      await pubReport.save({ session });
+    }
+  }
 }
+
 
 module.exports = ProducerReportsService;
