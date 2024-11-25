@@ -1,8 +1,21 @@
 const Period = require('../models/periods');
+const UserService = require('../services/users');
 
 const periodController = {};
 
 periodController.getPeriods = async (req, res) => {
+  try {
+    const email = req.query.email;
+    await UserService.findUserByEmailAndRole(email, "Administrador");
+    const periods = await Period.find();
+    res.status(200).json(periods);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "Error getting periods", error: error.message });
+  }
+}
+
+periodController.getPeriodsPagination = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const search = req.query.search || '';
