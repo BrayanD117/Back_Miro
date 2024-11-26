@@ -40,7 +40,6 @@ publTempController.publishTemplate = async (req, res) => {
           published_by: user,
           template: template,
           period: req.body.period_id,
-          producers_dep_code: req.body.producers_dep_code,
           deadline: req.body.deadline,
           published_date: datetime_now()
       })

@@ -12,6 +12,8 @@ router.get("/active", controller.getActivePeriods)
 
 router.post("/create", controller.createPeriod)
 
+router.get("/feedDuplicate", controller.feedDuplicateOptions);
+
 router.put("/:id", controller.updatePeriod);
 
 router.delete("/:id", controller.deletePeriod);
