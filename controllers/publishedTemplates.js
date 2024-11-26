@@ -454,6 +454,7 @@ publTempController.getUploadedTemplatesByProducer = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const search = req.query.search || '';
+  const periodId = req.query.periodId;
   const skip = (page - 1) * limit;
 
   try {
@@ -466,6 +467,10 @@ publTempController.getUploadedTemplatesByProducer = async (req, res) => {
       'loaded_data.send_by.dep_code': user.dep_code,
       name: { $regex: search, $options: 'i' }
     };
+
+    if (periodId) {
+      query.period = periodId;
+    }
 
     const templates = await PublishedTemplate.find(query)
       .skip(skip)
