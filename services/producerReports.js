@@ -1,6 +1,18 @@
+const { default: mongoose } = require("mongoose");
 const { uploadFileToGoogleDrive } = require("../config/googleDrive");
 const Period = require("../models/periods");
 const ProducerReport = require("../models/producerReports");
+const PublishedProducerReports = require("../models/publishedProducerReports");
+const { ObjectId } = mongoose.Types;
+
+const datetime_now = () => {
+  const now = new Date();
+
+  const offset = -5; // GMT-5
+  const dateWithOffset = new Date(now.getTime() + offset * 60 * 60 * 1000);
+
+  return new Date(dateWithOffset.setMilliseconds(now.getMilliseconds()));
+};
 
 class ProducerReportsService {
   static async getReports() {
@@ -92,6 +104,8 @@ class ProducerReportsService {
   static async updateReport(id, name, description, file, file_name, dimensions, producers, requires_attachment, session) {
     let fileInfo = null;
     const pubReportsToUpdate = [];
+
+    const nowDate = new Date(datetime_now().toDateString());
     
     if (file) {
         const fileData = await uploadFileToGoogleDrive(file, 'Formatos/Informes/Productores', file_name);
@@ -109,14 +123,13 @@ class ProducerReportsService {
     }
 
     const periods = await Period.find({
-      responsible_start_date: { $lte: nowDate },
-      responsible_end_date: { $gte: nowDate }
+      producer_end_date: { $gte: nowDate }
     }).session(session);
 
     if (periods.length > 0) {
-      const publishedReportsRelated = await ProducerReport.find({
+      const publishedReportsRelated = await PublishedProducerReports.find({
         'report._id': new ObjectId(id),
-        period: { $in: periods.map(period => period._id) }
+        period: { $in: periods.map(p => p._id) }
       }).session(session);
 
       for (const pubReport of publishedReportsRelated) {
@@ -142,9 +155,10 @@ class ProducerReportsService {
         updateData.report_example = fileInfo;
     }
 
-    await ProducerReport.findByIdAndUpdate(id, updateData, { session });
+    const report = await ProducerReport.findByIdAndUpdate(id, updateData, { new: true, session });
     for (const pubReport of pubReportsToUpdate) {
       pubReport.report = report;
+      console.log('pubReport', pubReport.report);
       await pubReport.save({ session });
     }
   }

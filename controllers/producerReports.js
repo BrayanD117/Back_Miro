@@ -114,9 +114,12 @@ reportController.updateReport = async (req, res) => {
     await session.commitTransaction();
     res.status(200).json({ status: "Report updated" });
   } catch (error) {
-    console.error(error);
-    session.abortTransaction();
-    res.status(500).json({ status: "Error updating report", error: error.message });
+    await session.abortTransaction();
+    if(error.status === 401) 
+      res.status(401).json({ message: "Cannot update this report because it is already filled in a published report" });
+    else 
+      res.status(500).json({ status: "Error updating report", error: error.message });
+    
   } finally {
     if (req.file) fs.unlinkSync(req.file.path);
     session.endSession();

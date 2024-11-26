@@ -223,7 +223,7 @@ reportController.updateReport = async (req, res) => {
     report.requires_attachment = requires_attachment;
     report.file_name = file_name;
     report.dimensions = dimensions;
-      
+
     await report.save({ session });
 
     for (const pubReport of pubReportsToUpdate) {
@@ -238,8 +238,9 @@ reportController.updateReport = async (req, res) => {
     if (req.file) {
       fs.unlinkSync(req.file.path);
     }
-    console.error(error);
-    res.status(400).json({ status: "Error updating report", error: error.message });
+    if(error.status === 401) {
+      res.status(401).json({ message: error.message });
+    }
   } finally {
     session.endSession();
   }
