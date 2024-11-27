@@ -18,4 +18,6 @@ router.put("/:id", controller.updatePeriod);
 
 router.delete("/:id", controller.deletePeriod);
 
+router.get("/allperiods", controller.getAllPeriods)
+
 module.exports = router

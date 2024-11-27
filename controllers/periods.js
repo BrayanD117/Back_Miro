@@ -132,4 +132,15 @@ periodController.feedDuplicateOptions = async (req, res) => {
   }
 }
 
+periodController.getAllPeriods = async (req, res) => {
+    try {
+      const periods = await Period.find({}, { _id: 1, name: 1 }).sort({ name: 1 });
+      res.status(200).json(periods);
+    } catch (error) {
+      console.error('Error fetching all periods:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+};  
+
+
 module.exports = periodController;
