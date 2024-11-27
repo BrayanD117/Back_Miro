@@ -184,7 +184,7 @@ pubReportController.getAdminPublishedReportById = async (req, res) => {
 
 pubReportController.getPublishedReportsResponsible = async (req, res) => {
   try {
-    const { email, page = 1, limit = 10, search = "" } = req.query;
+    const { email, page = 1, limit = 10, search = "", periodId } = req.query;
 
     // Verificar si el usuario es un administrador o Productor activo
     const user = await User.findOne({
@@ -204,14 +204,17 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
     const skip = (pageNumber - 1) * pageSize;
 
     // Crear objeto de búsqueda
-    const searchQuery = search.trim()
-      ? {
-          $or: [
-            { "report.name": { $regex: search, $options: "i" } }, // Busca en el campo "report.name"
-            { "period.name": { $regex: search, $options: "i" } }, // Busca en el campo "period.name"
-          ],
-        }
-      : {};
+    const searchQuery = {
+      ...(search.trim()
+        ? {
+            $or: [
+              { "report.name": { $regex: search, $options: "i" } },
+              { "period.name": { $regex: search, $options: "i" } },
+            ],
+          }
+        : {}),
+      ...(periodId && { period: periodId }),
+    };
 
     let publishedReports = await PubReport.find(searchQuery)
       .skip(skip)
