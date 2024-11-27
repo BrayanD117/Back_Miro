@@ -40,7 +40,7 @@ publTempController.publishTemplate = async (req, res) => {
           published_by: user,
           template: template,
           period: req.body.period_id,
-          producers_dep_code: req.body.producers_dep_code,
+          deadline: req.body.deadline,
           published_date: datetime_now()
       })
 
@@ -57,6 +57,7 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const search = req.query.search || '';
+  const periodId = req.query.periodId || null;
   const skip = (page - 1) * limit;
 
   try {
@@ -74,7 +75,8 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
     const activeRole = user.activeRole;
 
     let query = {
-      name: { $regex: search, $options: 'i' }
+      name: { $regex: search, $options: 'i' },
+      ...(periodId && { period: periodId }),
     };
     
     if (activeRole !== 'Administrador') {
@@ -151,16 +153,15 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
 
   try {
     const user = await User.findOne({ email });
-    if (!user || !user.roles.includes('Productor')) {
+    if (!user || !user.activeRole === 'Productor') {
       return res.status(404).json({ status: 'User not found' });
     }
 
     const query = {
-      producers_dep_code: user.dep_code,
       name: { $regex: search, $options: 'i' }
     };
 
-    const templates = await PublishedTemplate.find(query)
+    let templates = await PublishedTemplate.find(query)
       .skip(skip)
       .limit(limit)
       .populate('period')
@@ -170,7 +171,16 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
           path: 'dimension',
           model: 'dimensions'
         }
-      });
+      })
+      .populate({
+        path: 'template.producers',
+        model: 'dependencies',
+        match: { members: user.email } 
+      })
+
+    console.log(templates)
+
+    templates = templates.filter(t => t.template.producers.length > 0);
 
     const total = await PublishedTemplate.countDocuments(query);
 
@@ -241,7 +251,11 @@ publTempController.feedOptionsToPublishTemplate = async (req, res) => {
       await UserService.findUserByEmailAndRole(email, 'Administrador');
 
       // Get active periods
-      const periods = await Period.find().sort({ updatedAt: -1 })
+      const periods = await Period.find({
+        is_active: true,
+        producer_end_date: { $gte: datetime_now() }
+      })
+      .sort({ updatedAt: -1 })
 
       // Get dependencie producers
       const producers = await Dependency.find();
@@ -280,12 +294,13 @@ publTempController.loadProducerData = async (req, res) => {
     }
 
     const now = new Date(datetime_now().toDateString());
-    const endDate = new Date(pubTem.period.producer_end_date).toDateString();
+    const endDate = new Date(pubTem.deadline).toDateString();
     if( endDate < now ) {
       return res.status(403).json({ status: 'The period is closed' });
     }
     
     const producer = pubTem.template?.producers.find(p => p.members.includes(user.email));
+    console.log(pubTem.template?.producers)
     if (!producer) {
       return res.status(403).json({ status: 'User is not assigned to this published template' });
     }
@@ -381,10 +396,16 @@ publTempController.deleteLoadedDataDependency = async (req, res) => {
     const user = await User.findOne({ email })
     if (!user) { return res.status(404).json({ status: 'User not found' }) }
 
-    const pubTem = await PublishedTemplate.findById(pubTem_id);
+    const pubTem = await PublishedTemplate.findById(pubTem_id)
+      .populate({
+        path: 'template.producers',
+        model: 'dependencies',
+        match: { members: user.email }
+      })
+
     if (!pubTem) { return res.status(404).json({ status: 'Published template not found' }) }
 
-    if (!pubTem.producers_dep_code.includes(user.dep_code)) {
+    if (!pubTem.template.producers.length === 0) {
       return res.status(403).json({ status: 'User is not assigned to this published template' })
     }
 
@@ -454,6 +475,7 @@ publTempController.getUploadedTemplatesByProducer = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const search = req.query.search || '';
+  const periodId = req.query.periodId;
   const skip = (page - 1) * limit;
 
   try {
@@ -466,6 +488,10 @@ publTempController.getUploadedTemplatesByProducer = async (req, res) => {
       'loaded_data.send_by.dep_code': user.dep_code,
       name: { $regex: search, $options: 'i' }
     };
+
+    if (periodId) {
+      query.period = periodId;
+    }
 
     const templates = await PublishedTemplate.find(query)
       .skip(skip)
@@ -511,6 +537,7 @@ publTempController.getUploadedTemplatesByProducer = async (req, res) => {
 
 publTempController.getAvailableTemplatesToProductor = async (req, res) => {
   const email = req.query.email;
+  const periodId = req.query.periodId;
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const search = req.query.search || '';
@@ -520,8 +547,12 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
     const user = await UserService.findUserByEmailAndRole(email, 'Productor');
 
     const query = {
-      name: { $regex: search, $options: 'i' }
+      name: { $regex: search, $options: 'i' },
     };
+
+    if (periodId) {
+      query.period = periodId;
+    }
 
     const templates = await PublishedTemplate.find(query)
       .skip(skip)
@@ -531,36 +562,33 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
         path: 'template',
         populate: {
           path: 'dimensions',
-          model: 'dimensions'
-        }
+          model: 'dimensions',
+        },
       })
       .populate({
         path: 'template',
         populate: {
           path: 'producers',
-          model: 'dependencies'
-        }
+          model: 'dependencies',
+          match: { members: user.email }
+        },
       });
 
-      console.log(templates[0].template.producers)
-    
-    // Filtrar las plantillas que ya han sido cargadas por el productor
-    const filteredTemplates = templates.filter(t => 
-      !t.loaded_data.some(ld => ld.send_by.dep_code === user.dep_code)
-        || !t.template.producers.some(p => p.members.includes(user.email))
-    );
+    const filteredTemplates = templates.filter((template) => {
+      return template.template.producers.length > 0 && !template.loaded_data?.some((data) => data.dependency === user.dep_code);
+    });
 
     const templatesWithValidators = await Promise.all(
       filteredTemplates.map(async (template) => {
         const validators = await Promise.all(
-          template.template.fields.map(async (field) => {
-            return Validator.giveValidatorToExcel(field.validate_with);
-          })
+          template.template.fields.map(async (field) =>
+            Validator.giveValidatorToExcel(field.validate_with)
+          )
         );
 
         template = template.toObject();
-        validatorsFiltered = validators.filter(v => v !== undefined)
-        template.validators = validatorsFiltered // Añadir validators al objeto
+        const validatorsFiltered = validators.filter((v) => v !== undefined);
+        template.validators = validatorsFiltered;
 
         return template;
       })
@@ -662,7 +690,7 @@ publTempController.getUploadedTemplateDataByProducer = async (req, res) => {
 
     const template = await PublishedTemplate.findOne({
       _id: id_template,
-      'loaded_data.send_by.email': email,
+      'loaded_data.dependency': user.dep_code,
     });
 
     if (!template) {

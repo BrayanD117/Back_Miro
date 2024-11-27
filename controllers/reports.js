@@ -6,6 +6,7 @@ const Report = require("../models/reports");
 const User = require("../models/users");
 const Period = require("../models/periods");
 const PubReport = require("../models/publishedReports");
+const UserService = require("../services/users");
 
 const datetime_now = () => {
   const now = new Date();
@@ -17,6 +18,25 @@ const datetime_now = () => {
 };
 
 const reportController = {};
+
+reportController.getReport = async (req, res) => {
+  try {
+    const { email } = req.query;
+    const { id } = req.params;
+
+    // Verificar si el usuario es un administrador activo
+    await UserService.findUserByEmailAndRole(email, "Administrador");
+
+    // Obtener el informe
+    const report = await Report.findById(id)
+      .populate('dimensions');
+    
+    res.status(200).json(report);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "Error getting report", error: error.message });
+  }
+}
 
 reportController.getReports = async (req, res) => {
   try {
@@ -157,13 +177,8 @@ reportController.updateReport = async (req, res) => {
     const nowDate = datetime_now().toDateString();
     const pubReportsToUpdate = []
 
-    // Buscar al usuario
-    const user = await User.findOne({ email, activeRole: "Administrador" }).session(session);
-    if (!user) {
-      throw new Error("User not found or isn't an Administrator");
-    }
+    await UserService.findUserByEmailAndRole(email, "Administrador", session);
 
-    // Buscar el informe
     const report = await Report.findById(id).session(session);
     if (!report) {
       throw new Error("Report not found");
@@ -171,7 +186,6 @@ reportController.updateReport = async (req, res) => {
 
     // Buscar periodos activos
     const periods = await Period.find({
-      is_active: true,
       responsible_start_date: { $lte: nowDate },
       responsible_end_date: { $gte: nowDate }
     }).session(session);
@@ -184,14 +198,13 @@ reportController.updateReport = async (req, res) => {
 
       for (const pubReport of publishedReportsRelated) {
         if (pubReport.filled_reports.length > 0) {
-          res.status(400).json({ message: "Cannot update this report because it is already filled in a published report" });
+          res.status(401).json({ message: "Cannot update this report because it is already filled in a published report" });
           return
         }
         pubReportsToUpdate.push(pubReport)
       }
     }
 
-    // Manejo de archivo si existe
     if (req.file) {
       const fileData = await updateFileInGoogleDrive(report.report_example_id, req.file, file_name);
 
@@ -210,7 +223,7 @@ reportController.updateReport = async (req, res) => {
     report.requires_attachment = requires_attachment;
     report.file_name = file_name;
     report.dimensions = dimensions;
-      
+
     await report.save({ session });
 
     for (const pubReport of pubReportsToUpdate) {
@@ -218,19 +231,17 @@ reportController.updateReport = async (req, res) => {
       await pubReport.save({ session });
     }
 
-    // Commit de la transacción
     await session.commitTransaction();
     res.status(200).json({ status: "Report updated successfully" });
   } catch (error) {
-    // Abortar transacción y limpiar si hay error
     await session.abortTransaction();
     if (req.file) {
       fs.unlinkSync(req.file.path);
     }
-    console.error(error);
-    res.status(400).json({ status: "Error updating report", error: error.message });
+    if(error.status === 401) {
+      res.status(401).json({ message: error.message });
+    }
   } finally {
-    // Finalizar la sesión de la transacción
     session.endSession();
   }
 };

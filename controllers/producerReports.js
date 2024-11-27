@@ -20,6 +20,19 @@ const datetime_now = () => {
 
 const reportController = {};
 
+reportController.getReport = async (req, res) => {
+  try {
+    const email = req.query.email;
+    const id = req.params.id;
+    await UserService.findUserByEmailAndRole(email, "Administrador");
+    const report = await ProducerReportsService.getReport(id);
+    res.status(200).json(report);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "Error getting report", error: error.message });
+  }
+}
+
 reportController.getReports = async (req, res) => {
   try {
     const email = req.query.email;
@@ -67,9 +80,7 @@ reportController.createReport = async (req, res) => {
 
     if(!name || !description || !requires_attachment || !file_name 
       || dimensions?.length === 0 || producers?.length === 0) {
-      
-      console.log(name, description, requires_attachment, file_name, dimensions, producers)
-      throw new Error("All fields are required");
+            throw new Error("All fields are required");
     }
 
     await ProducerReportsService.createReport(user, name, description, req.file, file_name, 
@@ -87,5 +98,32 @@ reportController.createReport = async (req, res) => {
     session.endSession();
   }
 };
+
+reportController.updateReport = async (req, res) => {
+  const session = await mongoose.startSession();
+  try {
+    const { id, email, requires_attachment, description, name, file_name, dimensions, producers } = req.body;
+    session.startTransaction();
+    
+    await UserService.findUserByEmailAndRole(email, "Administrador", session);
+    if(!name || !description || !requires_attachment || !file_name 
+      || dimensions?.length === 0 || producers?.length === 0) {
+            throw new Error("All fields are required");
+    }
+    await ProducerReportsService.updateReport(id, name, description, req.file, file_name, dimensions, producers, requires_attachment, session);
+    await session.commitTransaction();
+    res.status(200).json({ status: "Report updated" });
+  } catch (error) {
+    await session.abortTransaction();
+    if(error.status === 401) 
+      res.status(401).json({ message: "Cannot update this report because it is already filled in a published report" });
+    else 
+      res.status(500).json({ status: "Error updating report", error: error.message });
+    
+  } finally {
+    if (req.file) fs.unlinkSync(req.file.path);
+    session.endSession();
+  }
+}
 
 module.exports = reportController;

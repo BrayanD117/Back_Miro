@@ -7,8 +7,11 @@ router.get("/all", controller.getReports)
 
 router.post("/create", upload.single('report_example'), controller.createReport)
 
-router.put("/update/:id", upload.single('report_example'), controller.updateReport)
 
 router.delete("/delete/:id", controller.deleteReport)
+
+router.get("/:id", controller.getReport)
+
+router.put("/:id", upload.single('report_example'), controller.updateReport)
 
 module.exports = router

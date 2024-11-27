@@ -23,7 +23,7 @@ const datetime_now = () => {
 
 pubReportController.getPublishedReports = async (req, res) => {
   try {
-    const { email, page = 1, limit = 10, search = "" } = req.query;
+    const { email, page = 1, limit = 10, search = "", periodId } = req.query;
 
     // Verificar si el usuario es un administrador o Productor activo
     const user = await User.findOne({
@@ -43,14 +43,17 @@ pubReportController.getPublishedReports = async (req, res) => {
     const skip = (pageNumber - 1) * pageSize;
 
     // Crear objeto de búsqueda
-    const searchQuery = search.trim()
-      ? {
-          $or: [
-            { "report.name": { $regex: search, $options: "i" } }, // Busca en el campo "report.name"
-            { "period.name": { $regex: search, $options: "i" } }, // Busca en el campo "period.name"
-          ],
-        }
-      : {};
+    const searchQuery = {
+      ...(search.trim()
+        ? {
+            $or: [
+              { "report.name": { $regex: search, $options: "i" } },
+              { "period.name": { $regex: search, $options: "i" } },
+            ],
+          }
+        : {}),
+      ...(periodId && { period: periodId }),
+    };
 
     const publishedReports = await PubReport.find(searchQuery)
       .skip(skip)
@@ -181,12 +184,12 @@ pubReportController.getAdminPublishedReportById = async (req, res) => {
 
 pubReportController.getPublishedReportsResponsible = async (req, res) => {
   try {
-    const { email, page = 1, limit = 10, search = "" } = req.query;
+    const { email, page = 1, limit = 10, search = "", periodId } = req.query;
 
     // Verificar si el usuario es un administrador o Productor activo
     const user = await User.findOne({
       email,
-      activeRole: { $in: ["Responsable"] },
+      activeRole: "Responsable",
       isActive: true,
     });
     if (!user) {
@@ -201,14 +204,17 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
     const skip = (pageNumber - 1) * pageSize;
 
     // Crear objeto de búsqueda
-    const searchQuery = search.trim()
-      ? {
-          $or: [
-            { "report.name": { $regex: search, $options: "i" } }, // Busca en el campo "report.name"
-            { "period.name": { $regex: search, $options: "i" } }, // Busca en el campo "period.name"
-          ],
-        }
-      : {};
+    const searchQuery = {
+      ...(search.trim()
+        ? {
+            $or: [
+              { "report.name": { $regex: search, $options: "i" } },
+              { "period.name": { $regex: search, $options: "i" } },
+            ],
+          }
+        : {}),
+      ...(periodId && { period: periodId }),
+    };
 
     let publishedReports = await PubReport.find(searchQuery)
       .skip(skip)
@@ -239,23 +245,18 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
     publishedReports = publishedReports.filter((report) => {
       return report.report.dimensions.some((dimension) => {
         return dimension.responsible !== null;
-      })
+      });
     });
 
-    //Gives only reports that the dimension haven't uploaded yet
+    // Gives only reports that the dimension haven't uploaded yet
     const publishedReportsFilter = publishedReports.map((report) => {
-      report.filled_reports
-        .filter((filledRep) => {
-          return (
-            filledRep.dimension !== null &&
-            filledRep.dimension.responsible !== undefined
-          );
-        })
-        .sort((a, b) => new Date(b.loaded_date) - new Date(a.loaded_date)); // Ordenar por fecha descendente
+      report.filled_reports = report.filled_reports
+      .filter((filledRep) => filledRep.dimension.responsible !== null)
+      .sort((a, b) => new Date(b.loaded_date) - new Date(a.loaded_date)); // Ordenar por fecha descendente
       return report;
     });
-
-    const totalReports = publishedReports.length;
+      
+    const totalReports = publishedReportsFilter.length;
     //const publishedReportsFilter = publishedReports.filter(report => report.filled_reports.dim);
     // Responder con los datos paginados y la información de paginación
     res.status(200).json({
@@ -401,7 +402,11 @@ pubReportController.feedOptionsForPublish = async (req, res) => {
         .json({ status: "User not found or isn't an active administrator" });
     }
     //TODO FILTER ONLY ACTIVE PERIODS
-    const periods = await Period.find({ is_active: true }).select("name responsible_end_date");
+    const periods = await Period.find({ 
+      is_active: true, 
+      responsible_end_date: { $gte: datetime_now() }
+     })
+     .select("name responsible_end_date");
     const dimensions = await Dimension.find({}).select("name");
     res.status(200).json({ periods, dimensions });
   } catch (error) {
@@ -565,7 +570,6 @@ pubReportController.deletePublishedReport = async (req, res) => {
         .status(403)
         .json({ status: "User not found or isn't an active administrator" });
     }
-    console.log(req.params);
     const publishedReport = await PubReport.findById(reportId);
     if (!publishedReport) {
       return res.status(404).json({ status: "Published Report not found" });
@@ -573,13 +577,19 @@ pubReportController.deletePublishedReport = async (req, res) => {
 
     if (publishedReport.filled_reports.length > 0) {
       return res
-        .status(400)
+        .status(401)
         .json({
           status: "Cannot delete a published report with filled reports",
         });
     }
 
-    await publishedReport.remove();
+    if (publishedReport.deadline < datetime_now()) {
+      return res
+        .status(400)
+        .json({ status: "Cannot delete a published report from finished periods" });
+    }
+
+    await publishedReport.deleteOne()
     res.status(200).json({ status: "Published Report deleted" });
   } catch (error) {
     console.log(error);

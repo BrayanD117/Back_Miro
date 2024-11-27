@@ -48,9 +48,12 @@ class PublishedReportService {
     return pubReport;
   }
 
-  static async findPublishedReports(user, page = 1, limit = 10, search = "", session) {
+  static async findPublishedReports(user, page = 1, limit = 10, search = "", periodId, session) {
     const skip = (page - 1) * limit;
-    const query = search ? { "report.name": { $regex: search, $options: "i" } } : {};
+    let query = {
+      ...(search && { "report.name": { $regex: search, $options: "i" } }),
+      ...(periodId && { period: periodId }),
+    };
     let reports;
     if (user.activeRole === "Responsable") {
       reports = await PubReport.find(query)
@@ -140,9 +143,12 @@ class PublishedReportService {
     };
   }
 
-  static async findPublishedReportsProducer(user, page = 1, limit = 10, search = "", session) {
+  static async findPublishedReportsProducer(user, page = 1, limit = 10, search = "", periodId, session) {
     const skip = (page - 1) * limit;
-    const query = search ? { "report.name": { $regex: search, $options: "i" } } : {};
+    const query = {
+      ...(search && { "report.name": { $regex: search, $options: "i" } }),
+      ...(periodId && { period: periodId }),
+    };
     let reports;
     reports = await PubReport.find(query)
       .populate({

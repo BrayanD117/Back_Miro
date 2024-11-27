@@ -69,7 +69,11 @@ const publishedTemplateSchema = new Schema({
             },
             message: props => `Dependency already uploaded data: ${props.value.map(ld => ld.dependency).join(', ')}`
         }
-    },  
+    },
+    deadline: {
+        type: Date,
+        required: true
+    },
     published_date: {
         type: Date,
         required: true
