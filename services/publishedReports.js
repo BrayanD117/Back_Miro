@@ -33,7 +33,11 @@ class PublishedReportService {
       throw new Error("Report not found.");
     }
 
-    pubReport.report.dimensions = pubReport.report.dimensions.filter((dimension) => dimension.responsible);
+    console.log(pubReport.report.dimensions)
+
+    pubReport.report.dimensions = pubReport.report.dimensions.filter((dimension) => dimension.responsible !== null);
+
+    pubReport.filled_reports = pubReport.filled_reports.filter((filledReport) => filledReport.dimension.responsible !== null);
 
     if(pubReport.report.dimensions.length === 0) {
       throw new Error("User does not have access to this report.");

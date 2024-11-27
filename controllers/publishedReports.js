@@ -189,7 +189,7 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
     // Verificar si el usuario es un administrador o Productor activo
     const user = await User.findOne({
       email,
-      activeRole: { $in: ["Responsable"] },
+      activeRole: "Responsable",
       isActive: true,
     });
     if (!user) {
@@ -245,23 +245,18 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
     publishedReports = publishedReports.filter((report) => {
       return report.report.dimensions.some((dimension) => {
         return dimension.responsible !== null;
-      })
+      });
     });
 
-    //Gives only reports that the dimension haven't uploaded yet
+    // Gives only reports that the dimension haven't uploaded yet
     const publishedReportsFilter = publishedReports.map((report) => {
-      report.filled_reports
-        .filter((filledRep) => {
-          return (
-            filledRep.dimension !== null &&
-            filledRep.dimension.responsible !== undefined
-          );
-        })
-        .sort((a, b) => new Date(b.loaded_date) - new Date(a.loaded_date)); // Ordenar por fecha descendente
+      report.filled_reports = report.filled_reports
+      .filter((filledRep) => filledRep.dimension.responsible !== null)
+      .sort((a, b) => new Date(b.loaded_date) - new Date(a.loaded_date)); // Ordenar por fecha descendente
       return report;
     });
-
-    const totalReports = publishedReports.length;
+      
+    const totalReports = publishedReportsFilter.length;
     //const publishedReportsFilter = publishedReports.filter(report => report.filled_reports.dim);
     // Responder con los datos paginados y la información de paginación
     res.status(200).json({
