@@ -57,6 +57,7 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const search = req.query.search || '';
+  const periodId = req.query.periodId || null;
   const skip = (page - 1) * limit;
 
   try {
@@ -74,7 +75,8 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
     const activeRole = user.activeRole;
 
     let query = {
-      name: { $regex: search, $options: 'i' }
+      name: { $regex: search, $options: 'i' },
+      ...(periodId && { period: periodId }),
     };
     
     if (activeRole !== 'Administrador') {
