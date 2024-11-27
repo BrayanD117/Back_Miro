@@ -153,16 +153,15 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
 
   try {
     const user = await User.findOne({ email });
-    if (!user || !user.roles.includes('Productor')) {
+    if (!user || !user.activeRole === 'Productor') {
       return res.status(404).json({ status: 'User not found' });
     }
 
     const query = {
-      producers_dep_code: user.dep_code,
       name: { $regex: search, $options: 'i' }
     };
 
-    const templates = await PublishedTemplate.find(query)
+    let templates = await PublishedTemplate.find(query)
       .skip(skip)
       .limit(limit)
       .populate('period')
@@ -172,7 +171,16 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
           path: 'dimension',
           model: 'dimensions'
         }
-      });
+      })
+      .populate({
+        path: 'template.producers',
+        model: 'dependencies',
+        match: { members: user.email } 
+      })
+
+    console.log(templates)
+
+    templates = templates.filter(t => t.template.producers.length > 0);
 
     const total = await PublishedTemplate.countDocuments(query);
 
@@ -292,6 +300,7 @@ publTempController.loadProducerData = async (req, res) => {
     }
     
     const producer = pubTem.template?.producers.find(p => p.members.includes(user.email));
+    console.log(pubTem.template?.producers)
     if (!producer) {
       return res.status(403).json({ status: 'User is not assigned to this published template' });
     }
@@ -387,10 +396,16 @@ publTempController.deleteLoadedDataDependency = async (req, res) => {
     const user = await User.findOne({ email })
     if (!user) { return res.status(404).json({ status: 'User not found' }) }
 
-    const pubTem = await PublishedTemplate.findById(pubTem_id);
+    const pubTem = await PublishedTemplate.findById(pubTem_id)
+      .populate({
+        path: 'template.producers',
+        model: 'dependencies',
+        match: { members: user.email }
+      })
+
     if (!pubTem) { return res.status(404).json({ status: 'Published template not found' }) }
 
-    if (!pubTem.producers_dep_code.includes(user.dep_code)) {
+    if (!pubTem.template.producers.length === 0) {
       return res.status(403).json({ status: 'User is not assigned to this published template' })
     }
 
@@ -555,14 +570,13 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
         populate: {
           path: 'producers',
           model: 'dependencies',
+          match: { members: user.email }
         },
       });
 
-    const filteredTemplates = templates.filter(
-      (t) =>
-        !t.loaded_data.some((ld) => ld.send_by.dep_code === user.dep_code) ||
-        !t.template.producers.some((p) => p.members.includes(user.email))
-    );
+    const filteredTemplates = templates.filter((template) => {
+      return template.template.producers.length > 0 && !template.loaded_data?.some((data) => data.dependency === user.dep_code);
+    });
 
     const templatesWithValidators = await Promise.all(
       filteredTemplates.map(async (template) => {
@@ -676,7 +690,7 @@ publTempController.getUploadedTemplateDataByProducer = async (req, res) => {
 
     const template = await PublishedTemplate.findOne({
       _id: id_template,
-      'loaded_data.send_by.email': email,
+      'loaded_data.dependency': user.dep_code,
     });
 
     if (!template) {
