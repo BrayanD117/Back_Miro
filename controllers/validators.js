@@ -113,10 +113,15 @@ validatorController.updateName = async (req, res) => {
 
 validatorController.updateValidator = async (req, res) => {
     try {
-        const { name } = req.body
-        const validator = await Validator.findOne({name}, 'name')
+        const { id } = req.body;
+        const validator = await Validator.findById(id);
         if (!validator) {
             return res.status(404).json({ status: "Validator not found" })
+        }
+        if (req.body.name && req.body.name.includes('-')) {
+            return res.status(400).json({ 
+                status: "The new name cannot contain the '-' character" 
+            });
         }
         validator.set(req.body)
         await validator.save()      
