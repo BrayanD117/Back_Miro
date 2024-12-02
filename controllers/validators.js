@@ -237,8 +237,9 @@ validatorController.getValidatorsWithPagination = async (req, res) => {
 
         res.status(200).json({
             validators,
-            totalPages: Math.ceil(totalCount / limit),
-            currentPage: page
+            pages: Math.ceil(totalCount / limit),
+            currentPage: Number(page),
+            totalValidators: totalCount,
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
