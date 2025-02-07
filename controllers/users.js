@@ -28,8 +28,12 @@ userController.loadUsers = async (req, res) => {
 
         const response = await axios.get(USERS_ENDPOINT);
 
+        const usersMigrated = await User.find({ migrated: true });
+
         const externalUsers = response.data
-            .filter(user => user.code_user && user.code_user.trim() !== "")
+            .filter(user => user.code_user && user.code_user.trim() !== "" && 
+                !usersMigrated.some(migratedUser => migratedUser.email === user.email)
+          )
             .map(user => ({
                 identification: user.identification,
                 full_name: user.full_name,
@@ -52,11 +56,27 @@ userController.loadUsers = async (req, res) => {
         // Sync users
         await User.syncUsers(externalUsers);
 
+        await userController.deleteDeactivatedUsersFromDependency();
+
         res.status(200).send("Users synchronized");
     } catch (error) {
         console.error('Error during user synchronization:', error);
         res.status(500).json({ error: 'Internal Server Error', details: error.message });
     }
+};
+
+userController.deleteDeactivatedUsersFromDependency = async () => {
+  try {
+    const users = await User.find({ isActive: false });
+    const dependencies = await Dependency.find();
+    const updatePromises = dependencies.map(async (dependency) => {
+        dependency.members = dependency.members.filter(member => !users.some(user => user.email === member));
+        await dependency.save();
+    });
+    await Promise.all(updatePromises);
+  } catch (error) {
+    console.error("Error removing users from dependencies:", error);
+  }
 };
 
 // Get all users existing into the DB with pagination
@@ -260,6 +280,7 @@ userController.migrateUserDependecy = async (req, res) => {
       throw new Error("User dependency mismatch");
     }
     user.dep_code = new_dep_code;
+    user.migrated = true;
     await user.save(session);
     const dependency = await Dependency.findOne({ dep_code });
     dependency.members = dependency.members.filter(member => member !== email);
