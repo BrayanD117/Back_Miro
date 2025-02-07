@@ -26,6 +26,9 @@ router.post("/addExternalUser", controller.addExternalUser);
 
 router.put("/updateStatus", controller.updateUserStatus);
 
+router.put("/migrate", controller.migrateUserDependecy);
+
 router.get("/:dep_code/users", controller.getUsersByDependency);
+
 
 module.exports = router;

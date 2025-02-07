@@ -1,7 +1,9 @@
 //const { loadEnvFile } = require("process");
 const axios = require('axios');
 const User = require('../models/users');
-const dependencyController = require('./dependencies.js')
+const Dependency = require('../models/dependencies');
+const dependencyController = require('./dependencies.js');
+const { default: mongoose } = require('mongoose');
 
 const userController = {}
 
@@ -244,6 +246,38 @@ userController.getUsersByDependency = async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+userController.migrateUserDependecy = async (req, res) => {
+  const { email, dep_code, new_dep_code } = req.body;
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new Error("User not found");
+    }
+    if (user.dep_code !== dep_code) {
+      throw new Error("User dependency mismatch");
+    }
+    user.dep_code = new_dep_code;
+    await user.save(session);
+    const dependency = await Dependency.findOne({ dep_code });
+    dependency.members = dependency.members.filter(member => member !== email);
+    await dependency.save(session);
+
+    const newDependency = await Dependency.findOne({ dep_code: new_dep_code });
+    newDependency.members.push(email);
+    await newDependency.save(session);
+    
+    await session.commitTransaction();
+    res.status(200).json({ user });
+  } catch (error) {
+    await session.abortTransaction();
+    res.status(500).json({ error: error.message });
+  } finally {
+    session.endSession();
+  }
+}
 
 const validateRoles = (userRoles) => {
     return userRoles.every(role => roles.includes(role));

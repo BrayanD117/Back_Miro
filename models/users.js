@@ -29,8 +29,12 @@
             index: true
         },
         isActive: {
-            type: Boolean,
-            default: true,
+          type: Boolean,
+          default: true,
+        },
+        migrated: {
+          type: Boolean,
+          default: false,
         },
         dep_code: String
         
@@ -49,11 +53,11 @@
 
         // Use bulkWrite to perform upsert operations
         const updateOps = externalUsers.map(externalUser => ({
-            updateOne: {
-                filter: { email: externalUser.email },
-                update: { $set: { ...externalUser, isActive: true } },
-                upsert: true
-            }
+          updateOne: {
+            filter: { email: externalUser.email, migrated: { $ne: true } },
+            update: { $set: { ...externalUser, isActive: true } },
+            upsert: true
+          }
         }));
 
         // Perform bulkWrite for upserting users
