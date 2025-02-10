@@ -384,6 +384,54 @@ publTempController.loadProducerData = async (req, res) => {
   }
 };
 
+publTempController.submitEmptyData = async (req, res) => {
+  const { pubTemId, email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new Error('User not found');
+    }
+    const pubTem = await PublishedTemplate
+      .findById(pubTemId)
+      .populate('period')
+      .populate({
+        path: 'template',
+        populate: {
+          path: 'producers',
+          model: 'dependencies'
+        }
+      })
+
+    if (!pubTem) {
+      throw new Error('Published template not found');
+    }
+        
+    const producersData = {
+      dependency: user.dep_code,
+      send_by: user,
+      loaded_date: datetime_now(),  // Agregar la fecha de carga
+      filled_data: []
+    };
+
+    const existingDataIndex = pubTem.loaded_data.findIndex(
+      data => data.dependency === user.dep_code
+    );
+
+    if (existingDataIndex > -1) {
+      throw new Error('Data already exists');
+    } else {
+      pubTem.loaded_data.push(producersData);
+    }
+
+    await pubTem.save();
+    return res.status(200).json({ status: 'Data loaded successfully' });
+  } catch (error) {
+    console.log(error.message);
+    return res.status(500).json({ status: 'Internal server error', details: error.message });
+  }
+}
+
 publTempController.deleteLoadedDataDependency = async (req, res) => {
   const { pubTem_id, email } = req.query
 
