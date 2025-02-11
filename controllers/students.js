@@ -18,7 +18,6 @@ studentsController.syncStudents = async (req, res) => {
 studentsController.getStudents = async (req, res) => {
   try {
     const students = await Student.find();
-    console.log(students.length);
     res.status(200).json(students);
   } catch (error) {
     res.status(500).send(error);
