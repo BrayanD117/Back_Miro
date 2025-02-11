@@ -9,6 +9,7 @@ router.get("/available", controller.getAvailableTemplatesToProductor);
 router.get("/feedOptions", controller.feedOptionsToPublishTemplate);
 
 router.put("/producer/load", controller.loadProducerData);
+router.put("/producer/submitEmpty", controller.submitEmptyData);
 router.get("/uploaded", controller.getUploadedTemplatesByProducer);
 router.delete("/producer/delete", controller.deleteLoadedDataDependency);
 

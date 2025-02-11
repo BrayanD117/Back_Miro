@@ -1,6 +1,7 @@
 const { register } = require('module');
 const User = require('../models/users')
 const Validator = require('../models/validators');
+const Student = require('../models/students');
 const { all } = require('../routes/users');
 
 const validatorController = {}
@@ -176,7 +177,11 @@ validatorController.getValidators = async (req, res) => {
 
 validatorController.getValidatorOptions = async (req, res) => {
     try {
-        const options = [{ name: 'Funcionarios - Identificación', type: 'Entero' }];
+        const options = [
+          { name: 'Funcionarios - Identificación', type: 'Entero' }, 
+          { name: 'Estudiantes - Codigo', type: 'Texto Corto' },
+          { name: 'Estudiantes - Identificación', type: 'Texto Corto' }
+        ];
 
         const validators = await Validator.find({}, {name: 1, columns: 1});
         
@@ -277,6 +282,20 @@ validatorController.validateColumn = async (column) => {
             const userIdentifications = users.map(user => user.identification);
             validValuesSet = new Set(userIdentifications);
             columnToValidate = { type: "Entero", values: userIdentifications }; // Ajusta según sea necesario
+        }
+        else if (validatorName === "Estudiantes") {
+            // Obtener códigos de todos los estudiantes
+            if(columnName === "Codigo") {
+              const students = await Student.find({}, { code_student: 1 }).lean();
+              const studentCodes = students.map(student => student.code_student);
+              validValuesSet = new Set(studentCodes);
+              columnToValidate = { type: "Texto Corto", values: studentCodes };
+            } else {
+              const students = await Student.find({}, { identification: 1 }).lean();
+              const studentIdentifications = students.map(student => student.identification);
+              validValuesSet = new Set(studentIdentifications);
+              columnToValidate = { type: "Texto Corto", values: studentIdentifications };
+            }
         } else {
             validator = await Validator.findOne({ name: validatorName });
 
