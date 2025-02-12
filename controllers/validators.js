@@ -29,10 +29,10 @@ const allowedDataTypes = {
         };
     },
     "Texto Corto": (value) => {
-        const isValid = typeof value === 'string' && value.length <= 30;
+        const isValid = typeof value === 'string' && value.length <= 60;
         return {
             isValid,
-            message: isValid ? null : "El valor no es un texto corto (máximo 30 caracteres)."
+            message: isValid ? null : "El valor no es un texto corto (máximo 60 caracteres)."
         };
     },
     "Texto Largo": (value) => {
