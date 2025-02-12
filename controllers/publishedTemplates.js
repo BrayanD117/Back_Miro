@@ -751,6 +751,29 @@ publTempController.getUploadedTemplateDataByProducer = async (req, res) => {
   }
 };
 
+//Only deletes if there's no loaded data
+publTempController.deletePublishedTemplate = async (req, res) => {
+  const { id, email } = req.query;
+
+  try {
+    await UserService.findUserByEmailAndRole(email, 'Administrador');
+
+    const template = await PublishedTemplate.findById(id);
+    if (!template) {
+      throw new Error('Template not found');
+    }
+
+    if (template.loaded_data?.length > 0) {
+      throw new Error('Template has loaded data');
+    }
+
+    await PublishedTemplate.findByIdAndDelete(id);
+    res.status(200).json({ status: 'Template deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting template:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+}
 
 // TODO Editar publishedTemplate (Productores)
 
