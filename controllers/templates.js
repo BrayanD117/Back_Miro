@@ -207,6 +207,7 @@ templateController.updatePlantilla = async (req, res) => {
     res.status(200).json(updatedTemplate);
   } catch (error) {
     await session.abortTransaction();
+    session.endSession();
     console.error("Error updating template:", error);
     res.status(500).json({ error: error.message });
   }
