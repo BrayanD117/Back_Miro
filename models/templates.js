@@ -41,7 +41,12 @@ const fieldSchema = new Schema({
     comment: {
         type: String,
         required: false
-    } // Campo para comentarios
+    }, // Campo para comentarios
+    multiple: {
+        type: Boolean,
+        required: true,
+        default: false
+    }
 }, {
     _id: false,
     versionKey: false
