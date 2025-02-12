@@ -29,10 +29,10 @@ const allowedDataTypes = {
         };
     },
     "Texto Corto": (value) => {
-        const isValid = typeof value === 'string' && value.length <= 30;
+        const isValid = typeof value === 'string' && value.length <= 60;
         return {
             isValid,
-            message: isValid ? null : "El valor no es un texto corto (máximo 30 caracteres)."
+            message: isValid ? null : "El valor no es un texto corto (máximo 60 caracteres)."
         };
     },
     "Texto Largo": (value) => {
@@ -179,8 +179,9 @@ validatorController.getValidatorOptions = async (req, res) => {
     try {
         const options = [
           { name: 'Funcionarios - Identificación', type: 'Entero' }, 
-          { name: 'Estudiantes - Codigo', type: 'Texto Corto' },
-          { name: 'Estudiantes - Identificación', type: 'Texto Corto' }
+          { name: 'Estudiantes - Código', type: 'Texto Corto' },
+          { name: 'Estudiantes - Identificación', type: 'Texto Corto' },
+          { name: 'Participantes - Identificación', type: 'Texto Corto' }
         ];
 
         const validators = await Validator.find({}, {name: 1, columns: 1});
@@ -285,7 +286,7 @@ validatorController.validateColumn = async (column) => {
         }
         else if (validatorName === "Estudiantes") {
             // Obtener códigos de todos los estudiantes
-            if(columnName === "Codigo") {
+            if(columnName === "Código") {
               const students = await Student.find({}, { code_student: 1 }).lean();
               const studentCodes = students.map(student => student.code_student);
               validValuesSet = new Set(studentCodes);
@@ -296,7 +297,19 @@ validatorController.validateColumn = async (column) => {
               validValuesSet = new Set(studentIdentifications);
               columnToValidate = { type: "Texto Corto", values: studentIdentifications };
             }
-        } else {
+        }
+        else if(validatorName === "Participantes") {
+            const students = await Student.find({}, { identification: 1 }).lean();
+            const users = await User.find({}, { identification: 1 }).lean();
+            const participantIdentifications = [
+              ...students.map(student => student.identification),
+              ...users.map(user => user.identification)
+            ];
+            validValuesSet = new Set(participantIdentifications);
+            columnToValidate = { type: "Texto Corto", values: participantIdentifications };
+        }
+        
+        else {
             validator = await Validator.findOne({ name: validatorName });
 
             if (!validator) {
@@ -345,14 +358,24 @@ validatorController.validateColumn = async (column) => {
                 });
             }
 
-            if (!validValuesSet.has(value)) {
-                result.status = false;
-                result.errors.push({
-                    register: index + 1,
-                    message: `Valor de la columna ${name}, fila ${index + 2} no fue encontrado en la validación: ${validate_with}`,
-                    value: value
-                });
+            if (!validValuesSet.has(value) && !validValuesSet.has(value.toString())) {
+              const intValue = parseInt(value, 10);
+            if (isNaN(intValue)) {
+              result.status = false;
+              result.errors.push({
+                register: index + 1,
+                message: `Valor de la columna ${name}, fila ${index + 2} no es un número entero válido`,
+                value: value
+              });
+            } else if (!validValuesSet.has(intValue)) {
+              result.status = false;
+              result.errors.push({
+                register: index + 1,
+                message: `Valor de la columna ${name}, fila ${index + 2} no fue encontrado en la validación: ${validate_with}`,
+                value: value
+              });
             }
+          }
         }
     });
 
