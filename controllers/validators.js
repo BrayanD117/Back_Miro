@@ -271,10 +271,25 @@ validatorController.validateColumn = async (column) => {
         return { status: false, errors: [{ register: null, message: 'Missing column name, datatype, or values' }] };
     }
 
-    const oldValues = values
-    if(multiple) {
-      values = values.flatMap(value => value.split(','));
+    const oldValues = values;
+    if (multiple) {
+        values = values.flatMap(value => {
+            if (typeof value === 'string') {
+            return value.split(',').map(v => v.trim());
+            } else if (Array.isArray(value)) {
+            return value.flatMap(v => (typeof v === 'string' ? v.split(',') : v));
+            } else {
+            return [value];
+            }
+        });
     }
+
+  if (datatype === "Entero" || datatype === "Decimal" || datatype === "Porcentaje") {
+    values = values.map(value => {
+      const num = Number(value);
+      return isNaN(num) ? value : num;
+    });
+  }
 
     let validator = null;
     let columnToValidate = null;
@@ -333,7 +348,11 @@ validatorController.validateColumn = async (column) => {
     }
 
     values.forEach((value, index) => {
-      const realIndex = oldValues.findIndex(oldValue => oldValue.includes(value));
+        const realIndex = oldValues.findIndex(oldValue => {
+          const strValue = String(value);
+          const strOldValue = String(oldValue);
+          return strOldValue.includes(strValue);
+        });
       if (required && (value.length === 0 || value === null || value === undefined)) {
             result.status = false;
             result.errors.push({
