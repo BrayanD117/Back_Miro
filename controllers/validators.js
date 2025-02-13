@@ -263,12 +263,33 @@ validatorController.deleteValidator = async (req, res) => {
 };
 
 validatorController.validateColumn = async (column) => {
-    const { name, datatype, values, validate_with, required } = column;
+    let { values } = column;
+    const { name, datatype, validate_with, required, multiple } = column;
     let result = { status: true, column: name, errors: [] };
 
     if (!name || !datatype || !values) {
         return { status: false, errors: [{ register: null, message: 'Missing column name, datatype, or values' }] };
     }
+
+    const oldValues = values;
+    if (multiple) {
+        values = values.flatMap(value => {
+            if (typeof value === 'string') {
+            return value.split(',').map(v => v.trim());
+            } else if (Array.isArray(value)) {
+            return value.flatMap(v => (typeof v === 'string' ? v.split(',') : v));
+            } else {
+            return [value];
+            }
+        });
+    }
+
+  if (datatype === "Entero" || datatype === "Decimal" || datatype === "Porcentaje") {
+    values = values.map(value => {
+      const num = Number(value);
+      return isNaN(num) ? value : num;
+    });
+  }
 
     let validator = null;
     let columnToValidate = null;
@@ -327,11 +348,16 @@ validatorController.validateColumn = async (column) => {
     }
 
     values.forEach((value, index) => {
-        if (required && (value.length === 0 || value === null || value === undefined)) {
+        const realIndex = oldValues.findIndex(oldValue => {
+          const strValue = String(value);
+          const strOldValue = String(oldValue);
+          return strOldValue.includes(strValue);
+        });
+      if (required && (value.length === 0 || value === null || value === undefined)) {
             result.status = false;
             result.errors.push({
-                register: index + 1,
-                message: `Valor vacío encontrado en la columna ${name}, fila ${index + 2}`,
+                register: realIndex + 1,
+                message: `Valor vacío encontrado en la columna ${name}, fila ${realIndex + 1}`,
                 value: value
             });
             return; // Continúa con el siguiente valor
@@ -341,8 +367,8 @@ validatorController.validateColumn = async (column) => {
         if (!validation.isValid) {
             result.status = false;
             result.errors.push({
-                register: index + 1,
-                message: `Valor inválido encontrado en la columna ${name}, fila ${index + 2}: ${validation.message}`,
+                register: realIndex + 1,
+                message: `Valor inválido encontrado en la columna ${name}, fila ${realIndex + 1}: ${validation.message}`,
                 value: value
             });
         }
@@ -352,8 +378,8 @@ validatorController.validateColumn = async (column) => {
                 (columnToValidate.type === "Numero" && typeof value !== "number")) {
                 result.status = false;
                 result.errors.push({
-                    register: index + 1,
-                    message: `Valor de la columna ${name}, fila ${index + 2} no es del tipo ${columnToValidate.type}`,
+                    register: realIndex + 1,
+                    message: `Valor de la columna ${name}, fila ${realIndex + 1} no es del tipo ${columnToValidate.type}`,
                     value: value
                 });
             }
@@ -363,15 +389,15 @@ validatorController.validateColumn = async (column) => {
             if (isNaN(intValue)) {
               result.status = false;
               result.errors.push({
-                register: index + 1,
-                message: `Valor de la columna ${name}, fila ${index + 2} no es un número entero válido`,
+                register: realIndex + 1,
+                message: `Valor de la columna ${name}, fila ${realIndex + 1} no es un número entero válido`,
                 value: value
               });
             } else if (!validValuesSet.has(intValue)) {
               result.status = false;
               result.errors.push({
-                register: index + 1,
-                message: `Valor de la columna ${name}, fila ${index + 2} no fue encontrado en la validación: ${validate_with}`,
+                register: realIndex + 1,
+                message: `Valor de la columna ${name}, fila ${realIndex + 1} no fue encontrado en la validación: ${validate_with}`,
                 value: value
               });
             }
