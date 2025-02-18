@@ -24,6 +24,7 @@ templateController.getPlantillas = async (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const search = req.query.search || "";
   const skip = (page - 1) * limit;
+  const periodId = req.query.periodId;
 
   try {
     const query = search
@@ -47,7 +48,19 @@ templateController.getPlantillas = async (req, res) => {
           })
         );
 
+        
         template = template.toObject();
+        if (periodId) {
+          const publishedTemplate = await PubTemplate.findOne({
+            'template._id': template._id,
+            'period': periodId
+          });
+          if (publishedTemplate) {
+            template.published = true;
+          } else {
+            template.published = false;
+          }
+        }
         validatorsFiltered = validators.filter((v) => v !== undefined);
         template.validators = validatorsFiltered; // Añadir validators al objeto
 

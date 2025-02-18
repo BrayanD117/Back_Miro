@@ -415,7 +415,6 @@ validatorController.giveValidatorToExcel = async (name) => {
         const validator = await Validator.findOne({ name });
 
         if (!validator) {
-            console.log(`Validator with name ${name} not found`);
             return;
         }
 

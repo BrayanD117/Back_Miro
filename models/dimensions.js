@@ -11,10 +11,10 @@ const dimensionSchema = new mongoose.Schema({
         unique: true
     },
     responsible: {
-        type: Schema.Types.ObjectId,
-        ref: 'dependencies',
-        required: true,
-        unique: true
+      type: Schema.Types.ObjectId,
+      ref: 'dependencies',
+      required: true,
+      unique: true
     }
 },
 {

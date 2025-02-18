@@ -42,38 +42,54 @@ const producersData = new Schema({
 })
 
 const publishedTemplateSchema = new Schema({
-    name: String,
-    published_by: {
-        type: User.schema,
-        required: true
-    },
-    template: {},
-    period: {
-        type: Schema.Types.ObjectId,
-        ref: 'periods',
-        required: true
-    },
-    loaded_data: {
-        type: [producersData],
-        validate: {
-            validator: function (v) {
-                const uniqueDependencies = new Set(v.map(ld => ld.dependency));
-                return uniqueDependencies.size === v.length;
-            },
-            message: props => `Dependency already uploaded data: ${props.value.map(ld => ld.dependency).join(', ')}`
-        }
-    },
-    deadline: {
-        type: Date,
-        required: true
-    },
-    published_date: {
-        type: Date,
-        required: true
+  name: String,
+  published_by: {
+    type: User.schema,
+    required: true
+  },
+  template: {},
+  period: {
+    type: Schema.Types.ObjectId,
+    ref: 'periods',
+    required: true
+  },
+  loaded_data: {
+    type: [producersData],
+    validate: {
+      validator: function (v) {
+        const uniqueDependencies = new Set(v.map(ld => ld.dependency));
+        return uniqueDependencies.size === v.length;
+      },
+      message: props => `Dependency already uploaded data: ${props.value.map(ld => ld.dependency).join(', ')}`
     }
+  },
+  deadline: {
+    type: Date,
+    required: true
+  },
+  published_date: {
+    type: Date,
+    required: true
+  }
 }, {
-    versionKey: false,
-    timestamps: true
+  versionKey: false,
+  timestamps: true
+});
+
+publishedTemplateSchema.index({ period: 1, name: 1 }, { unique: true });
+
+publishedTemplateSchema.pre('save', async function (next) {
+  const existingTemplate = await mongoose.models.publishedTemplates.findOne({
+    period: this.period,
+    name: this.name
+  });
+
+  if (existingTemplate) {
+    const error = new Error('A template with the same name has already been published for this period.');
+    return next(error);
+  }
+
+  next();
 });
 
 module.exports = mongoose.model('publishedTemplates', publishedTemplateSchema);
