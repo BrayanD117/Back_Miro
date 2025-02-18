@@ -20,6 +20,8 @@ router.put("/updateActiveRole", controller.updateUserActiveRole);
 
 router.get("/", controller.getUser);
 
+router.get("/impersonate", controller.getUserToImpersonate);
+
 router.post("/updateAll", controller.loadUsers);
 
 router.post("/addExternalUser", controller.addExternalUser);
