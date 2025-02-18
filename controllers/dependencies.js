@@ -1,11 +1,24 @@
 const axios = require("axios");
 const Dependency = require("../models/dependencies");
+const dependencyService = require('../services/dependency'); // Import the correct service
 const User = require("../models/users");
 const UserService = require("../services/users");
 
 const dependencyController = {};
 
 DEPENDENCIES_ENDPOINT = process.env.DEPENDENCIES_ENDPOINT;
+
+dependencyController.getTemplates = async (req, res) => {
+
+  const {id} = req.params;
+  try{
+    const templates = await dependencyService.getDependencyTemplates(id)
+    res.status(200).json(templates)
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 
 dependencyController.loadDependencies = async () => {
   await axios
