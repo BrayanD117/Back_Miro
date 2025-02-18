@@ -8,6 +8,8 @@ router.get("/all", controller.getDependencies)
 
 router.get("/responsible", controller.getDependencyByResponsible);
 
+router.get("/:id/templates", controller.getTemplates)
+
 router.get("/:id", controller.getDependencyById);
 
 router.get("/all/:email", controller.getAllDependencies)
