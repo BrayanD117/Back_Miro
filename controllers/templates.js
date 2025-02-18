@@ -229,6 +229,10 @@ templateController.updatePlantilla = async (req, res) => {
 templateController.deletePlantilla = async (req, res) => {
   try {
     const { id } = req.body;
+    const publishedTemplate = await PubTemplate.findOne({ 'template._id': id });
+    if (publishedTemplate) {
+      return res.status(400).json({ mensaje: "No se puede eliminar la plantilla porque está publicada" });
+    }
     const plantillaEliminada = await Template.findByIdAndDelete(id);
     if (!plantillaEliminada) {
       return res.status(404).json({ mensaje: "Plantilla no encontrada" });
