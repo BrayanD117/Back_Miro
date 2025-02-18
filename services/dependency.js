@@ -1,13 +1,22 @@
-const Template = require('../models/templates');
+const Template = require("../models/templates");
+const Dependency = require("../models/dependencies");
+
+
 
 const getDependencyTemplates = async (dependencyId) => {
-    try{
-        const templates = await Template.find({producers: dependencyId}).
-        populate('producers');
-        return templates
-    } catch (err){
-        throw new Error ('Error fetching templates: ' + err.message)
-    }
-}
+  try {
+    // Fetch the dependency's name
+    const dependency = await Dependency.findById(dependencyId, "name");
+    if (!dependency) throw new Error("Dependency not found");
 
-module.exports= {getDependencyTemplates}
+    const templates = await Template.find(
+      { producers: dependencyId },
+      { name: 1, _id: 1 } // Only return "name", hide "_id"
+    ).sort({name: 1});
+    return { dependencyName: dependency.name, templates };
+  } catch (err) {
+    throw new Error("Error fetching templates: " + err.message);
+  }
+};
+
+module.exports = { getDependencyTemplates };
