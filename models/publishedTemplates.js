@@ -78,15 +78,17 @@ const publishedTemplateSchema = new Schema({
 
 publishedTemplateSchema.index({ period: 1, name: 1 }, { unique: true });
 
-publishedTemplateSchema.pre('save', async function (next) {
-  const existingTemplate = await mongoose.models.publishedTemplates.findOne({
-    period: this.period,
-    name: this.name
-  });
+publishedTemplateSchema.pre('validate', async function (next) {
+  if (this.isNew || this.isModified('name') || this.isModified('period')) {
+    const existingTemplate = await mongoose.models.publishedTemplates.findOne({
+      period: this.period,
+      name: this.name
+    });
 
-  if (existingTemplate) {
-    const error = new Error('A template with the same name has already been published for this period.');
-    return next(error);
+    if (existingTemplate) {
+      const error = new Error('A template with the same name has already been published for this period.');
+      return next(error);
+    }
   }
 
   next();
