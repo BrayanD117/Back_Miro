@@ -603,19 +603,25 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
       .populate('period')
       .populate({
         path: 'template',
-        populate: {
-          path: 'dimensions',
-          model: 'dimensions',
-        },
+        populate: [
+          {
+            path: 'dimensions',
+            model: 'dimensions',
+          },
+          {
+            path: 'producers',
+            model: 'dependencies',
+          },
+        ],
       })
-      .populate({
-        path: 'template',
-        populate: {
-          path: 'producers',
-          model: 'dependencies',
-          match: { members: user.email }
-        },
-      });
+      .exec();
+
+    templates.forEach(template => {
+      template.template.producers = template.template.producers.filter(dep =>
+        dep.members.includes(user.email)
+      );
+    });
+
 
     const filteredTemplates = templates.filter((template) => {
       return template.template.producers.length > 0 && !template.loaded_data?.some((data) => data.dependency === user.dep_code);

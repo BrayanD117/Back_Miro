@@ -51,11 +51,14 @@ dimensionController.getDimensionsPagination = async (req, res) => {
 dimensionController.getDimensionsByResponsible = async (req, res) => {
   const email = req.query.email;
   try {
-    const dimensions = await Dimension.find().populate({
+    const dimensions = await Dimension.find()
+      .populate({
       path: 'responsible',
       match: { responsible: email }
-    });
-      res.status(200).json(dimensions);
+      })
+      .select('_id name')
+      .then(results => results.filter(d => d.responsible !== null));
+    res.status(200).json(dimensions);
   } catch (error) {
     console.error('Error fetching dimensions by responsible:', error);
     res.status(500).json({ error: 'Internal Server Error' });

@@ -184,7 +184,7 @@ pubReportController.getAdminPublishedReportById = async (req, res) => {
 
 pubReportController.getPublishedReportsResponsible = async (req, res) => {
   try {
-    const { email, page = 1, limit = 10, search = "", periodId } = req.query;
+    const { email, page = 1, limit = 10, search = "", periodId, dimId } = req.query;
 
     // Verificar si el usuario es un administrador o Productor activo
     const user = await User.findOne({
@@ -206,14 +206,15 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
     // Crear objeto de búsqueda
     const searchQuery = {
       ...(search.trim()
-        ? {
-            $or: [
-              { "report.name": { $regex: search, $options: "i" } },
-              { "period.name": { $regex: search, $options: "i" } },
-            ],
-          }
-        : {}),
+      ? {
+        $or: [
+          { "report.name": { $regex: search, $options: "i" } },
+          { "period.name": { $regex: search, $options: "i" } },
+        ],
+        }
+      : {}),
       ...(periodId && { period: periodId }),
+      ...(dimId && { "report.dimensions": { $elemMatch: { _id: dimId } } }),
     };
 
     let publishedReports = await PubReport.find(searchQuery)
@@ -233,6 +234,7 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
       })
       .populate({
         path: "filled_reports.dimension",
+        match: dimId ? { _id: dimId } : {},
         select: "name responsible",
         populate: {
           path: "responsible",
@@ -353,7 +355,7 @@ pubReportController.getLoadedReportsResponsible = async (req, res) => {
 };
 
 pubReportController.getPublishedReport = async (req, res) => {
-  const { id, email } = req.query;
+  const { id, email, dimId } = req.query;
   try {
     const publishedReport = await PublishedReportService.findPublishedReportById(id, email, null);
     res.status(200).json(publishedReport);
