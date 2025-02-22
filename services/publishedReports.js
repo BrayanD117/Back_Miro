@@ -144,45 +144,52 @@ class PublishedReportService {
     await fullReport.save({ session });
   }  
 
-  static async sendResponsibleReportDraft(email, publishedReportId, filledDraftId, nowtime, session) {
+  static async sendResponsibleReportDraft(email, publishedReportId, nowtime, session) {
     const user = await UserService.findUserByEmailAndRole(email, "Responsable");
     const pubRep = await PubReport.findById(publishedReportId)
       .populate('filled_reports.dimension')
       .populate('period')
       .session(session);
-    const draft = await this.findDraftById(pubRep, filledDraftId);
-
-    console.log(filledDraftId)
-
-
-    const ancestorId = await moveDriveFolder(draft.report_file.folder_id,
-      `${pubRep.period.name}/Informes/ vos/${pubRep.report.name}/${draft.dimension.name}/${nowtime.toISOString()}`);
-
-    if (!draft.report_file) {
-      throw new Error("Draft must have a report file.");
+    
+    if (!pubRep) {
+      throw new Error("Published report not found.");
     }
-
-    if (pubRep.report.requires_attachment && 
-      (!draft.attachments || draft.attachments.length === 0)) {
-      throw new Error("Draft must have at least one attachment.");
+    
+    const drafts = pubRep.filled_reports.filter(draft => draft.status === "En Borrador");
+    
+    if (drafts.length === 0) {
+      throw new Error("No draft report found to send.");
     }
-
-    draft.attachments.forEach((attachment) => {
-      if (!attachment.description || attachment.description.trim() === "") {
-      throw new Error("Each attachment must have a non-empty description.");
+    
+    for (const draft of drafts) {
+      if (!draft.report_file) {
+        throw new Error(`El borrador para la dimensión "${draft.dimension.name}" debe tener un archivo de informe.`);
       }
-    });
-
-    draft.status = "En Revisión";
-    draft.loaded_date = nowtime;
-    draft.send_by = user;
-
-    if(!pubRep.folder_id) {
-      pubRep.folder_id = ancestorId;
+      
+      if (pubRep.report.requires_attachment && (!draft.attachments || draft.attachments.length === 0)) {
+        throw new Error(`El borrador para la dimensión "${draft.dimension.name}" debe tener al menos un anexo.`);
+      }
+      
+      draft.attachments.forEach((attachment) => {
+        if (!attachment.description || attachment.description.trim() === "") {
+          throw new Error(`Cada anexo en la dimensión "${draft.dimension.name}" debe tener una descripción no vacía.`);
+        }
+      });
+      
+      const newPath = `${pubRep.period.name}/Informes/vos/${pubRep.report.name}/${draft.dimension.name}/${nowtime.toISOString()}`;
+      const ancestorId = await moveDriveFolder(draft.report_file.folder_id, newPath);
+      
+      draft.status = "En Revisión";
+      draft.loaded_date = nowtime;
+      draft.send_by = user;
+      
+      if (!pubRep.folder_id) {
+        pubRep.folder_id = ancestorId;
+      }
     }
-
+    
     await pubRep.save({ session });
-  }
+  }  
 
 }
 

@@ -502,15 +502,20 @@ pubReportController.sendResponsibleReport = async (req, res) => {
   session.startTransaction();
 
   try {
-    const { email, publishedReportId, filledDraftId } = req.body;
+    const { email, publishedReportId } = req.body;
     
-    await PublishedReportService.sendResponsibleReportDraft(email, publishedReportId, filledDraftId, datetime_now(), session)
+    await PublishedReportService.sendResponsibleReportDraft(
+      email,
+      publishedReportId,
+      datetime_now(),
+      session
+    );
 
     await session.commitTransaction();
     session.endSession();
 
     res.status(200).json({ status: "Responsible report draft sent" });
-  } catch(error) {
+  } catch (error) {
     await session.abortTransaction();
     session.endSession();
     console.log(error);
@@ -519,7 +524,7 @@ pubReportController.sendResponsibleReport = async (req, res) => {
       error: error.message,
     });
   }
-}
+};
 
 pubReportController.setFilledReportStatus = async (req, res) => {
   try {
