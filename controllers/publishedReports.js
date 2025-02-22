@@ -442,36 +442,54 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
     const nowdate = new Date(nowtime.toDateString());
 
     const user = await UserService.findUserByEmailAndRole(email, "Responsable", session);
-
     const pubRep = await PublishedReportService.findPublishedReportById(publishedReportId, email, session);
     await PeriodService.validatePeriodResponsible(pubRep, nowdate);
     
-    const draft = await PublishedReportService.findDraft(pubRep, filledDraft._id,session);
-    const path = `${pubRep.period.name}/Informes/Dimensiones/Borradores/${pubRep.report.name}
-      /${pubRep.report.dimensions[0].name}/${draft ? draft.loaded_date.toISOString() 
-      : nowtime.toISOString()}`;
+    const applicableDimensions = pubRep.report.dimensions;
 
-    draft?.attachments?.forEach((draftAttachment) => {
-      const filledAttachment = filledDraft?.attachments?.find(
-        (attachment) => attachment._id.toString() === draftAttachment._id.toString()
+    for (const dimension of applicableDimensions) {
+      let draft = pubRep.filled_reports.find(
+        (fr) =>
+          fr.status === "En Borrador" &&
+          fr.dimension.toString() === dimension._id.toString()
       );
-      if (filledAttachment) {
-        draftAttachment.description = filledAttachment.description;
-      }
-    });
-    console.log(filledDraft)
-    await PublishedReportService.upsertReportDraft(pubRep, draft, reportFile, attachments, 
-      deletedReport, deletedAttachments, nowtime, path, user, session
-    );
 
+      const dimensionPath = `${pubRep.period.name}/Informes/Dimensiones/Borradores/${pubRep.report.name}/${dimension.name}/${draft ? draft.loaded_date.toISOString() : nowtime.toISOString()}`;
+
+      if (draft && draft.attachments) {
+        draft.attachments.forEach((draftAttachment) => {
+          const filledAttachment = filledDraft?.attachments?.find(
+            (att) => att._id.toString() === draftAttachment._id.toString()
+          );
+          if (filledAttachment) {
+            draftAttachment.description = filledAttachment.description;
+          }
+        });
+      }
+
+      await PublishedReportService.upsertReportDraftForDimension(
+        pubRep,
+        draft,
+        reportFile,
+        attachments,
+        deletedReport,
+        deletedAttachments,
+        nowtime,
+        dimensionPath,
+        user,
+        dimension,
+        session
+      );
+    }
+    
+    await pubRep.save({ session });
     await session.commitTransaction();
     session.endSession();
-    res.status(200).json({ status: "Responsible report draft loaded" });
+    res.status(200).json({ status: "Responsible report draft loaded for all dimensions" });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
     console.log(error);
-    
     res.status(500).json({
       status: "Error loading responsible report draft",
       error: error.message,

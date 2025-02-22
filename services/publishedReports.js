@@ -104,29 +104,45 @@ class PublishedReportService {
     return draft;
   }
 
-  static async upsertReportDraft(
-    pubReport, filledRepId, reportFile, attachments, deletedReport, deletedAttachments, nowDate, 
-    path, user, session
+  static async upsertReportDraftForDimension(
+    pubReport,
+    draft,
+    reportFile,
+    attachments,
+    deletedReport,
+    deletedAttachments,
+    nowDate,
+    path,
+    user,
+    dimension,
+    session
   ) {
-    const draft = await this.findDraft(pubReport, filledRepId);
     const fullReport = await PubReport.findById(pubReport._id).session(session);
-    if(draft) {
-      const updatedDraft = await this.updateDraftFiles(draft, reportFile, attachments, deletedReport, deletedAttachments, path);
-      const existingReport = pubReport.filled_reports.id(filledRepId);
-      const updatedReport = Object.assign(
-        existingReport, updatedDraft, { status_date: nowDate }
+    
+    if (draft) {
+      const updatedDraft = await this.updateDraftFiles(
+        draft,
+        reportFile,
+        attachments,
+        deletedReport,
+        deletedAttachments,
+        path
       );
-      fullReport.filled_reports.id(filledRepId).set(updatedReport);
+      updatedDraft.status_date = nowDate;
+      const existingReport = fullReport.filled_reports.id(draft._id);
+      const updatedReport = Object.assign(existingReport, updatedDraft);
+      fullReport.filled_reports.id(draft._id).set(updatedReport);
     } else {
       const newDraft = await this.uploadDraftFiles(reportFile, attachments, path);
-      newDraft.dimension = pubReport.report.dimensions[0];
+      newDraft.dimension = dimension;
       newDraft.send_by = user;
-      newDraft.loaded_date = nowDate
-      newDraft.status_date = nowDate
+      newDraft.loaded_date = nowDate;
+      newDraft.status_date = nowDate;
+      newDraft.status = "En Borrador";
       fullReport.filled_reports.unshift(newDraft);
     }
     await fullReport.save({ session });
-  }
+  }  
 
   static async sendResponsibleReportDraft(email, publishedReportId, filledDraftId, nowtime, session) {
     const user = await UserService.findUserByEmailAndRole(email, "Responsable");
