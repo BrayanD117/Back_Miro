@@ -1,19 +1,33 @@
-const Template = require("../models/templates");
 const Dependency = require("../models/dependencies");
+const mongoose = require("mongoose");
+const PublishedTemplate = require("../models/publishedTemplates");
 
 
 
-const getDependencyTemplates = async (dependencyId) => {
-  try {
-    // Fetch the dependency's name
-    const dependency = await Dependency.findById(dependencyId, "name");
+const getDependencyTemplates = async (depCode, periodId) => {
+   try {
+    if (!depCode || !periodId) {
+      throw new Error("Dependency code and period ID are required.");
+    }
+    const dependency = await Dependency.findOne({ dep_code: depCode }, "name dep_code");
     if (!dependency) throw new Error("Dependency not found");
 
-    const templates = await Template.find(
-      { producers: dependencyId },
-      { name: 1, _id: 1 } // Only return "name", hide "_id"
+
+    const periodObjectId = mongoose.Types.ObjectId.isValid(periodId)
+    ? new mongoose.Types.ObjectId(periodId)
+    : periodId;
+    
+    const templates = await PublishedTemplate.find(
+      {  "loaded_data.dependency": depCode, period: periodObjectId  },
+      { name: 1, _id: 1, period: 1  } // Only return "name", hide "_id"
     ).sort({name: 1});
-    return { dependencyName: dependency.name, templates };
+
+   return { 
+      dependencyId: dependency._id, 
+      dependencyCode: depCode, 
+      dependencyName: dependency.name, 
+      templates 
+    };
   } catch (err) {
     throw new Error("Error fetching templates: " + err.message);
   }
