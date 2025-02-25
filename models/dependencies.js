@@ -20,7 +20,11 @@ const dependencySchema = new mongoose.Schema({
     },
     dep_father: {
         type: String
-    }
+    },
+    childrenDependencies: {
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: 'dependencies'
+      }
 },
 {
     versionKey: false,
@@ -132,7 +136,21 @@ dependencySchema.statics.getMembersWithFather = async function(dep_code) {
     ]);
 };
 
+dependencySchema.statics.getWithChildren = async function(dep_code) {
+    return this.findOne({ dep_code })
+        .populate("childDependencies") // Fetch child dependencies
+        .exec();
+};
 
+dependencySchema.statics.addChildrenDependencies = async function(childDepCode, fatherDepCode) {
+    try {
+        fatherDependency.childDependencies.push(childDependency._id);
+        await fatherDependency.save();
+        console.log("Child dependency added successfully.");
+    } catch (error) {
+        console.error("Error adding child dependency:", error);
+    }
+};
 
 
 

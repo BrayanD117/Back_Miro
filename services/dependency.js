@@ -1,8 +1,6 @@
 const Template = require("../models/templates");
 const Dependency = require("../models/dependencies");
 
-
-
 const getDependencyTemplates = async (dependencyId) => {
   try {
     // Fetch the dependency's name

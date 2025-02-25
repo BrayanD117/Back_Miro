@@ -6,6 +6,8 @@ const controller = require('../controllers/dependencies.js')
 
 router.get("/all", controller.getDependencies)
 
+router.get("/childrenDependencies/templates", controller.getChildrenDependenciesPublishedTemplates)
+
 router.get("/responsible", controller.getDependencyByResponsible);
 
 router.get("/:id/templates", controller.getTemplates)
@@ -27,5 +29,7 @@ router.put("/:id", controller.updateDependency)
 router.get("/members", controller.getMembersWithFather)
 
 router.post("/names", controller.getDependencyNames);
+
+router.post("/:dep_code/childrenDependencies/update", controller.updateChildrenDependencies)
 
 module.exports = router

@@ -1,24 +1,28 @@
 const axios = require("axios");
 const Dependency = require("../models/dependencies");
-const dependencyService = require('../services/dependency'); // Import the correct service
+const dependencyService = require("../services/dependency"); // Import the correct service
 const User = require("../models/users");
 const UserService = require("../services/users");
+const publishedTemplates = require("../models/publishedTemplates");
+const producerReports = require("../models/producerReports");
+const { Types } = require("mongoose");
+const Validator = require("./validators.js");
+const ValidatorModel = require("../models/validators");
+const Template = require("../models/templates.js");
 
 const dependencyController = {};
 
 DEPENDENCIES_ENDPOINT = process.env.DEPENDENCIES_ENDPOINT;
 
 dependencyController.getTemplates = async (req, res) => {
-
-  const {id} = req.params;
-  try{
-    const templates = await dependencyService.getDependencyTemplates(id)
-    res.status(200).json(templates)
+  const { id } = req.params;
+  try {
+    const templates = await dependencyService.getDependencyTemplates(id);
+    res.status(200).json(templates);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-}
-
+};
 
 dependencyController.loadDependencies = async () => {
   await axios
@@ -101,7 +105,6 @@ dependencyController.getAllDependencies = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
 
 // Get all dependencies existing into the DB with pagination
 dependencyController.getDependencies = async (req, res) => {
@@ -253,6 +256,120 @@ dependencyController.getDependencyNames = async (req, res) => {
     const codes = req.body.codes;
     const dependencies = await Dependency.find({ dep_code: { $in: codes } });
     res.status(200).json(dependencies);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+dependencyController.getChildrenDependenciesPublishedTemplates = async (req,res) => {
+  
+  const email = req.query.email;
+  const periodId = req.query.periodId;
+
+  try {
+    
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ status: "User not found" });
+    }
+
+    const fatherDependency = await Dependency.findOne({ responsible: email });
+
+    console.log(fatherDependency)
+
+    const activeRole = user.activeRole;
+
+    if (activeRole !== "Administrador") {
+      if (!fatherDependency || fatherDependency.childrenDependencies.length === 0) {
+        return res.status(403).json({ status: "Access denied" });
+      }
+    }
+
+    const childrenDependenciesPublishedTemplates = await publishedTemplates
+      .find({
+        "template.producers": { $in: fatherDependency.childrenDependencies },
+        period: periodId,
+      })
+      .populate("period").sort({name:1});
+
+    const filteredTemplates = childrenDependenciesPublishedTemplates.map(
+      (template) => {
+        const filteredProducers = template.template.producers.filter(
+          (producer) =>
+            fatherDependency.childrenDependencies.some((childId) =>
+              childId.equals(producer)
+            )
+        );
+        return {
+          ...template.toObject(),
+          template: {
+            ...template.template,
+            producers: filteredProducers,
+          },
+        };
+      }
+    );
+
+    const updated_templates = await Promise.all(
+      filteredTemplates.map(async (template) => {
+        const validators = await Promise.all(
+          template.template.fields.map(async (field) => {
+            return Validator.giveValidatorToExcel(field.validate_with);
+          })
+        );
+        validatorsFiltered = validators.filter((v) => v !== undefined);
+        template.validators = validatorsFiltered; // Añadir validators al objeto
+        const dependencies = await Dependency.find(
+          { dep_code: { $in: template.producers_dep_code } },
+          "name -_id"
+        );
+        template.producers_dep_code = dependencies.map((dep) => dep.name);
+        template.loaded_data = await Promise.all(
+          template.loaded_data.map(async (data) => {
+            const loadedDependency = await Dependency.findOne(
+              { dep_code: data.dependency },
+              "name -_id"
+            );
+            data.dependency = loadedDependency
+              ? loadedDependency.name
+              : data.dependency;
+            return data;
+          })
+        );
+        return template;
+      })
+    );
+
+    res.status(200).json({templates:updated_templates});
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+dependencyController.updateChildrenDependencies = async (req, res) => {
+  const parentDependencyCode = req.params.dep_code;
+  try {
+    const childrenDependenciesCodes = req.body.codes;
+    const childrenDependencies = await Dependency.find({
+      dep_code: { $in: childrenDependenciesCodes },
+    });
+    const childrenDependenciesIds = childrenDependencies.map((dep) => dep._id);
+
+    const updatedDependency = await Dependency.findOneAndUpdate(
+      { dep_code: parentDependencyCode },
+      { $set: { childrenDependencies: childrenDependenciesIds } },
+      { new: true }
+    );
+
+    if (!updatedDependency) {
+      return res.status(404).json({ message: "Parent dependency not found" });
+    }
+
+    return res.status(200).json({
+      message: `Children dependencies for ${parentDependencyCode} updated succesfully`,
+      fatherDependency: updatedDependency,
+      childrenDependencies: childrenDependencies,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
