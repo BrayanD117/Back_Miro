@@ -350,15 +350,20 @@ pubReportController.getLoadedReportsResponsible = async (req, res) => {
 };
 
 pubReportController.getPublishedReport = async (req, res) => {
-  const { id, email } = req.query;
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  const { id, email, dimension } = req.query;
   try {
-    const publishedReport = await PublishedReportService.findPublishedReportById(id, email, null);
+    const publishedReport = await PublishedReportService.findPublishedReportById(id, email, dimension, session);
+    await session.commitTransaction();
+    session.endSession();
     res.status(200).json(publishedReport);
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.log(error);
-    res
-      .status(500)
-      .json({ status: "Error getting published report", error: error.message });
+    res.status(500).json({ status: "Error getting published report", error: error.message });
   }
 };
 
@@ -419,7 +424,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
   session.startTransaction();
 
   try {
-    let { email, publishedReportId, newAttachmentsDescriptions } = req.body;
+    let { email, publishedReportId, newAttachmentsDescriptions, dimension } = req.body;
     if (!Array.isArray(newAttachmentsDescriptions)) {
       newAttachmentsDescriptions = [newAttachmentsDescriptions];
     }
@@ -440,7 +445,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
 
     const user = await UserService.findUserByEmailAndRole(email, "Responsable", session);
 
-    const pubRep = await PublishedReportService.findPublishedReportById(publishedReportId, email, session);
+    const pubRep = await PublishedReportService.findPublishedReportById(publishedReportId, email, dimension, session);
     await PeriodService.validatePeriodResponsible(pubRep, nowdate);
     
     const draft = await PublishedReportService.findDraft(pubRep, filledDraft._id,session);
