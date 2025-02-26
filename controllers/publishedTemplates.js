@@ -579,23 +579,32 @@ publTempController.getUploadedTemplatesByProducer = async (req, res) => {
 };
 
 publTempController.getAvailableTemplatesToProductor = async (req, res) => {
-  const email = req.query.email;
-  const periodId = req.query.periodId;
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const search = req.query.search || '';
+  const { email, periodId, page = 1, limit = 10, search = '' } = req.query;
   const skip = (page - 1) * limit;
 
   try {
+    // Buscar usuario productor
     const user = await UserService.findUserByEmailAndRole(email, 'Productor');
-    const query = {
-      name: { $regex: search, $options: 'i' },
-    };
-
-    if (periodId) {
-      query.period = periodId;
+    if (!user) {
+      return res.status(404).json({ error: 'User not found or not a producer' });
     }
 
+    const dependency = await Dependency.findOne({ dep_code: user.dep_code });
+    if (!dependency) {
+      return res.status(404).json({ error: 'Dependency not found' });
+    }
+
+    const query = {
+      name: { $regex: search, $options: 'i' },
+      'template.producers': dependency._id, // Filtramos directamente por _id de la dependencia
+    };
+
+    if (periodId) query.period = periodId;
+
+    // Contar el total de documentos sin paginación
+    const total = await PublishedTemplate.countDocuments(query);
+
+    // Obtener las plantillas filtradas y paginadas
     const templates = await PublishedTemplate.find(query)
       .skip(skip)
       .limit(limit)
@@ -603,44 +612,34 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
       .populate({
         path: 'template',
         populate: [
-          {
-            path: 'dimensions',
-            model: 'dimensions',
-          },
-          {
-            path: 'producers',
-            model: 'dependencies',
-            match: { dep_code: user.dep_code },
-          }
-        ]
-      });
-
-    const filteredTemplates = templates.filter((template) => {
-      return template.template.producers.length > 0 && !template.loaded_data?.some((data) => data.dependency === user.dep_code);
-    });
-
-    const templatesWithValidators = await Promise.all(
-      filteredTemplates.map(async (template) => {
-        const validators = await Promise.all(
-          template.template.fields.map(async (field) =>
-            Validator.giveValidatorToExcel(field.validate_with)
-          )
-        );
-
-        template = template.toObject();
-        const validatorsFiltered = validators.filter((v) => v !== undefined);
-        template.validators = validatorsFiltered;
-
-        return template;
+          { path: 'dimensions', model: 'dimensions' },
+          { path: 'producers', model: 'dependencies' }, // No usamos match aquí porque ya filtramos antes
+        ],
       })
+      .lean();
+
+    // Filtrar en memoria solo las plantillas que no tengan datos cargados por el usuario
+    const filteredTemplates = templates.filter(
+      (template) => !template.loaded_data?.some((data) => data.dependency === String(dependency.dep_code))
     );
 
-    const total = filteredTemplates.length;
+    // Obtener validadores solo de las plantillas filtradas
+    const templatesWithValidators = await Promise.all(
+      filteredTemplates.map(async (template) => {
+        const validators = (
+          await Promise.all(
+            template.template.fields.map(async (field) => Validator.giveValidatorToExcel(field.validate_with))
+          )
+        ).filter(Boolean); // Filtra los undefined
+
+        return { ...template, validators };
+      })
+    );
 
     res.status(200).json({
       templates: templatesWithValidators,
       total,
-      page,
+      page: Number(page),
       pages: Math.ceil(total / limit),
     });
   } catch (error) {
