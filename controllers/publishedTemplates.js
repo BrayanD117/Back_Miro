@@ -588,7 +588,6 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
 
   try {
     const user = await UserService.findUserByEmailAndRole(email, 'Productor');
-
     const query = {
       name: { $regex: search, $options: 'i' },
     };
@@ -603,18 +602,17 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
       .populate('period')
       .populate({
         path: 'template',
-        populate: {
-          path: 'dimensions',
-          model: 'dimensions',
-        },
-      })
-      .populate({
-        path: 'template',
-        populate: {
-          path: 'producers',
-          model: 'dependencies',
-          match: { members: user.email }
-        },
+        populate: [
+          {
+            path: 'dimensions',
+            model: 'dimensions',
+          },
+          {
+            path: 'producers',
+            model: 'dependencies',
+            match: { dep_code: user.dep_code },
+          }
+        ]
       });
 
     const filteredTemplates = templates.filter((template) => {
