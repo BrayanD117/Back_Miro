@@ -9,16 +9,29 @@ const dependencyController = {};
 DEPENDENCIES_ENDPOINT = process.env.DEPENDENCIES_ENDPOINT;
 
 dependencyController.getTemplates = async (req, res) => {
+  try {
+    const { id } = req.params; 
+    let { periodId } = req.query; 
 
-  const {id} = req.params;
-  try{
-    const templates = await dependencyService.getDependencyTemplates(id)
-    res.status(200).json(templates)
+    if (!id || !periodId) {
+      return res.status(400).json({ error: "Dependency ID and period ID are required." });
+    }
+
+    const dependency = await Dependency.findById(id, "dep_code");
+    if (!dependency) {
+      return res.status(404).json({ error: "Dependency not found" });
+    }
+
+    console.log("Obteniendo plantillas con:", { dependencyCode: dependency.dep_code, periodId });
+
+    const templates = await dependencyService.getDependencyTemplates(dependency.dep_code, periodId);
+
+    return res.status(200).json(templates);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error fetching templates:", err.message);
+    return res.status(500).json({ error: err.message });
   }
-}
-
+};
 
 dependencyController.loadDependencies = async () => {
   await axios
