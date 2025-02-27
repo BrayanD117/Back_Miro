@@ -18,7 +18,7 @@ const getDependencyTemplates = async (depCode, periodId) => {
     : periodId;
     
     const templates = await PublishedTemplate.find(
-      {  "loaded_data.dependency": depCode, period: periodObjectId  },
+      {  "template.producers" : dependency._id, period: periodObjectId  },
       { name: 1, _id: 1, period: 1  } // Only return "name", hide "_id"
     ).sort({name: 1});
 
