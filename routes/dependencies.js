@@ -32,4 +32,12 @@ router.post("/names", controller.getDependencyNames);
 
 router.get("/:email/hierarchy", controller.getDependencyHierarchy)
 
+router.get("/:id/visualizers", controller.getVisualizers);
+
+router.put("/:id/visualizers", controller.updateVisualizers);
+
+
+
+
+
 module.exports = router
