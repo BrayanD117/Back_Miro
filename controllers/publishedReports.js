@@ -186,7 +186,7 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
   try {
     const { email, page = 1, limit = 10, search = "", periodId } = req.query;
 
-    // Verificar si el usuario es un administrador o Productor activo
+    // Verificar que el usuario esté activo y tenga el rol "Responsable"
     const user = await User.findOne({
       email,
       activeRole: "Responsable",
@@ -203,16 +203,14 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
     const pageSize = parseInt(limit, 10);
     const skip = (pageNumber - 1) * pageSize;
 
-    // Crear objeto de búsqueda
+    // Construir el objeto de búsqueda según el search y el periodId
     const searchQuery = {
-      ...(search.trim()
-        ? {
-            $or: [
-              { "report.name": { $regex: search, $options: "i" } },
-              { "period.name": { $regex: search, $options: "i" } },
-            ],
-          }
-        : {}),
+      ...(search.trim() && {
+        $or: [
+          { "report.name": { $regex: search, $options: "i" } },
+          { "period.name": { $regex: search, $options: "i" } },
+        ],
+      }),
       ...(periodId && { period: periodId }),
     };
 
@@ -228,7 +226,7 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
           path: "responsible",
           match: { responsible: email },
           select: "name email",
-          model: "dependencies"
+          model: "dependencies",
         },
       })
       .populate({
@@ -236,29 +234,28 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
         select: "name responsible",
         populate: {
           path: "responsible",
-          match: { responsible: email }, // Filtra el campo "responsible" de la dependencia
-          select: "name email", // Ajusta los campos que necesitas traer de la dependencia
+          match: { responsible: email },
+          select: "name email",
+          model: "dependencies",
         },
-      })    
+      })
       .exec();
-    
-    publishedReports = publishedReports.filter((report) => {
-      return report.report.dimensions.some((dimension) => {
-        return dimension.responsible !== null;
-      });
-    });
 
-    // Gives only reports that the dimension haven't uploaded yet
+    // Filtrar los reportes para dejar solo aquellos que tengan al menos una dimensión en la que el usuario es responsable
+    publishedReports = publishedReports.filter((report) =>
+      report.report.dimensions.some((dimension) => dimension.responsible !== null)
+    );
+
+    // Procesar los filled_reports de cada reporte, quedándonos solo con aquellos que correspondan a dimensiones válidas
     const publishedReportsFilter = publishedReports.map((report) => {
       report.filled_reports = report.filled_reports
-      .filter((filledRep) => filledRep.dimension.responsible !== null)
-      .sort((a, b) => new Date(b.loaded_date) - new Date(a.loaded_date)); // Ordenar por fecha descendente
+        .filter((filledRep) => filledRep.dimension.responsible !== null)
+        .sort((a, b) => new Date(b.loaded_date) - new Date(a.loaded_date)); // Orden descendente por fecha
       return report;
     });
-      
+
     const totalReports = publishedReportsFilter.length;
-    //const publishedReportsFilter = publishedReports.filter(report => report.filled_reports.dim);
-    // Responder con los datos paginados y la información de paginación
+    // Responder con la información paginada y los reportes filtrados
     res.status(200).json({
       total: totalReports,
       page: pageNumber,
@@ -353,15 +350,20 @@ pubReportController.getLoadedReportsResponsible = async (req, res) => {
 };
 
 pubReportController.getPublishedReport = async (req, res) => {
-  const { id, email } = req.query;
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  const { id, email, dimension } = req.query;
   try {
-    const publishedReport = await PublishedReportService.findPublishedReportById(id, email, null);
+    const publishedReport = await PublishedReportService.findPublishedReportById(id, email, dimension, session);
+    await session.commitTransaction();
+    session.endSession();
     res.status(200).json(publishedReport);
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.log(error);
-    res
-      .status(500)
-      .json({ status: "Error getting published report", error: error.message });
+    res.status(500).json({ status: "Error getting published report", error: error.message });
   }
 };
 
@@ -422,7 +424,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
   session.startTransaction();
 
   try {
-    let { email, publishedReportId, newAttachmentsDescriptions } = req.body;
+    let { email, publishedReportId, newAttachmentsDescriptions, dimension } = req.body;
     if (!Array.isArray(newAttachmentsDescriptions)) {
       newAttachmentsDescriptions = [newAttachmentsDescriptions];
     }
@@ -443,7 +445,7 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
 
     const user = await UserService.findUserByEmailAndRole(email, "Responsable", session);
 
-    const pubRep = await PublishedReportService.findPublishedReportById(publishedReportId, email, session);
+    const pubRep = await PublishedReportService.findPublishedReportById(publishedReportId, email, dimension, session);
     await PeriodService.validatePeriodResponsible(pubRep, nowdate);
     
     const draft = await PublishedReportService.findDraft(pubRep, filledDraft._id,session);

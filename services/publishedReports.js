@@ -4,7 +4,7 @@ const PubReport = require("../models/publishedReports");
 const UserService = require("./users");
 
 class PublishedReportService {
-  static async findPublishedReportById(id, email, session) {
+  static async findPublishedReportById(id, email, dimensionId, session) {
     const pubReport = await PubReport
       .findById(id)
       .populate("period")
@@ -12,20 +12,13 @@ class PublishedReportService {
         path: "report.dimensions",
         select: "name responsible",
         model: "dimensions",
-        populate: {
-          path: "responsible",
-          match: { responsible: email }, // Filtra el campo "responsible" de la dependencia
-          select: "name email", // Ajusta los campos que necesitas traer de la dependencia
-        },
+        match: { _id: dimensionId }, // Filtra por el ID de la dimensión
       })
       .populate({
         path: "filled_reports.dimension",
         select: "name responsible",
-        populate: {
-          path: "responsible",
-          match: { responsible: email }, // Filtra el campo "responsible" de la dependencia
-          select: "name email", // Ajusta los campos que necesitas traer de la dependencia
-        },
+        model: "dimensions",
+        match: { _id: dimensionId }, // Filtra por el ID de la dimensión
       })
       .session(session);
     
@@ -33,14 +26,12 @@ class PublishedReportService {
       throw new Error("Report not found.");
     }
 
-    console.log(pubReport.report.dimensions)
+    pubReport.report.dimensions = pubReport.report.dimensions.filter((dimension) => dimension._id.toString() === dimensionId);
 
-    pubReport.report.dimensions = pubReport.report.dimensions.filter((dimension) => dimension.responsible !== null);
-
-    pubReport.filled_reports = pubReport.filled_reports.filter((filledReport) => filledReport.dimension.responsible !== null);
+    pubReport.filled_reports = pubReport.filled_reports.filter((filledReport) => filledReport.dimension?._id.toString() === dimensionId);
 
     if(pubReport.report.dimensions.length === 0) {
-      throw new Error("User does not have access to this report.");
+      throw new Error("Dimension not found in this report.");
     }
     return pubReport;
   }
@@ -92,7 +83,6 @@ class PublishedReportService {
     if(deletedReport) {
       await deleteDriveFile(deletedReport);
       draft.report_file = undefined
-      console.log("Geeasdad", draft)
     }
     if(deletedAttachments) {
       await deleteDriveFiles(deletedAttachments);

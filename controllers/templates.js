@@ -229,16 +229,19 @@ templateController.updatePlantilla = async (req, res) => {
 templateController.deletePlantilla = async (req, res) => {
   try {
     const { id } = req.body;
-    const publishedTemplate = await PubTemplate.findOne({ 'template._id': id });
+    const publishedTemplate = await PubTemplate.find({
+      'template._id': new ObjectId(id)
+    });
     if (publishedTemplate) {
-      return res.status(400).json({ mensaje: "No se puede eliminar la plantilla porque está publicada" });
+      return res.status(400).json({ mensaje: "No se puede eliminar la plantilla porque ya está publicada" });
     }
-    const plantillaEliminada = await Template.findByIdAndDelete(id);
+    const plantillaEliminada = await Template.findById(id);
     if (!plantillaEliminada) {
       return res.status(404).json({ mensaje: "Plantilla no encontrada" });
     }
     res.status(200).json({ status: "Plantilla eliminada" });
   } catch (error) {
+    console.error("Error al eliminar la plantilla:", error);
     res.status(500).json({ mensaje: "Error al eliminar la plantilla", error });
   }
 };
