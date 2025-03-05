@@ -361,33 +361,33 @@ dependencyController.getChildrenDependenciesPublishedTemplates = async (req,res)
   }
 };
 
-dependencyController.updateChildrenDependencies = async (req, res) => {
-  const parentDependencyCode = req.params.dep_code;
-  try {
-    const childrenDependenciesCodes = req.body.codes;
-    const childrenDependencies = await Dependency.find({
-      dep_code: { $in: childrenDependenciesCodes },
-    });
-    const childrenDependenciesIds = childrenDependencies.map((dep) => dep._id);
+dependencyController.getDependencyHierarchy = async (req, res) => {
 
-    const updatedDependency = await Dependency.findOneAndUpdate(
-      { dep_code: parentDependencyCode },
-      { $set: { childrenDependencies: childrenDependenciesIds } },
-      { new: true }
-    );
+  const email = req.params.email 
 
-    if (!updatedDependency) {
-      return res.status(404).json({ message: "Parent dependency not found" });
-    }
+  console.log(email);
 
-    return res.status(200).json({
-      message: `Children dependencies for ${parentDependencyCode} updated succesfully`,
-      fatherDependency: updatedDependency,
-      childrenDependencies: childrenDependencies,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(404).json({ status: "User not found" });
   }
-};
+
+  const fatherDependency = await Dependency.findOne({ responsible: email });
+
+  if (!fatherDependency) {
+    res.status(404).json({message: "User is not leader of any dependency..."})
+  }
+
+  console.log(fatherDependency);
+
+  const dependencies = await Dependency.find();
+
+  const dependencyHierarchy = dependencyService.getDependencyHierarchy(dependencies, fatherDependency.dep_code)
+
+  res.status(200).json({fatherDependency: fatherDependency, 
+    childrenDependencies: dependencyHierarchy 
+  });
+
+}
 
 module.exports = dependencyController;

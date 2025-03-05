@@ -31,4 +31,12 @@ const getDependencyTemplates = async (depCode, periodId) => {
   }
 };
 
-module.exports = { getDependencyTemplates };
+const getDependencyHierarchy = (dependencies, depFatherCode = null) => {
+    return dependencies.filter(dep => dep.dep_father === depFatherCode)
+    .map(dep => ({
+      ...dep.toObject(),
+      children: getDependencyHierarchy(dependencies, dep.dep_code)
+    }))
+}
+
+module.exports = { getDependencyTemplates, getDependencyHierarchy };

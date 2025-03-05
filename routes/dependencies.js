@@ -30,6 +30,6 @@ router.get("/members", controller.getMembersWithFather)
 
 router.post("/names", controller.getDependencyNames);
 
-router.post("/:dep_code/childrenDependencies/update", controller.updateChildrenDependencies)
+router.get("/:email/hierarchy", controller.getDependencyHierarchy)
 
 module.exports = router
