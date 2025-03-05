@@ -64,8 +64,7 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
     const dimensions = await Dimension.find().populate({
       path: 'responsible',
       match: { responsible: email }
-    });
-    
+    }).then(dimensions => dimensions.filter(dim => dim.responsible));
 
     const activeRole = user.activeRole;
 
