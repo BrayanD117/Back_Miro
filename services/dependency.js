@@ -17,14 +17,21 @@ const getDependencyTemplates = async (depCode, periodId) => {
     
     const templates = await PublishedTemplate.find(
       {  "template.producers" : dependency._id, period: periodObjectId  },
-      { name: 1, _id: 1, period: 1  } // Only return "name", hide "_id"
+      { name: 1, _id: 1, period: 1 , loaded_data: 1 } // Only return "name", hide "_id"
     ).sort({name: 1});
+
+    const processedTemplates = templates.map(template => ({
+      _id: template._id,
+      name: template.name,
+      period: template.period,
+      isSent: template.loaded_data.some(data => data.dependency === depCode) // Check if depCode exists in loaded_data
+    }));
 
    return { 
       dependencyId: dependency._id, 
       dependencyCode: depCode, 
       dependencyName: dependency.name, 
-      templates 
+      templates: processedTemplates 
     };
   } catch (err) {
     throw new Error("Error fetching templates: " + err.message);
