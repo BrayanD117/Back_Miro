@@ -101,19 +101,69 @@ dependencyController.getDependencyById = async (req, res) => {
       return res.status(404).json({ status: "Dependency not found" });
     }
 
-    res.status(200).json(dependency);
-  } catch (error) {
+
+    res.status(200).json({
+      dep_code: dependency.dep_code,
+      name: dependency.name,
+      responsible: dependency.responsible,
+      dep_father: dependency.dep_father,
+      members: dependency.members,
+      visualizers: dependency.visualizers || [] 
+    }); 
+   } catch (error) {
     console.error("Error fetching dependency by ID:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+// update Visualizers 
+dependencyController.updateVisualizers = async (req, res) => {
+  const { id } = req.params;
+  const { visualizers } = req.body;
+
+  try {
+    const dependency = await Dependency.findById(id);
+    if (!dependency) {
+      return res.status(404).json({ status: "Dependency not found" });
+    }
+
+    dependency.visualizers = visualizers;
+    await dependency.save();
+
+    res.status(200).json({ status: "Visualizers updated successfully" });
+  } catch (error) {
+    console.error("Error updating visualizers:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// get Visualizers 
+
+dependencyController.getVisualizers = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const dependency = await Dependency.findById(id);
+
+    if (!dependency) {
+      return res.status(404).json({ status: "Dependency not found" });
+    }
+
+    res.status(200).json({ visualizers: dependency.visualizers || [] });
+  } catch (error) {
+    console.error("Error fetching visualizers:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 
 dependencyController.getAllDependencies = async (req, res) => {
   try {
     const email = req.params.email;
     console.log("Fetching dependencies for user:", email);
     await UserService.findUserByEmail(email);
-    const dependencies = await Dependency.find();
+    const dependencies = await Dependency.find({}, "dep_code name responsible dep_father members visualizers");
+
     res.status(200).json(dependencies);
   } catch (error) {
     console.error("Error fetching dependencies:", error);
