@@ -185,6 +185,7 @@ dependencyController.getDependencies = async (req, res) => {
             { dep_code: { $regex: search, $options: "i" } },
             { name: { $regex: search, $options: "i" } },
             { responsible: { $regex: search, $options: "i" } },
+            { visualizers: { $regex: search, $options: "i" } },
             { dep_father: { $regex: search, $options: "i" } },
           ],
         }
@@ -422,13 +423,11 @@ dependencyController.getDependencyHierarchy = async (req, res) => {
     return res.status(404).json({ status: "User not found" });
   }
 
-  const fatherDependency = await Dependency.findOne({ responsible: email });
+  const fatherDependency = await Dependency.findOne({ visualizers : {$in: [email]} });
 
   if (!fatherDependency) {
-    res.status(404).json({message: "User is not leader of any dependency..."})
+    return res.status(404).json({ message: "User is not authorized to view any dependency..." });  
   }
-
-
 
   fatherDependency.members = await dependencyService.filterValidMembers(fatherDependency.members);
 
