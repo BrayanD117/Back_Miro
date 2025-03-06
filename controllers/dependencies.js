@@ -14,6 +14,32 @@ const dependencyController = {};
 
 DEPENDENCIES_ENDPOINT = process.env.DEPENDENCIES_ENDPOINT;
 
+dependencyController.getReports = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { periodId } = req.query;
+
+    if (!id || !periodId) {
+      return res.status(400).json({ error: "Dependency ID and period ID are required." });
+    }
+
+    const dependency = await Dependency.findById(id, "dep_code");
+    if (!dependency) {
+      return res.status(404).json({ error: "Dependency not found" });
+    }
+
+    console.log("Fetching reports for:", { dependencyCode: dependency.dep_code, periodId });
+
+    const reports = await dependencyService.getDependencyReports(dependency.dep_code, periodId);
+
+    return res.status(200).json(reports);
+  } catch (err) {
+    console.error("Error fetching reports:", err.message);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+
 dependencyController.getTemplates = async (req, res) => {
   try {
     const { id } = req.params; 
@@ -415,19 +441,25 @@ dependencyController.getChildrenDependenciesPublishedTemplates = async (req,res)
 dependencyController.getDependencyHierarchy = async (req, res) => {
 
   const email = req.params.email 
+  const { periodId } = req.query;
 
-  console.log(email);
+  console.log(` Buscando jerarquía de dependencias para usuario: ${email}, período: ${periodId}`);
 
-  const user = await User.findOne({ email });
-  if (!user) {
-    return res.status(404).json({ status: "User not found" });
+  if (!periodId) {
+    return res.status(400).json({ error: "El período es requerido." });
   }
 
-  const fatherDependency = await Dependency.findOne({ visualizers : {$in: [email]} });
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ status: "Usuario no encontrado" });
+    }
 
-  if (!fatherDependency) {
+    const fatherDependency = await Dependency.findOne({ visualizers : {$in: [email]} });
+
+    if (!fatherDependency) {
     return res.status(404).json({ message: "User is not authorized to view any dependency..." });  
-  }
+    }
 
   fatherDependency.members = await dependencyService.filterValidMembers(fatherDependency.members);
 
@@ -442,6 +474,11 @@ dependencyController.getDependencyHierarchy = async (req, res) => {
     childrenDependencies: dependencyHierarchy 
   });
 
+} catch (error) {
+  console.error(" Error en getDependencyHierarchy:", error);
+  res.status(500).json({ error: "Error interno del servidor." });
 }
+
+};
 
 module.exports = dependencyController;
