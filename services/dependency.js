@@ -1,4 +1,5 @@
 const Dependency = require("../models/dependencies");
+const User = require("../models/users");
 const mongoose = require("mongoose");
 const PublishedTemplate = require("../models/publishedTemplates");
 
@@ -38,12 +39,22 @@ const getDependencyTemplates = async (depCode, periodId) => {
   }
 };
 
-const getDependencyHierarchy = (dependencies, depFatherCode = null) => {
-    return dependencies.filter(dep => dep.dep_father === depFatherCode)
-    .map(dep => ({
+const getDependencyHierarchy = async (dependencies, depFatherCode = null) => {
+  const filteredDependencies = dependencies.filter(dep => dep.dep_father === depFatherCode);
+  return await Promise.all(filteredDependencies.map(async (dep) => {
+    return {
       ...dep.toObject(),
-      children: getDependencyHierarchy(dependencies, dep.dep_code)
-    }))
+      members: await filterValidMembers(dep.members), // Filter members for each dependency
+      children: await getDependencyHierarchy(dependencies, dep.dep_code),
+    };
+  }));
 }
 
-module.exports = { getDependencyTemplates, getDependencyHierarchy };
+// Function to get only the members of the dependency that at least have more than one role (that is, they already have some function assigned in the platform)
+const filterValidMembers = async (members) => {
+  const validMembers = await User.find({ email: { $in: members }, "roles.1": { $exists: true } }).select("email");
+  return validMembers.map((user) => user.email);
+};
+
+
+module.exports = { getDependencyTemplates, getDependencyHierarchy, filterValidMembers };

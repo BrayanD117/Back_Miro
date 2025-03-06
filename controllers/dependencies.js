@@ -378,13 +378,18 @@ dependencyController.getDependencyHierarchy = async (req, res) => {
     res.status(404).json({message: "User is not leader of any dependency..."})
   }
 
-  console.log(fatherDependency);
+
+
+  fatherDependency.members = await dependencyService.filterValidMembers(fatherDependency.members);
 
   const dependencies = await Dependency.find();
 
-  const dependencyHierarchy = dependencyService.getDependencyHierarchy(dependencies, fatherDependency.dep_code)
+  const dependencyHierarchy = await dependencyService.getDependencyHierarchy(dependencies, fatherDependency.dep_code)
 
-  res.status(200).json({fatherDependency: fatherDependency, 
+  console.log(dependencyHierarchy);
+
+  res.status(200).json({
+    fatherDependency, 
     childrenDependencies: dependencyHierarchy 
   });
 
