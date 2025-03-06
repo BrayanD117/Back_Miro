@@ -9,8 +9,7 @@ const dependencySchema = new mongoose.Schema({
     },
     name: {
         type: String,
-        required: true,
-        unique: true
+        required: true
     },
     members: {
         type: [String]
