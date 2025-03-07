@@ -1,12 +1,51 @@
 const axios = require("axios");
 const Dependency = require("../models/dependencies");
-const dependencyService = require('../services/dependency'); // Import the correct service
+const dependencyService = require("../services/dependency"); // Import the correct service
 const User = require("../models/users");
 const UserService = require("../services/users");
+const publishedTemplates = require("../models/publishedTemplates");
+const producerReports = require("../models/producerReports");
+const { Types } = require("mongoose");
+const Validator = require("./validators.js");
+const ValidatorModel = require("../models/validators");
+const Template = require("../models/templates.js");
+const PublishedReportService = require("../services/publishedReports");
 
 const dependencyController = {};
 
 DEPENDENCIES_ENDPOINT = process.env.DEPENDENCIES_ENDPOINT;
+
+
+dependencyController.getReports = async (req, res) => {
+  try {
+    const { id } = req.params; // Extract dependency ID from request parameters 
+    console.log(req.params)
+    const { periodId } = req.query; // Extract period ID from query parameters
+
+    // Validate required parameters
+    if (!id || !periodId) {
+      return res.status(400).json({ error: "Dependency ID and period ID are required." });
+    }
+
+    // Find the dependency by ID
+    const dependency = await Dependency.findById(id, "dep_code name");
+    if (!dependency) {
+      return res.status(404).json({ error: "Dependency not found." });
+    }
+
+    console.log(`Fetching reports for dependency: ${dependency.dep_code}, period: ${periodId}`);
+
+    // Fetch reports using the service function
+    const reports = await dependencyService.getDependencyReports(dependency.dep_code, periodId);
+
+    return res.status(200).json(reports);
+  } catch (err) {
+    console.error("Error fetching reports:", err.message);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+
 
 dependencyController.getTemplates = async (req, res) => {
   try {
@@ -95,26 +134,75 @@ dependencyController.getDependencyById = async (req, res) => {
       return res.status(404).json({ status: "Dependency not found" });
     }
 
-    res.status(200).json(dependency);
-  } catch (error) {
+
+    res.status(200).json({
+      dep_code: dependency.dep_code,
+      name: dependency.name,
+      responsible: dependency.responsible,
+      dep_father: dependency.dep_father,
+      members: dependency.members,
+      visualizers: dependency.visualizers || [] 
+    }); 
+   } catch (error) {
     console.error("Error fetching dependency by ID:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+// update Visualizers 
+dependencyController.updateVisualizers = async (req, res) => {
+  const { id } = req.params;
+  const { visualizers } = req.body;
+
+  try {
+    const dependency = await Dependency.findById(id);
+    if (!dependency) {
+      return res.status(404).json({ status: "Dependency not found" });
+    }
+
+    dependency.visualizers = visualizers;
+    await dependency.save();
+
+    res.status(200).json({ status: "Visualizers updated successfully" });
+  } catch (error) {
+    console.error("Error updating visualizers:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// get Visualizers 
+
+dependencyController.getVisualizers = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const dependency = await Dependency.findById(id);
+
+    if (!dependency) {
+      return res.status(404).json({ status: "Dependency not found" });
+    }
+
+    res.status(200).json({ visualizers: dependency.visualizers || [] });
+  } catch (error) {
+    console.error("Error fetching visualizers:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
 
 dependencyController.getAllDependencies = async (req, res) => {
   try {
     const email = req.params.email;
     console.log("Fetching dependencies for user:", email);
     await UserService.findUserByEmail(email);
-    const dependencies = await Dependency.find();
+    const dependencies = await Dependency.find({}, "dep_code name responsible dep_father members visualizers");
+
     res.status(200).json(dependencies);
   } catch (error) {
     console.error("Error fetching dependencies:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
 
 // Get all dependencies existing into the DB with pagination
 dependencyController.getDependencies = async (req, res) => {
@@ -130,6 +218,7 @@ dependencyController.getDependencies = async (req, res) => {
             { dep_code: { $regex: search, $options: "i" } },
             { name: { $regex: search, $options: "i" } },
             { responsible: { $regex: search, $options: "i" } },
+            { visualizers: { $regex: search, $options: "i" } },
             { dep_father: { $regex: search, $options: "i" } },
           ],
         }
@@ -269,6 +358,134 @@ dependencyController.getDependencyNames = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+};
+
+dependencyController.getChildrenDependenciesPublishedTemplates = async (req,res) => {
+  
+  const email = req.query.email;
+  const periodId = req.query.periodId;
+
+  try {
+    
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ status: "User not found" });
+    }
+
+    const fatherDependency = await Dependency.findOne({ responsible: email });
+
+    console.log(fatherDependency)
+
+    const activeRole = user.activeRole;
+
+    if (activeRole !== "Administrador") {
+      if (!fatherDependency || fatherDependency.childrenDependencies.length === 0) {
+        return res.status(403).json({ status: "Access denied" });
+      }
+    }
+
+    const childrenDependenciesPublishedTemplates = await publishedTemplates
+      .find({
+        "template.producers": { $in: fatherDependency.childrenDependencies },
+        period: periodId,
+      })
+      .populate("period").sort({name:1});
+
+    const filteredTemplates = childrenDependenciesPublishedTemplates.map(
+      (template) => {
+        const filteredProducers = template.template.producers.filter(
+          (producer) =>
+            fatherDependency.childrenDependencies.some((childId) =>
+              childId.equals(producer)
+            )
+        );
+        return {
+          ...template.toObject(),
+          template: {
+            ...template.template,
+            producers: filteredProducers,
+          },
+        };
+      }
+    );
+
+    const updated_templates = await Promise.all(
+      filteredTemplates.map(async (template) => {
+        const validators = await Promise.all(
+          template.template.fields.map(async (field) => {
+            return Validator.giveValidatorToExcel(field.validate_with);
+          })
+        );
+        validatorsFiltered = validators.filter((v) => v !== undefined);
+        template.validators = validatorsFiltered; // Añadir validators al objeto
+        const dependencies = await Dependency.find(
+          { dep_code: { $in: template.producers_dep_code } },
+          "name -_id"
+        );
+        template.producers_dep_code = dependencies.map((dep) => dep.name);
+        template.loaded_data = await Promise.all(
+          template.loaded_data.map(async (data) => {
+            const loadedDependency = await Dependency.findOne(
+              { dep_code: data.dependency },
+              "name -_id"
+            );
+            data.dependency = loadedDependency
+              ? loadedDependency.name
+              : data.dependency;
+            return data;
+          })
+        );
+        return template;
+      })
+    );
+
+    res.status(200).json({templates:updated_templates});
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+dependencyController.getDependencyHierarchy = async (req, res) => {
+
+  const email = req.params.email 
+  const { periodId } = req.query;
+
+  console.log(` Buscando jerarquía de dependencias para usuario: ${email}, período: ${periodId}`);
+
+  if (!periodId) {
+    return res.status(400).json({ error: "El período es requerido." });
+  }
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ status: "Usuario no encontrado" });
+    }
+
+    const fatherDependency = await Dependency.findOne({ visualizers : {$in: [email]} });
+
+    if (!fatherDependency) {
+    return res.status(404).json({ message: "User is not authorized to view any dependency..." });  
+    }
+
+  fatherDependency.members = await dependencyService.filterValidMembers(fatherDependency.members);
+
+  const dependencies = await Dependency.find();
+
+  const dependencyHierarchy = await dependencyService.getDependencyHierarchy(dependencies, fatherDependency.dep_code)
+
+  console.log(dependencyHierarchy);
+
+  res.status(200).json({
+    fatherDependency, 
+    childrenDependencies: dependencyHierarchy 
+  });
+
+} catch (error) {
+  console.error(" Error en getDependencyHierarchy:", error);
+  res.status(500).json({ error: "Error interno del servidor." });
+}
+
 };
 
 module.exports = dependencyController;

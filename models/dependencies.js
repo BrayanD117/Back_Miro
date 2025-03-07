@@ -20,6 +20,10 @@ const dependencySchema = new mongoose.Schema({
     },
     dep_father: {
         type: String
+    },
+    visualizers: {
+        type: [String], 
+        default: []
     }
 },
 {
@@ -42,6 +46,22 @@ dependencySchema.pre('save', async function(next) {
     next();
 });
 
+// udpdate visualizers
+dependencySchema.statics.updateVisualizers = async function(dep_code, visualizers) {
+    try {
+        const dependency = await this.findOne({ dep_code });
+        if (!dependency) {
+            throw new Error('Dependency not found');
+        }
+
+        dependency.visualizers = visualizers;
+        await dependency.save();
+        return dependency;
+    } catch (error) {
+        console.error("Error updating visualizers:", error);
+        throw error;
+    }
+};
 dependencySchema.statics.upsertDependencies = async function(dependencies) {
     const bulkOps = dependencies.map(dep => ({
         updateOne: {
@@ -132,8 +152,11 @@ dependencySchema.statics.getMembersWithFather = async function(dep_code) {
     ]);
 };
 
-
-
+dependencySchema.statics.getWithChildren = async function(dep_code) {
+    return this.findOne({ dep_code })
+        .populate("childDependencies") // Fetch child dependencies
+        .exec();
+};
 
 
 module.exports = mongoose.model('dependencies', dependencySchema);
