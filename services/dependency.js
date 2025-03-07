@@ -2,58 +2,45 @@ const Dependency = require("../models/dependencies");
 const User = require("../models/users");
 const mongoose = require("mongoose");
 const PublishedTemplate = require("../models/publishedTemplates");
-const PublishedReport = require("../models/publishedReports");
+const PublishedReportService = require("../services/publishedReports");
+const publishedProducerReports = require("../models/publishedProducerReports");
 
-const getDependencyReports = async (depCode, periodId) => {
+const getDependencyReports= async (depCode, periodId) => {
+
   try {
     if (!depCode || !periodId) {
-      return { error: "Dependency code and period ID are required." };
+      throw new Error("Dependency code and period ID are required.");
     }
-
-    // Find the dependency in the database
     const dependency = await Dependency.findOne({ dep_code: depCode }, "name dep_code");
-    if (!dependency) return { error: "Dependency not found" };
+    if (!dependency) throw new Error("Dependency not found");
 
-    // Convert periodId to ObjectId if applicable
     const periodObjectId = mongoose.Types.ObjectId.isValid(periodId)
-      ? new mongoose.Types.ObjectId(periodId)
-      : periodId;
+    ? new mongoose.Types.ObjectId(periodId)
+    : periodId;
+    
+    const reports = await publishedProducerReports.find(
+      {  "template.producers" : dependency._id, period: periodObjectId  },
+      { name: 1, _id: 1, period: 1 , loaded_data: 1 } // Only return "name", hide "_id"
+    ).sort({name: 1});
 
-    // Query published reports related to the dependency and period
-    const reports = await PublishedReport.find(
-      { "report.producers": dependency._id, period: periodObjectId },
-      { name: 1, _id: 1, period: 1, submitted_data: 1 }
-    ).sort({ name: 1 });
-
-    if (!reports.length) {
-      return {
-        dependencyId: dependency._id,
-        dependencyCode: depCode,
-        dependencyName: dependency.name,
-        reports: [],
-        message: "No reports available for this dependency in the selected period."
-      };
-    }
-
-    // Process the reports to determine their submission status
-    const processedReports = reports.map(report => ({
-      _id: report._id,
-      name: report.name,
-      period: report.period,
-      isSent: report.submitted_data.some(data => data.dependency === depCode)
+    const processedTemplates = templates.map(template => ({
+      _id: template._id,
+      name: template.name,
+      period: template.period,
+      isSent: template.loaded_data.some(data => data.dependency === depCode) // Check if depCode exists in loaded_data
     }));
 
-    return {
-      dependencyId: dependency._id,
-      dependencyCode: depCode,
-      dependencyName: dependency.name,
-      reports: processedReports
+   return { 
+      dependencyId: dependency._id, 
+      dependencyCode: depCode, 
+      dependencyName: dependency.name, 
+      templates: processedTemplates 
     };
   } catch (err) {
-    console.error("Error fetching reports:", err.message);
-    return { error: "Error fetching reports: " + err.message };
+    throw new Error("Error fetching templates: " + err.message);
   }
 };
+
 
 const getDependencyTemplates = async (depCode, periodId) => {
    try {
