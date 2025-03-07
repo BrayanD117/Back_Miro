@@ -18,7 +18,7 @@ DEPENDENCIES_ENDPOINT = process.env.DEPENDENCIES_ENDPOINT;
 
 dependencyController.getReports = async (req, res) => {
   try {
-    const { id } = req.params; // Extract dependency ID from request parameters
+    const { id } = req.params; // Extract dependency ID from request parameters 
     console.log(req.params)
     const { periodId } = req.query; // Extract period ID from query parameters
 
@@ -38,20 +38,9 @@ dependencyController.getReports = async (req, res) => {
     // Fetch reports using the service function
     const reports = await dependencyService.getDependencyReports(dependency.dep_code, periodId);
 
-    // // If no reports exist, return an appropriate message without an error
-    // if (!reports || !reports.reports || reports.reports.length === 0) {
-    //   return res.status(200).json({
-    //     dependencyId: dependency._id,
-    //     dependencyCode: dependency.dep_code,
-    //     dependencyName: dependency.name,
-    //     reports: [],
-    //     message: "No reports available for this dependency in the selected period."
-    //   });
-    // }
-
-    return res.status(200).json(templates);
+    return res.status(200).json(reports);
   } catch (err) {
-    console.error("Error fetching templates:", err.message);
+    console.error("Error fetching reports:", err.message);
     return res.status(500).json({ error: err.message });
   }
 };
