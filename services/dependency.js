@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const PublishedTemplate = require("../models/publishedTemplates");
 const PublishedReportService = require("../services/publishedReports");
 const publishedProducerReports = require("../models/publishedProducerReports");
+const dependencies = require("../models/dependencies");
 
 const getDependencyReports= async (depCode, periodId) => {
 
@@ -23,12 +24,19 @@ const getDependencyReports= async (depCode, periodId) => {
       { "report.name": 1, _id: 1, period: 1 , filled_reports: 1 } // Only return "name", hide "_id"
     ).sort({name: 1});
 
-    const processedReports = reports.map(report => ({
+
+    console.log(reports[0], dependency._id);
+
+    const processedReports = reports.map(report => (
+      {
       _id: report._id,
       name: report.report.name,
       period: report.period,
-      isSent: report.filled_reports.some(data => data.dependency === depCode) // Check if depCode exists in loaded_data
+      isSent: report.filled_reports.some(data => data.dependency.equals(dependency._id)) // Check if depCode exists in loaded_data
     }));
+
+    
+ 
 
    return { 
       dependencyId: dependency._id, 
