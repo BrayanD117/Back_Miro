@@ -63,11 +63,11 @@
         // Perform bulkWrite for upserting users
         await User.bulkWrite(updateOps);
 
-        // Deactivate users not in the external users list, but only if they are not migrated
-        await User.updateMany(
-          { email: { $nin: Array.from(emailSet) }, migrated: { $ne: true } },
-          { $set: { isActive: false } }
-        );
+        // // Deactivate users not in the external users list, but only if they are not migrated
+        // await User.updateMany(
+        //   { email: { $nin: Array.from(emailSet) }, migrated: { $ne: true } },
+        //   { $set: { isActive: false } }
+        // );
     };
 
     module.exports = mongoose.model('users', userSchema);
