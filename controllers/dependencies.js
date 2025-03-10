@@ -112,7 +112,12 @@ dependencyController.getDependencyByResponsible = async (req, res) => {
   const email = req.query.email;
   console.log("Fetching dependency for responsible:", email);
   try {
-    const dependency = await Dependency.findOne({ responsible: email });
+    const dependency = await Dependency.findOne({ 
+      $or: [
+        { responsible: email },          // Match responsible field
+        { visualizers: email }           // Match inside visualizers array
+      ]
+     });
     if (!dependency) {
       console.log(`No dependency found for responsible: ${email}`);
       return res.status(404).json({ status: "Dependency not found" });
