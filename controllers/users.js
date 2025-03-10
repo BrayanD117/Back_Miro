@@ -56,7 +56,7 @@ userController.loadUsers = async (req, res) => {
         // Sync users
         await User.syncUsers(externalUsers);
 
-        await userController.deleteDeactivatedUsersFromDependency();
+        // await userController.deleteDeactivatedUsersFromDependency();
 
         res.status(200).send("Users synchronized");
     } catch (error) {
