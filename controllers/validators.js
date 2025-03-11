@@ -266,9 +266,9 @@ validatorController.validateColumn = async (column) => {
     let { values } = column;
     const { name, datatype, validate_with, required, multiple } = column;
     let result = { status: true, column: name, errors: [] };
-
     if (!name || !datatype || !values) {
-        return { status: false, errors: [{ register: null, message: 'Missing column name, datatype, or values' }] };
+      console.log(column);
+      return { status: false, errors: [{ register: null, message: 'Missing column name, datatype, or values' }] };
     }
 
     const oldValues = values;
@@ -384,7 +384,7 @@ validatorController.validateColumn = async (column) => {
                 });
             }
 
-            if (!validValuesSet.has(value) && !validValuesSet.has(value.toString())) {
+            if (columnToValidate.type === "Numero" && !validValuesSet.has(value) && !validValuesSet.has(value.toString())) {
               const intValue = parseInt(value, 10);
             if (isNaN(intValue)) {
               result.status = false;
