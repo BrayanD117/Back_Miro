@@ -335,7 +335,7 @@ publTempController.loadProducerData = async (req, res) => {
     const validationResults = await Promise.all(validations);
 
     const validationErrors = validationResults.filter(v => v.status === false);
-
+    console.log("Validation errors", validationErrors);
     if (validationErrors.length > 0) {
       await Log.create({
         user: user,
