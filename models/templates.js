@@ -74,6 +74,14 @@ const templateSchema = new Schema({
         default: true,
         required: true
     },
+    category: {  
+        type: String,
+        required: false 
+      },
+      sequence: {  
+        type: Number,
+        required: false 
+      },
     created_by: {
         type: {},
         required: true
