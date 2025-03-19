@@ -1,3 +1,4 @@
+const cron = require("node-cron");
 const Period = require('../models/periods');
 const PublishedTemplate = require('../models/publishedTemplates');
 const PublishedReport = require('../models/publishedReports');
@@ -6,6 +7,10 @@ const Template = require('../models/templates');
 const Report = require('../models/reports');
 const ProducerReport = require('../models/producerReports');
 const UserService = require('../services/users');
+const DependencyService = require('../services/dependency');
+const Validator = require('../models/validators');
+const User = require('../models/users');
+const Dependency = require('../models/dependencies');
 
 const periodController = {};
 
@@ -63,9 +68,64 @@ periodController.getPeriod = async (req, res) => {
 
 periodController.createPeriod = async (req, res) => {
     const period = new Period(req.body);
+    const [usersData, dependenciesData, validators] = await Promise.all([
+      UserService.giveUsersToKeepAndDelete(),
+      DependencyService.giveDependenciesToKeep(),
+      Validator.find()
+    ]);
+
+    const { usersToKeep, usersToDelete } = usersData;
+    
+    const dependencies = dependenciesData;
+    const emailsToDelete = usersToDelete;
+
+    dependencies.forEach(dependency => {
+      if (emailsToDelete) {
+        dependency.members = dependency.members.filter(member => !emailsToDelete.includes(member.email));
+      }
+    });
+
+    period.screenshot.users = usersToKeep;
+    period.screenshot.dependencies = dependencies;
+    period.screenshot.validators = validators;
+    period.screenshot_date = new Date();
+
+    //TODO: Implementar lógica para cargar estudiantes
+
     await period.save();
     res.status(200).json({ status: "Period created" });
 }
+
+periodController.updateScreenshotsJob = async () => {
+  const currentDate = new Date();
+
+  try {
+    const periods = await Period.find({ producer_end_date: { $gt: currentDate } });
+
+    for (const period of periods) {
+      const users = await User.find();
+      const dependencies = await Dependency.find();
+      const validators = await Validator.find();
+
+      period.screenshot.users = users;
+      period.screenshot.dependencies = dependencies;
+      period.screenshot.validators = validators;
+      period.screenshot_date = currentDate;
+
+      await period.save();
+      console.log(`Screenshot updated for period ${period._id}`);
+    }
+  } catch (error) {
+    console.error("Error updating screenshots:", error);
+  }
+};
+
+// Ejecutar cada 12 horas
+// Esto lo hará a las 00:00 y a las 12:00
+cron.schedule("0 0,12 * * *", () => {
+  console.log("Ejecutando tarea programada de actualización de screenshots");
+  periodController.updateScreenshotsJob();
+});
 
 periodController.updatePeriod = async (req, res) => {
     const { id } = req.params;
@@ -95,7 +155,7 @@ periodController.deletePeriod = async (req, res) => {
 
 periodController.getActivePeriods = async (req, res) => {
     try {
-        const periods = await Period.find();
+        const periods = await Period.find({ is_active: true }).sort({ end_date: 1 });
         res.status(200).json(periods);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -140,7 +200,7 @@ periodController.getAllPeriods = async (req, res) => {
       console.error('Error fetching all periods:', error);
       res.status(500).json({ error: 'Internal Server Error' });
     }
-};  
+};
 
 
 module.exports = periodController;

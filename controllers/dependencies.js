@@ -1,6 +1,6 @@
 const axios = require("axios");
 const Dependency = require("../models/dependencies");
-const dependencyService = require("../services/dependency"); // Import the correct service
+const DependencyService = require('../services/dependency'); // Import the correct service
 const User = require("../models/users");
 const UserService = require("../services/users");
 const publishedTemplates = require("../models/publishedTemplates");
@@ -48,24 +48,11 @@ dependencyController.getReports = async (req, res) => {
 
 
 dependencyController.getTemplates = async (req, res) => {
-  try {
-    const { id } = req.params; 
-    let { periodId } = req.query; 
 
-    if (!id || !periodId) {
-      return res.status(400).json({ error: "Dependency ID and period ID are required." });
-    }
-
-    const dependency = await Dependency.findById(id, "dep_code");
-    if (!dependency) {
-      return res.status(404).json({ error: "Dependency not found" });
-    }
-
-    console.log("Obteniendo plantillas con:", { dependencyCode: dependency.dep_code, periodId });
-
-    const templates = await dependencyService.getDependencyTemplates(dependency.dep_code, periodId);
-
-    return res.status(200).json(templates);
+  const {id} = req.params;
+  try{
+    const templates = await DependencyService.getDependencyTemplates(id)
+    res.status(200).json(templates)
   } catch (err) {
     console.error("Error fetching templates:", err.message);
     return res.status(500).json({ error: err.message });

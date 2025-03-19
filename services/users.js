@@ -1,4 +1,5 @@
 const User = require("../models/users");
+const axios = require("axios");
 
 class UserService {
   static async findUserByEmail(email, session) {
@@ -19,6 +20,21 @@ class UserService {
     if (!user) throw new Error("User not found.");
     return user;
   }
+  static async giveUsersToKeepAndDelete() {
+    try {
+      const response = await axios.get(process.env.USERS_ENDPOINT);
+      const externalUserEmails = new Set(response.data.map(user => user.email));
+      const [usersToKeep, usersToDelete] = await Promise.all([
+        User.find({ email: { $in: Array.from(externalUserEmails) } }),
+        User.find({ email: { $nin: Array.from(externalUserEmails) } }).distinct('email')
+      ]);
+      return {usersToKeep, usersToDelete};
+    } catch (error) {
+      throw new Error(error.message);
+    }
+  }
 }
+  
+
 
 module.exports = UserService;

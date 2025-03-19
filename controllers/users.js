@@ -4,6 +4,7 @@ const User = require('../models/users');
 const Dependency = require('../models/dependencies');
 const dependencyController = require('./dependencies.js');
 const { default: mongoose } = require('mongoose');
+const periodController = require('./periods.js');
 
 const userController = {}
 
@@ -57,6 +58,7 @@ userController.loadUsers = async (req, res) => {
         await User.syncUsers(externalUsers);
 
         // await userController.deleteDeactivatedUsersFromDependency();
+        periodController.updateScreenshotsJob()
 
         res.status(200).send("Users synchronized");
     } catch (error) {
@@ -84,6 +86,7 @@ userController.getUsersPagination = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const search = req.query.search || '';
+    const periodId = req.query.periodId || '';
     const skip = (page - 1) * limit;
 
     try {

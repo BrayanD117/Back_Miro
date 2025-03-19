@@ -37,7 +37,7 @@ dependencySchema.pre('save', async function(next) {
         try {
             const user = await User.findOne({ email: this.responsible });
             if (!user) {
-                return next(new Error('User not found'));
+              this.responsible = undefined;
             }
         } catch (error) {
             return next(error);
