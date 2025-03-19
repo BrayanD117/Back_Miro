@@ -41,9 +41,6 @@ const studentsSchema = new mongoose.Schema({
 studentsSchema.statics.syncUsers = async function (externalUsers) {
   const Student = this;
 
-  // Create a set of emails from external users for efficient look-up
-  const emailSet = new Set(externalUsers.map(user => user.email));
-
   // Use bulkWrite to perform upsert operations
   const updateOps = externalUsers.map(externalUser => ({
     updateOne: {
