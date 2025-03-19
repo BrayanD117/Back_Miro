@@ -59,8 +59,7 @@ const periodSchema = new mongoose.Schema(
     },
     screenshot_date: {
       type: Date,
-      default: Date.now,
-    },
+    }
   },
   {
     versionKey: false,

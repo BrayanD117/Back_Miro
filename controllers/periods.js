@@ -88,14 +88,15 @@ periodController.createPeriod = async (req, res) => {
     period.screenshot.users = usersToKeep;
     period.screenshot.dependencies = dependencies;
     period.screenshot.validators = validators;
+    period.screenshot_date = new Date();
 
-    //TODO: Implementar lógica para eliminar estudiantes
+    //TODO: Implementar lógica para cargar estudiantes
 
     await period.save();
     res.status(200).json({ status: "Period created" });
 }
 
-const updateScreenshotsJob = async () => {
+periodController.updateScreenshotsJob = async () => {
   const currentDate = new Date();
 
   try {
@@ -123,7 +124,7 @@ const updateScreenshotsJob = async () => {
 // Esto lo hará a las 00:00 y a las 12:00
 cron.schedule("0 0,12 * * *", () => {
   console.log("Ejecutando tarea programada de actualización de screenshots");
-  updateScreenshotsJob();
+  periodController.updateScreenshotsJob();
 });
 
 periodController.updatePeriod = async (req, res) => {
@@ -154,7 +155,7 @@ periodController.deletePeriod = async (req, res) => {
 
 periodController.getActivePeriods = async (req, res) => {
     try {
-        const periods = await Period.find();
+        const periods = await Period.find({ is_active: true }).sort({ end_date: 1 });
         res.status(200).json(periods);
     } catch (error) {
         res.status(500).json({ error: error.message });
