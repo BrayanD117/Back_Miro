@@ -1,13 +1,14 @@
+const Category = require ('')
+const Dependency = require('../models/dependencies.js')
+const Dimension = require('../models/dimensions.js')
+const Log = require('../models/logs');
+const Period = require('../models/periods.js')
 const PublishedTemplate = require('../models/publishedTemplates.js');
 const Template = require('../models/templates.js')
-const Period = require('../models/periods.js')
-const Dimension = require('../models/dimensions.js')
-const Dependency = require('../models/dependencies.js')
 const User = require('../models/users.js')
+const UserService = require('../services/users.js');
 const Validator = require('./validators.js');
 const ValidatorModel = require('../models/validators');
-const Log = require('../models/logs');
-const UserService = require('../services/users.js');
 
 const publTempController = {};
 
@@ -621,6 +622,31 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
     const filteredTemplates = templates.filter(
       (template) => !template.loaded_data?.some((data) => data.dependency === String(dependency.dep_code))
     );
+
+
+     // Obtener categorías para todas las plantillas
+     const templateIds = filteredTemplates.map((t) => t.template._id);
+     const categories = await Category.find({ "templates.templateId": { $in: templateIds } }).lean();
+ 
+     // Enriquecer plantillas con su categoría y secuencia
+     const templatesWithCategory = filteredTemplates.map((template) => {
+       const category = categories.find((cat) =>
+         cat.templates.some((t) => String(t.templateId) === String(template.template._id))
+       );
+ 
+       let sequence = null;
+       if (category) {
+         const categoryTemplate = category.templates.find((t) => String(t.templateId) === String(template.template._id));
+         sequence = categoryTemplate ? categoryTemplate.sequence : null;
+       }
+ 
+       return {
+         ...template,
+         category: category ? { id: category._id, name: category.name } : null,
+         sequence,
+       };
+     });
+
 
     // Obtener validadores solo de las plantillas filtradas
     const templatesWithValidators = await Promise.all(
