@@ -70,6 +70,11 @@ const publishedTemplateSchema = new Schema({
   published_date: {
     type: Date,
     required: true
+  },
+  category: { type: Schema.Types.ObjectId, ref: 'categories' },
+  sequence: {
+    type: Number,  // Secuencia de la plantilla
+    required: false
   }
 }, {
   versionKey: false,

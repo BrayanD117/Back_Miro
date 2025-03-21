@@ -75,13 +75,14 @@ const templateSchema = new Schema({
         required: true
     },
     category: {  
-        type: String,
-        required: false 
-      },
-      sequence: {  
+        type: Schema.Types.ObjectId,
+        ref: 'categories',
+        default: null
+    },
+    sequence: {  
         type: Number,
-        required: false 
-      },
+        default: null
+    },
     created_by: {
         type: {},
         required: true

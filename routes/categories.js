@@ -14,14 +14,8 @@ router.post('/create', controller.createCategory);
 // Asignar una plantilla a una categoría
 router.post('/assign-template', controller.assignTemplateToCategory);
 
-// Eliminar una plantilla de una categoría
-router.post('/remove-template', controller.removeTemplateFromCategory);
-
 // Actualizar una categoría
 router.put('/:categoryId', controller.updateCategory);
-
-// Actualizar una plantilla asignada a una categoría
-router.put('/:categoryId/assign-template', controller.updateTemplateAssignment);
 
 // Eliminar una categoría
 router.delete('/:categoryId', controller.deleteCategory);

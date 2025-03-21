@@ -1,14 +1,13 @@
-const Category = require ('')
-const Dependency = require('../models/dependencies.js')
-const Dimension = require('../models/dimensions.js')
-const Log = require('../models/logs');
-const Period = require('../models/periods.js')
 const PublishedTemplate = require('../models/publishedTemplates.js');
 const Template = require('../models/templates.js')
+const Period = require('../models/periods.js')
+const Dimension = require('../models/dimensions.js')
+const Dependency = require('../models/dependencies.js')
 const User = require('../models/users.js')
-const UserService = require('../services/users.js');
 const Validator = require('./validators.js');
 const ValidatorModel = require('../models/validators');
+const Log = require('../models/logs');
+const UserService = require('../services/users.js');
 
 const publTempController = {};
 
@@ -24,29 +23,37 @@ publTempController.publishTemplate = async (req, res) => {
   const email = req.body.user_email
 
   try {
-      const template = await Template.findById(template_id)
-      if(!template) {
-          return res.status(404).json({status: 'Template not found'})
-      }
-      const user = await UserService.findUserByEmailAndRole(email, 'Administrador')
+    const template = await Template.findById(template_id)
+    if (!template) {
+      return res.status(404).json({ status: 'Template not found' })
+    }
 
-      // Name => Recibe el nombre de la plantilla (modificable) + period_name
-      const newPublTemp = new PublishedTemplate({
-          name: req.body.name || template.name,
-          published_by: user,
-          template: template,
-          period: req.body.period_id,
-          deadline: req.body.deadline,
-          published_date: datetime_now()
-      })
+    const user = await UserService.findUserByEmailAndRole(email, 'Administrador')
 
-      await newPublTemp.save()
+    // Recuperar la categoría y secuencia de la plantilla
+    const category = template.category;  // Esto asume que la plantilla tiene un campo de referencia a la categoría
+    const sequence = template.sequence;  // Esto asume que la plantilla tiene un campo 'sequence'
 
-      return res.status(201).json({status: 'Template published successfully'})
+    // Name => Recibe el nombre de la plantilla (modificable) + period_name
+    const newPublTemp = new PublishedTemplate({
+      name: req.body.name || template.name,
+      published_by: user,
+      template: template,
+      period: req.body.period_id,
+      deadline: req.body.deadline,
+      published_date: datetime_now(),
+      category: category,  // Asignar la categoría de la plantilla
+      sequence: sequence   // Asignar la secuencia de la plantilla
+    })
+
+    await newPublTemp.save()
+
+    return res.status(201).json({ status: 'Template published successfully' })
   } catch (error) {
-      return res.status(500).json({status: error.message})
+    return res.status(500).json({ status: error.message })
   }
 }
+
 
 publTempController.getPublishedTemplatesDimension = async (req, res) => {
   const email = req.query.email;
@@ -89,12 +96,20 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
       .populate('period')
       .populate({
         path: 'template',
-        populate: {
-          path: 'dimensions',
-          model: 'dimensions'
-        }
+        populate: [
+          { path: 'dimensions', model: 'dimensions' },
+          {
+            path: 'category',  // Aquí pones el populate de la categoría
+            select: 'name',    // Solo seleccionamos el nombre
+            populate: {
+              path: 'templates.templateId',  // Populamos el 'templateId' dentro de templates
+              model: 'templates',            // Referencia al modelo de templates
+              select: 'name'                // También seleccionamos el nombre de la plantilla
+            }
+          }
+        ]
       });
-    
+
     const total = await PublishedTemplate.countDocuments(query);
     
     const updated_templates = await Promise.all(published_templates.map(async template => {
@@ -623,31 +638,6 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
       (template) => !template.loaded_data?.some((data) => data.dependency === String(dependency.dep_code))
     );
 
-
-     // Obtener categorías para todas las plantillas
-     const templateIds = filteredTemplates.map((t) => t.template._id);
-     const categories = await Category.find({ "templates.templateId": { $in: templateIds } }).lean();
- 
-     // Enriquecer plantillas con su categoría y secuencia
-     const templatesWithCategory = filteredTemplates.map((template) => {
-       const category = categories.find((cat) =>
-         cat.templates.some((t) => String(t.templateId) === String(template.template._id))
-       );
- 
-       let sequence = null;
-       if (category) {
-         const categoryTemplate = category.templates.find((t) => String(t.templateId) === String(template.template._id));
-         sequence = categoryTemplate ? categoryTemplate.sequence : null;
-       }
- 
-       return {
-         ...template,
-         category: category ? { id: category._id, name: category.name } : null,
-         sequence,
-       };
-     });
-
-
     // Obtener validadores solo de las plantillas filtradas
     const templatesWithValidators = await Promise.all(
       filteredTemplates.map(async (template) => {
@@ -681,15 +671,20 @@ publTempController.getTemplateById = async (req, res) => {
     const publishedTemplate = await PublishedTemplate.findById(templateId)
       .populate({
         path: 'template',
-        populate: {
-          path: 'dimensions',
-          model: 'dimensions'
-        },
-        populate: {
-          path: 'producers',
-          model: 'dependencies'
-        }
-      })
+       populate: [
+          { path: 'dimensions', model: 'dimensions' },
+          {
+            path: 'category',  // Aquí pones el populate de la categoría
+            select: 'name',    // Solo seleccionamos el nombre
+            populate: {
+              path: 'templates.templateId',  // Populamos el 'templateId' dentro de templates
+              model: 'templates',            // Referencia al modelo de templates
+              select: 'name'                // También seleccionamos el nombre de la plantilla
+            }
+          },
+          { path: 'producers', model: 'dependencies' },
+        ]
+      });
 
 
     if (!publishedTemplate) {
