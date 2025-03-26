@@ -71,11 +71,14 @@ const publishedTemplateSchema = new Schema({
     type: Date,
     required: true
   },
-  category: { type: Schema.Types.ObjectId, ref: 'categories' },
   sequence: {
     type: Number,  // Secuencia de la plantilla
     required: false
-  }
+  },
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'categories'
+  },
 }, {
   versionKey: false,
   timestamps: true

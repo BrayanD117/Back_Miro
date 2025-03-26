@@ -8,6 +8,7 @@ const Validator = require('./validators.js');
 const ValidatorModel = require('../models/validators');
 const Log = require('../models/logs');
 const UserService = require('../services/users.js');
+const Category = require('../models/categories.js');  // Asegúrate de tener el modelo Category
 
 const publTempController = {};
 
@@ -96,19 +97,12 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
       .populate('period')
       .populate({
         path: 'template',
-        populate: [
+        populate: 
+        [
           { path: 'dimensions', model: 'dimensions' },
-          {
-            path: 'category',  // Aquí pones el populate de la categoría
-            select: 'name',    // Solo seleccionamos el nombre
-            populate: {
-              path: 'templates.templateId',  // Populamos el 'templateId' dentro de templates
-              model: 'templates',            // Referencia al modelo de templates
-              select: 'name'                // También seleccionamos el nombre de la plantilla
-            }
-          }
         ]
       });
+
 
     const total = await PublishedTemplate.countDocuments(query);
     
@@ -142,7 +136,7 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
     }));
     
     res.status(200).json({
-      templates: updated_templates,
+      templates: updated_templates, finalTemplates,
       total,
       page,
       pages: Math.ceil(total / limit),
@@ -187,6 +181,7 @@ publTempController.getAssignedTemplatesToProductor = async (req, res) => {
         model: 'dependencies',
         match: { members: user.email } 
       })
+      
 
     console.log(templates)
 
@@ -671,20 +666,11 @@ publTempController.getTemplateById = async (req, res) => {
     const publishedTemplate = await PublishedTemplate.findById(templateId)
       .populate({
         path: 'template',
-       populate: [
+        populate: [
           { path: 'dimensions', model: 'dimensions' },
-          {
-            path: 'category',  // Aquí pones el populate de la categoría
-            select: 'name',    // Solo seleccionamos el nombre
-            populate: {
-              path: 'templates.templateId',  // Populamos el 'templateId' dentro de templates
-              model: 'templates',            // Referencia al modelo de templates
-              select: 'name'                // También seleccionamos el nombre de la plantilla
-            }
-          },
           { path: 'producers', model: 'dependencies' },
         ]
-      });
+      })
 
 
     if (!publishedTemplate) {

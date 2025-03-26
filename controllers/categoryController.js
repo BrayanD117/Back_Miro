@@ -1,5 +1,7 @@
 const Category = require("../models/categories");
 const Template = require("../models/templates");
+const PublishedTemplate = require('../models/publishedTemplates');
+
 const mongoose = require("mongoose");
 
 const categoryController = {};
@@ -13,20 +15,36 @@ categoryController.createCategory = async (req, res) => {
       return res.status(400).json({ message: "El nombre de la categoría es requerido" });
     }
 
-    // Crear la nueva categoría
-    const category = new Category({ name, templates });
+    // Crear la nueva categoría con las plantillas asignadas (si vienen)
+    const category = new Category({
+      name,
+      templates: templates?.map(t => ({
+        templateId: t.templateId,
+        sequence: t.sequence
+      })) || []
+    });
+
     await category.save();
 
-    // Asignar la categoría y la secuencia a las plantillas
+    // Asignar la categoría y secuencia en los Templates
     if (templates && templates.length > 0) {
-      const updatePromises = templates.map((t) =>
+      const updateTemplatePromises = templates.map((t) =>
         Template.findByIdAndUpdate(
           t.templateId,
           { category: category._id, sequence: t.sequence },
           { new: true }
         )
       );
-      await Promise.all(updatePromises);
+      await Promise.all(updateTemplatePromises);
+
+      // Actualizar los PublishedTemplates relacionados
+      const updatePublishedTemplatePromises = templates.map((t) =>
+        PublishedTemplate.updateMany(
+          { "template._id": new mongoose.Types.ObjectId(t.templateId) },
+          { $set: { category: category._id, sequence: t.sequence } }
+        )
+      );
+      await Promise.all(updatePublishedTemplatePromises);
     }
 
     res.status(201).json({ message: "Categoría creada exitosamente", category });
@@ -89,12 +107,20 @@ categoryController.assignTemplateToCategory = async (req, res) => {
     // Actualizar plantilla en `templates`
     await Template.findByIdAndUpdate(templateId, { category: categoryId, sequence }, { new: true });
 
+    // Ahora actualizamos los registros en `publishedTemplates`
+    await PublishedTemplate.updateMany(
+      { "template._id": templateId },
+      { $set: { category: categoryId, sequence: sequence } },
+      { new: true }
+    );
+
     res.status(200).json({ message: "Plantilla asignada exitosamente", category });
   } catch (error) {
     console.error("Error al asignar plantilla a la categoría:", error);
     res.status(500).json({ message: "Error interno del servidor", error: error.message });
   }
 };
+
 
 // Actualizar una categoría y sus plantillas
 categoryController.updateCategory = async (req, res) => {
@@ -109,24 +135,45 @@ categoryController.updateCategory = async (req, res) => {
     const category = await Category.findById(categoryId);
     if (!category) return res.status(404).json({ message: "Categoría no encontrada" });
 
-    // Obtener los IDs de las nuevas y antiguas plantillas
+    // IDs de plantillas antiguas y nuevas
     const newTemplateIds = templates.map((t) => t.templateId.toString());
     const oldTemplateIds = category.templates.map((t) => t.templateId.toString());
 
-    // **Eliminar las plantillas que ya no están en la categoría**
+    // Quitar plantillas que ya no pertenecen a la categoría
     const templatesToRemove = oldTemplateIds.filter((id) => !newTemplateIds.includes(id));
     await Template.updateMany({ _id: { $in: templatesToRemove } }, { $unset: { category: "", sequence: "" } });
 
-    // **Actualizar la categoría con las nuevas plantillas**
+    await PublishedTemplate.updateMany(
+      { "template._id": { $in: templatesToRemove.map(id => new mongoose.Types.ObjectId(id)) } },
+      { $unset: { category: "", sequence: "" } }
+    );
+
+    // Actualizar datos de la categoría
     category.name = name;
-    category.templates = templates;
+    category.templates = templates.map((t) => ({
+      templateId: t.templateId,
+      sequence: t.sequence
+    }));
     await category.save();
 
-    // **Actualizar cada plantilla con la nueva categoría y secuencia**
-    const updatePromises = templates.map((t) =>
-      Template.findByIdAndUpdate(t.templateId, { category: categoryId, sequence: t.sequence }, { new: true })
+    // Actualizar los templates
+    const updateTemplatePromises = templates.map((t) =>
+      Template.findByIdAndUpdate(
+        t.templateId,
+        { category: categoryId, sequence: t.sequence },
+        { new: true }
+      )
     );
-    await Promise.all(updatePromises);
+    await Promise.all(updateTemplatePromises);
+
+    // Actualizar los publishedTemplates correspondientes
+    const updatePublishedTemplatePromises = templates.map((t) =>
+      PublishedTemplate.updateMany(
+        { "template._id": new mongoose.Types.ObjectId(t.templateId) },
+        { $set: { category: categoryId, sequence: t.sequence } }
+      )
+    );
+    await Promise.all(updatePublishedTemplatePromises);
 
     res.status(200).json({ message: "Categoría actualizada exitosamente", category });
   } catch (error) {
@@ -134,6 +181,8 @@ categoryController.updateCategory = async (req, res) => {
     res.status(500).json({ message: "Hubo un error al actualizar la categoría", error: error.message });
   }
 };
+
+
 
 // Eliminar una categoría y limpiar plantillas
 categoryController.deleteCategory = async (req, res) => {
@@ -146,6 +195,12 @@ categoryController.deleteCategory = async (req, res) => {
     // **Eliminar la categoría de todas las plantillas asociadas**
     await Template.updateMany({ category: categoryId }, { $unset: { category: "", sequence: "" } });
 
+    // **Eliminar las referencias a la categoría en los publishedTemplates**
+    await PublishedTemplate.updateMany(
+      { category: categoryId },
+      { $unset: { category: "", sequence: "" } }
+    );
+
     // **Eliminar la categoría**
     await Category.findByIdAndDelete(categoryId);
 
@@ -155,5 +210,6 @@ categoryController.deleteCategory = async (req, res) => {
     res.status(500).json({ message: "Hubo un error al eliminar la categoría", error });
   }
 };
+
 
 module.exports = categoryController;
