@@ -48,16 +48,40 @@ dependencyController.getReports = async (req, res) => {
 
 
 dependencyController.getTemplates = async (req, res) => {
+  const { id } = req.params;
+  try {
+    console.log("Fetching templates for dependency with ID:", id);
+    const templates = await DependencyService.getDependencyTemplates(id);
+    console.log("Templates found:", JSON.stringify(templates, null, 2));  // Mostrar los objetos completos para ver si se poblaron correctamente
 
-  const {id} = req.params;
-  try{
-    const templates = await DependencyService.getDependencyTemplates(id)
-    res.status(200).json(templates)
+    
+    // Asegúrate de mapear los datos complejos, como los 'fields' y 'producers'
+    const formattedTemplates = templates.map(template => {
+      return {
+        ...template.toObject(),
+        fields: template.fields.map(field => ({
+          name: field.name,
+          datatype: field.datatype,
+          required: field.required,
+          comment: field.comment
+        })),
+        producers: template.producers.map(producer => ({
+          email: producer.email,
+          full_name: producer.full_name
+        }))
+      };
+    });
+
+    console.log("Formatted Templates:", formattedTemplates); // Para depurar
+
+    res.status(200).json(formattedTemplates); // Enviar datos formateados
   } catch (err) {
     console.error("Error fetching templates:", err.message);
     return res.status(500).json({ error: err.message });
   }
 };
+
+
 
 dependencyController.loadDependencies = async () => {
   await axios
