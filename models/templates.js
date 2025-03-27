@@ -77,11 +77,6 @@ const templateSchema = new Schema({
     category: {  
         type: Schema.Types.ObjectId,
         ref: 'categories',
-        default: null
-    },
-    sequence: {  
-        type: Number,
-        default: null
     },
     created_by: {
         type: {},

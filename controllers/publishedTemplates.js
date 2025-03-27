@@ -593,7 +593,7 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
   const skip = (page - 1) * limit;
 
   try {
-    // Buscar usuario productor
+    // Find user productor
     const user = await UserService.findUserByEmailAndRole(email, 'Productor');
     if (!user) {
       return res.status(404).json({ error: 'User not found or not a producer' });
@@ -604,17 +604,18 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
       return res.status(404).json({ error: 'Dependency not found' });
     }
 
-    const query = {
+    // Build query for PublishedTemplates
+    const query = { 
       name: { $regex: search, $options: 'i' },
-      'template.producers': dependency._id, // Filtramos directamente por _id de la dependencia
+      'template.producers': dependency._id,
     };
 
     if (periodId) query.period = periodId;
 
-    // Contar el total de documentos sin paginación
+    // Count total documents without pagination
     const total = await PublishedTemplate.countDocuments(query);
 
-    // Obtener las plantillas filtradas y paginadas
+    // Fetch templates with initial population
     const templates = await PublishedTemplate.find(query)
       .skip(skip)
       .limit(limit)
@@ -623,24 +624,86 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
         path: 'template',
         populate: [
           { path: 'dimensions', model: 'dimensions' },
-          { path: 'producers', model: 'dependencies' }, // No usamos match aquí porque ya filtramos antes
-        ],
-      })
-      .lean();
+          { path: 'producers', model: 'dependencies' }
+        ]
+      }).lean();
 
-    // Filtrar en memoria solo las plantillas que no tengan datos cargados por el usuario
-    const filteredTemplates = templates.filter(
+    // Manually fetch categories
+    const templatesWithCategories = await Promise.all(templates.map(async (template) => {
+      // Find the category directly from the original template
+      const originalTemplate = await Template.findById(template.template._id)
+        .populate({
+          path: 'category',
+          model: 'categories',
+          select: 'name templates' // Select specific fields if needed
+        }).lean();
+      
+        // Find the sequence for this template within the category
+        let sequence = null;
+        if (originalTemplate.category) {
+          const sequenceObj = originalTemplate.category.templates.find(
+            t => t.templateId.toString() === template.template._id.toString()
+          );
+          sequence = sequenceObj ? sequenceObj.sequence : null;
+        }
+  
+        return {
+          ...template,
+          template: {
+            ...template.template,
+            category: {
+              ...originalTemplate.category,
+              templateSequence: sequence
+            }
+          }
+        };
+      }));
+
+      // Custom sorting logic
+      const sortedTemplates = templatesWithCategories.sort((a, b) => {
+        // First, prioritize templates with categories
+        const hasCategA = !!a.template.category.name && a.template.category.name !== 'Sin categoría';
+        const hasCategB = !!b.template.category.name && b.template.category.name !== 'Sin categoría';
+        
+        // If one template has a category and the other doesn't, prioritize the one with category
+        if (hasCategA !== hasCategB) {
+          return hasCategB - hasCategA;
+        }
+        
+        // If both have categories, sort by category name
+        const categoryComparison = (a.template.category.name || '').localeCompare(
+          b.template.category.name || ''
+        );
+        
+        // If categories are the same, sort by sequence
+        if (categoryComparison === 0) {
+          // Handle cases where sequence might be null
+          const seqA = a.template.category.templateSequence ?? Infinity;
+          const seqB = b.template.category.templateSequence ?? Infinity;
+          return seqA - seqB;
+        }
+        
+        return categoryComparison;
+      });
+
+    // Paginate the sorted templates
+    const paginatedTemplates = sortedTemplates.slice(skip, skip + limit);
+
+    // Filter templates without loaded data
+    const filteredTemplates = paginatedTemplates.filter(
       (template) => !template.loaded_data?.some((data) => data.dependency === String(dependency.dep_code))
     );
 
-    // Obtener validadores solo de las plantillas filtradas
+    // Get validators for filtered templates
     const templatesWithValidators = await Promise.all(
       filteredTemplates.map(async (template) => {
         const validators = (
           await Promise.all(
-            template.template.fields.map(async (field) => Validator.giveValidatorToExcel(field.validate_with))
+            template.template.fields.map(async (field) => 
+              Validator.giveValidatorToExcel(field.validate_with)
+            )
           )
-        ).filter(Boolean); // Filtra los undefined
+        ).filter(Boolean);
 
         return { ...template, validators };
       })

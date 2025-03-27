@@ -7,17 +7,12 @@ const categorySchema = new Schema({
     type: String,
     required: true
   },
-  templates: [{
-    templateId: { 
-      type: Schema.Types.ObjectId, 
-      ref: 'templates', 
-      required: true 
-    },
-    sequence: { 
-      type: Number, 
-      required: true 
+  templates: [
+    {
+      templateId: { type: mongoose.Schema.Types.ObjectId, ref: 'templates', required: true },
+      sequence: { type: Number, required: true } // Order within the category
     }
-  }],
+  ]
   
 }, { timestamps: true });
 
