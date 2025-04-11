@@ -74,6 +74,10 @@ const templateSchema = new Schema({
         default: true,
         required: true
     },
+    category: {  
+        type: Schema.Types.ObjectId,
+        ref: 'categories',
+    },
     created_by: {
         type: {},
         required: true

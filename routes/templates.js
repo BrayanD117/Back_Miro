@@ -3,6 +3,7 @@ const controller = require('../controllers/templates');
 
 router.get("/creator", controller.getPlantillasByCreator);
 router.get("/all", controller.getPlantillas);
+router.get("/all/no-pagination", controller.getTemplatesWithoutPagination)
 router.get("/:id", controller.getPlantilla);
 router.post("/create", controller.createPlantilla);
 router.put("/:id", controller.updatePlantilla);

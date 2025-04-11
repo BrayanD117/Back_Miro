@@ -19,6 +19,54 @@ const datetime_now = () => {
 
 const templateController = {};
 
+
+templateController.getTemplatesWithoutPagination = async (req,res) => {
+  const search = req.query.search || "";
+  const periodId = req.query.periodId;
+
+  try {
+    const query = search
+      ? {
+          $or: [
+            { name: { $regex: search, $options: "i" } },
+            { file_name: { $regex: search, $options: "i" } },
+            { file_description: { $regex: search, $options: "i" } },
+          ],
+        }
+      : {};
+
+    const templates = await Template.find(query).populate("dimensions").sort({ name: 1 })
+
+    const templatesWithValidators = await Promise.all(
+      templates.map(async (template) => {
+        const validators = await Promise.all(
+          template.fields.map(async (field) => {
+            return Validator.giveValidatorToExcel(field.validate_with);
+          })
+        );
+
+        template = template.toObject();
+        if (periodId) {
+          const publishedTemplate = await PubTemplate.findOne({
+            "template._id": template._id,
+            period: periodId,
+          });
+          template.published = !!publishedTemplate;
+        }
+        validatorsFiltered = validators.filter((v) => v !== undefined);
+        template.validators = validatorsFiltered; // Add validators to object
+
+        return template;
+      })
+    );
+
+    res.status(200).json({ templates: templatesWithValidators });
+  } catch (error) {
+    console.error("Error fetching templates:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+}
+
 templateController.getPlantillas = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;

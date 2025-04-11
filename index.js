@@ -45,6 +45,7 @@ if (process.env.NODE_ENV === 'production') {
 
 const apiRouter = express.Router();
 
+apiRouter.use("/categories", require('./routes/categories'));
 apiRouter.use("/users", require('./routes/users'));
 apiRouter.use("/students", require('./routes/students'));
 apiRouter.use("/dimensions", require('./routes/dimensions'));
