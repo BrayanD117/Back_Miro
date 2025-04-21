@@ -136,7 +136,7 @@ publTempController.getPublishedTemplatesDimension = async (req, res) => {
     }));
     
     res.status(200).json({
-      templates: updated_templates, finalTemplates,
+      templates: updated_templates,
       total,
       page,
       pages: Math.ceil(total / limit),
