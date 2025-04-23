@@ -48,38 +48,30 @@ dependencyController.getReports = async (req, res) => {
 
 
 dependencyController.getTemplates = async (req, res) => {
-  const { id } = req.params;
   try {
-    console.log("Fetching templates for dependency with ID:", id);
-    const templates = await dependencyService.getDependencyTemplates(id);
-    console.log("Templates found:", JSON.stringify(templates, null, 2));  // Mostrar los objetos completos para ver si se poblaron correctamente
+    const { id } = req.params; 
+    let { periodId } = req.query; 
 
-    
-    // Asegúrate de mapear los datos complejos, como los 'fields' y 'producers'
-    const formattedTemplates = templates.map(template => {
-      return {
-        ...template.toObject(),
-        fields: template.fields.map(field => ({
-          name: field.name,
-          datatype: field.datatype,
-          required: field.required,
-          comment: field.comment
-        })),
-        producers: template.producers.map(producer => ({
-          email: producer.email,
-          full_name: producer.full_name
-        }))
-      };
-    });
+    if (!id || !periodId) {
+      return res.status(400).json({ error: "Dependency ID and period ID are required." });
+    }
 
-    console.log("Formatted Templates:", formattedTemplates); // Para depurar
+    const dependency = await Dependency.findById(id, "dep_code");
+    if (!dependency) {
+      return res.status(404).json({ error: "Dependency not found" });
+    }
 
-    res.status(200).json(formattedTemplates); // Enviar datos formateados
+    console.log("Obteniendo plantillas con:", { dependencyCode: dependency.dep_code, periodId });
+
+    const templates = await dependencyService.getDependencyTemplates(dependency.dep_code, periodId);
+
+    return res.status(200).json(templates);
   } catch (err) {
     console.error("Error fetching templates:", err.message);
     return res.status(500).json({ error: err.message });
   }
 };
+
 
 
 
