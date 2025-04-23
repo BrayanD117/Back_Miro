@@ -1,6 +1,6 @@
 const axios = require("axios");
 const Dependency = require("../models/dependencies");
-const DependencyService = require('../services/dependency'); // Import the correct service
+const dependencyService = require('../services/dependencyData'); // Import the correct service
 const User = require("../models/users");
 const UserService = require("../services/users");
 const publishedTemplates = require("../models/publishedTemplates");
