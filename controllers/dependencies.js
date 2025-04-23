@@ -51,7 +51,7 @@ dependencyController.getTemplates = async (req, res) => {
   const { id } = req.params;
   try {
     console.log("Fetching templates for dependency with ID:", id);
-    const templates = await DependencyService.getDependencyTemplates(id);
+    const templates = await dependencyService.getDependencyTemplates(id);
     console.log("Templates found:", JSON.stringify(templates, null, 2));  // Mostrar los objetos completos para ver si se poblaron correctamente
 
     
