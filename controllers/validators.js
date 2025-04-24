@@ -284,6 +284,19 @@ validatorController.validateColumn = async (column) => {
         });
     }
 
+    if (datatype === "Link") {
+      values = values.map(value => {
+        if(typeof value === 'object' && value !== null) {
+          return value.hyperlink ?? '';
+        }
+        if (typeof value === 'string' && value.startsWith('=HYPERLINK(')) {
+          const match = value.match(/HYPERLINK\("([^"]+)"/);
+          return match ? match[1] : '';
+        }
+        return value;
+      });
+    }
+
   if (datatype === "Entero" || datatype === "Decimal" || datatype === "Porcentaje") {
     values = values.map(value => {
       const num = Number(value);
