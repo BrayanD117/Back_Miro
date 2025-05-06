@@ -1,11 +1,14 @@
 const Template = require("../models/templates");
 const PubTemplate = require("../models/publishedTemplates");
+const PublishedTemplate = require('../models/publishedTemplates');
 const Period = require("../models/periods");
 const User = require("../models/users");
 const Dimension = require("../models/dimensions");
 const Validator = require("./validators");
 const mongoose = require("mongoose");
 const UserService = require("../services/users");
+const Dependency = require('../models/dependencies');
+
 const { ObjectId } = mongoose.Types;
 
 const datetime_now = () => {
@@ -228,167 +231,56 @@ templateController.createPlantilla = async (req, res) => {
 };
 
 templateController.updatePlantilla = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  const { id } = req.params;
+  const updatedFields = req.body;
 
   try {
-    const { id } = req.params;
-    const nowDate = datetime_now().toDateString();
-
-    // Obtener plantilla original (antes de actualizar)
-    const originalTemplate = await Template.findById(id).session(session);
+    const originalTemplate = await Template.findById(id).populate('producers');
     if (!originalTemplate) {
-      await session.abortTransaction();
-      session.endSession();
       return res.status(404).json({ error: "Plantilla no encontrada" });
     }
 
-    const updatedProducers = req.body.producers.map(p => p.toString());
-    const originalProducers = originalTemplate.producers.map(p => p.toString());
+    if (!updatedFields.producers) {
+      const updatedTemplate = await Template.findByIdAndUpdate(id, updatedFields, { new: true });
+      return res.status(200).json(updatedTemplate);
+    }
 
-    const removedProducers = originalProducers.filter(p => !updatedProducers.includes(p));
+    const oldProducers = originalTemplate.producers.map(p => p._id.toString());
+    const newProducers = updatedFields.producers.map(p => p.toString());
+    const removedProducers = oldProducers.filter(p => !newProducers.includes(p));
 
-    const periods = await Period.find({
-      is_active: true,
-      producer_start_date: { $lte: nowDate },
-      producer_end_date: { $gte: nowDate }
-    }).session(session);
+    const removedDependencies = await Dependency.find({ _id: { $in: removedProducers } });
+    const removedDepCodes = removedDependencies.map(dep => dep.dep_code);
 
-    if (periods.length > 0 && removedProducers.length > 0) {
-      const publishedTemplates = await PubTemplate.find({ 'template._id': new ObjectId(id) }).session(session);
+    const publishedTemplates = await PublishedTemplate.find({ "template._id": id });
 
-      for (const pubTemplate of publishedTemplates) {
-        for (const removed of removedProducers) {
-          const hasLoadedData = pubTemplate.loaded_data.some(ld => String(ld.dependency) === removed);
-          if (hasLoadedData) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(400).json({
-              message: "No puedes eliminar productores que ya han subido información."
-            });
-          }
+    const bloqueadas = [];
+
+    for (const pub of publishedTemplates) {
+      for (const depCode of removedDepCodes) {
+        const yaEnvio = pub.loaded_data.some(ld => ld.dependency === depCode);
+        if (yaEnvio) {
+          bloqueadas.push(depCode);
         }
       }
     }
 
-    // Actualizar la plantilla
-    const updatedTemplate = await Template.findByIdAndUpdate(id, req.body, {
-      new: true,
-    }).session(session);
-
-    // Si hay plantillas publicadas, actualizar la referencia del objeto `template`
-    if (periods.length > 0) {
-      const publishedTemplates = await PubTemplate.find({ 'template._id': new ObjectId(id) }).session(session);
-
-      for (const pubTemplate of publishedTemplates) {
-        pubTemplate.template = updatedTemplate;
-        await pubTemplate.save({ session });
-      }
+    if (bloqueadas.length > 0) {
+      const deps = await Dependency.find({ dep_code: { $in: bloqueadas } });
+      const nombres = deps.map(d => d.name).join(', ');
+      return res.status(403).json({
+        error: `No puedes eliminar las siguientes dependencias porque ya han enviado datos (aunque sea vacío): ${nombres}`
+      });
     }
 
-    await session.commitTransaction();
-    session.endSession();
-    res.status(200).json(updatedTemplate);
+    const updatedTemplate = await Template.findByIdAndUpdate(id, updatedFields, { new: true });
+    return res.status(200).json(updatedTemplate);
 
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    console.error("Error updating template:", error);
-    res.status(500).json({ error: error.message });
-  }
-};
-templateController.updatePlantilla = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    const { id } = req.params;
-    const nowDate = datetime_now().toDateString();
-
-    const originalTemplate = await Template.findById(id).session(session);
-    if (!originalTemplate) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(404).json({ error: "Plantilla no encontrada" });
-    }
-
-    const updatedProducers = req.body.producers.map(p => p.toString());
-    const originalProducers = originalTemplate.producers.map(p => p.toString());
-
-    const removedProducers = originalProducers.filter(p => !updatedProducers.includes(p));
-    const allowedToRemove = [...removedProducers];
-    const blockedToRemove = [];
-
-    const periods = await Period.find({
-      is_active: true,
-      producer_start_date: { $lte: nowDate },
-      producer_end_date: { $gte: nowDate }
-    }).session(session);
-
-    if (periods.length > 0 && removedProducers.length > 0) {
-      const publishedTemplates = await PubTemplate.find({
-        'template._id': new ObjectId(id),
-        period: { $in: periods.map(p => p._id) }
-      }).session(session);
-
-      for (const pubTemplate of publishedTemplates) {
-        for (const removed of removedProducers) {
-          const hasLoadedData = pubTemplate.loaded_data.some(ld => String(ld.dependency) === removed);
-          if (hasLoadedData) {
-            // No permitir eliminar este productor
-            allowedToRemove.splice(allowedToRemove.indexOf(removed), 1);
-            blockedToRemove.push(removed);
-          }
-        }
-      }
-    }
-
-    // Construir lista final de productores que se pueden guardar
-    const finalProducers = originalProducers
-      .filter(p => !removedProducers.includes(p) || allowedToRemove.includes(p))
-      .concat(updatedProducers.filter(p => !originalProducers.includes(p)));
-
-    // Actualizar la plantilla
-    const updatedTemplate = await Template.findByIdAndUpdate(id, {
-      ...req.body,
-      producers: finalProducers
-    }, {
-      new: true
-    }).session(session);
-
-    // Actualizar plantillas publicadas si no tienen datos cargados
-    const allPublishedTemplates = await PubTemplate.find({
-      'template._id': new ObjectId(id),
-    }).session(session);
-
-    for (const pubTemplate of allPublishedTemplates) {
-      if (pubTemplate.loaded_data.length === 0) {
-        pubTemplate.template = updatedTemplate;
-        await pubTemplate.save({ session });
-      }
-    }
-
-    await session.commitTransaction();
-    session.endSession();
-
-    const responseMessage = blockedToRemove.length > 0
-      ? {
-          warning: "Algunos productores no fueron eliminados porque ya habían subido información.",
-          blockedProducers: blockedToRemove,
-          updatedTemplate
-        }
-      : updatedTemplate;
-
-    return res.status(200).json(responseMessage);
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    console.error("Error updating template:", error);
+    console.error("Error al actualizar la plantilla:", error);
     return res.status(500).json({ error: error.message });
   }
 };
-
-
 
 templateController.deletePlantilla = async (req, res) => {
   try {

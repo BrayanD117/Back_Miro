@@ -8,7 +8,7 @@ const Validator = require('./validators.js');
 const ValidatorModel = require('../models/validators');
 const Log = require('../models/logs');
 const UserService = require('../services/users.js');
-const Category = require('../models/categories.js');  // Asegúrate de tener el modelo Category
+const Category = require('../models/categories.js');  
 
 const publTempController = {};
 
@@ -31,11 +31,9 @@ publTempController.publishTemplate = async (req, res) => {
 
     const user = await UserService.findUserByEmailAndRole(email, 'Administrador')
 
-    // Recuperar la categoría y secuencia de la plantilla
-    const category = template.category;  // Esto asume que la plantilla tiene un campo de referencia a la categoría
-    const sequence = template.sequence;  // Esto asume que la plantilla tiene un campo 'sequence'
+    const category = template.category;  
+    const sequence = template.sequence;  
 
-    // Name => Recibe el nombre de la plantilla (modificable) + period_name
     const newPublTemp = new PublishedTemplate({
       name: req.body.name || template.name,
       published_by: user,
@@ -43,8 +41,8 @@ publTempController.publishTemplate = async (req, res) => {
       period: req.body.period_id,
       deadline: req.body.deadline,
       published_date: datetime_now(),
-      category: category,  // Asignar la categoría de la plantilla
-      sequence: sequence   // Asignar la secuencia de la plantilla
+      category: category,  
+      sequence: sequence   
     })
 
     await newPublTemp.save()
@@ -354,7 +352,11 @@ publTempController.loadProducerData = async (req, res) => {
         date: datetime_now(),
         errors: validationErrors.map(err => ({
           column: err.column,
-          description: err.errors
+          description: err.errors.map(e => ({
+            register: e.register,
+            value: e.value || "Sin valor", 
+            message: e.message
+          }))
         }))
       })
       return res.status(400).json({ status: 'Validation error', details: validationErrors });
