@@ -274,11 +274,63 @@ templateController.updatePlantilla = async (req, res) => {
     }
 
     const updatedTemplate = await Template.findByIdAndUpdate(id, updatedFields, { new: true });
+    
+     // 🔁 Se sincronizan los producers embebidos en publishedTemplates
+const objectId = new mongoose.Types.ObjectId(id);
+
+// Transforma cada producer en ObjectId
+const newProducersAsObjectIds = updatedFields.producers.map(id => new mongoose.Types.ObjectId(id));
+
+const updatedPublishedTemplates = await PublishedTemplate.updateMany(
+  { "template._id": objectId },
+  { $set: { "template.producers": newProducersAsObjectIds } }
+);
+    console.log(updatedPublishedTemplates, 'updatedPublishedTemplates');
+    console.log(updatedFields.producers, 'updated')
+    console.log(`Producers sincronizados en ${updatedPublishedTemplates.modifiedCount} publishedTemplates`);
+    
     return res.status(200).json(updatedTemplate);
 
   } catch (error) {
     console.error("Error al actualizar la plantilla:", error);
     return res.status(500).json({ error: error.message });
+  }
+};
+
+templateController.syncAllPublishedTemplates = async (req, res) => {
+  try {
+    const templates = await Template.find({}, "_id producers");
+
+    let totalUpdated = 0;
+    let logs = [];
+
+    for (const template of templates) {
+      const templateId = new mongoose.Types.ObjectId(template._id);
+      const producers = template.producers;
+
+      const result = await PublishedTemplate.updateMany(
+        { "template._id": templateId },
+        { $set: { "template.producers": producers } }
+      );
+
+      if (result.modifiedCount > 0) {
+        logs.push({
+          templateId: template._id,
+          updatedCount: result.modifiedCount
+        });
+        totalUpdated += result.modifiedCount;
+      }
+    }
+
+    return res.status(200).json({
+      message: `Sincronización completada`,
+      totalTemplates: templates.length,
+      totalPublishedTemplatesActualizados: totalUpdated,
+      detalles: logs
+    });
+  } catch (err) {
+    console.error("Error sincronizando publishedTemplates:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
 
