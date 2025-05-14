@@ -280,7 +280,7 @@ runReminderEmails: async function (periodId = null) {
         }, plantillasPendientes[0].deadline);
 
         await sendReminderEmail(
-         "practicantes.g3@unibague.edu.co",
+          usuario.email,
           usuario.full_name,
           fechaLimiteMasProxima,
           plantillasPendientes.map(p => p.nombre)

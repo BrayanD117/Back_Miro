@@ -86,8 +86,8 @@ app.listen(PORT, () => {
 initDB();
 
 const { runReminderEmails } = require('./controllers/reminders');
-cron.schedule('10 17 * * *', async () => {
- console.log(" Ejecutando envío automático de recordatorios...");
+cron.schedule('0 7 * * *', async () => {
+  console.log(" Ejecutando envío automático de recordatorios...");
   try {
     await runReminderEmails(); 
     console.log(" Correos enviados correctamente");
