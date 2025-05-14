@@ -4,6 +4,7 @@ const cors = require('cors');
 const initDB = require('./config/db');
 const swaggerRouter = require('./swagger');
 const app = express();
+const cron = require('node-cron');
 
 require('dotenv').config();
 
@@ -45,6 +46,7 @@ if (process.env.NODE_ENV === 'production') {
 
 const apiRouter = express.Router();
 
+apiRouter.use("/reminders", require('./routes/reminders'));
 apiRouter.use("/categories", require('./routes/categories'));
 apiRouter.use("/users", require('./routes/users'));
 apiRouter.use("/students", require('./routes/students'));
@@ -82,3 +84,14 @@ app.listen(PORT, () => {
 });
 
 initDB();
+
+const { runReminderEmails } = require('./controllers/reminders');
+cron.schedule('10 17 * * *', async () => {
+ console.log(" Ejecutando envío automático de recordatorios...");
+  try {
+    await runReminderEmails(); 
+    console.log(" Correos enviados correctamente");
+  } catch (err) {
+    console.error(" Error al enviar recordatorios:", err);
+  }
+});
