@@ -507,6 +507,21 @@ publTempController.getFilledDataMergedForDimension = async (req, res) => {
     }, {});
 
     const data = template.loaded_data.map(data => {
+
+      // Detectar si no hay datos cargados
+      if (!Array.isArray(data.filled_data) || data.filled_data.length === 0) {
+  const emptyRow = {
+    Dependencia: depCodeToNameMap[data.dependency] || data.dependency,
+  };
+
+  // Añadir todas las columnas vacías según template.fields
+  template.template.fields.forEach(field => {
+    emptyRow[field.name] = "";
+  });
+
+  return [emptyRow];
+      }
+
       const filledData = data.filled_data.reduce((acc, item) => {
         item.values.forEach((value, index) => {
           if (!acc[index]) {
@@ -798,28 +813,28 @@ publTempController.getUploadedTemplateDataByProducer = async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (!user || !user.roles.includes('Productor')) {
-      return res.status(404).json({ status: 'User not found or not a productor' });
+      return res.status(404).json({ status: 'User not found' });
     }
 
-    const template = await PublishedTemplate.findById(id_template);
+    const template = await PublishedTemplate.findOne({
+      _id: id_template,
+      'loaded_data.dependency': user.dep_code,
+    });
 
     if (!template) {
       return res.status(404).json({ status: 'Template not found' });
     }
 
-    
-    const allFilledData = template.loaded_data.map(ld => ld.filled_data);
+    const producerData = template.loaded_data.find(
+      (data) => data.send_by.email === email
+    );
 
-   
-    const flattenedData = allFilledData.flat();
-
-    res.status(200).json({ data: flattenedData });
+    res.status(200).json({ data: producerData.filled_data });
   } catch (error) {
     console.error('Error fetching template data:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
-
 
 //Only deletes if there's no loaded data
 publTempController.deletePublishedTemplate = async (req, res) => {
