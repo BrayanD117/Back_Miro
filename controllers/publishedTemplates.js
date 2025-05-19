@@ -291,7 +291,7 @@ publTempController.loadProducerData = async (req, res) => {
           model: 'dependencies'
         }
       })
-    console.log(pubTem.template.producers)
+    
     if (!pubTem) {
       return res.status(404).json({ status: 'Published template not found' });
     }
@@ -344,21 +344,23 @@ publTempController.loadProducerData = async (req, res) => {
     const validationResults = await Promise.all(validations);
 
     const validationErrors = validationResults.filter(v => v.status === false);
-    console.log("Validation errors", validationErrors);
+    
+    console.log("Validation errors:");
+    console.dir(validationErrors, { depth: null });
     if (validationErrors.length > 0) {
       await Log.create({
         user: user,
         published_template: pubTem._id,
         date: datetime_now(),
         errors: validationErrors.map(err => ({
-          column: err.column,
+          column: err.column ?? "Campo desconocido",
           description: err.errors.map(e => ({
-            register: e.register,
-            value: e.value || "Sin valor", 
-            message: e.message
+            register: e.register ?? -1,
+            value: e.value ?? "Sin valor",
+            message: e.message ?? "Error desconocido"
           }))
         }))
-      })
+      });
       return res.status(400).json({ status: 'Validation error', details: validationErrors });
     }
 

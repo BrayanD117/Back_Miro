@@ -283,7 +283,10 @@ const newProducersAsObjectIds = updatedFields.producers.map(id => new mongoose.T
 
 const updatedPublishedTemplates = await PublishedTemplate.updateMany(
   { "template._id": objectId },
-  { $set: { "template.producers": newProducersAsObjectIds } }
+  { $set: { 
+    "template.producers": newProducersAsObjectIds ,
+    "template.fields": updatedTemplate.fields
+  } }
 );
     console.log(updatedPublishedTemplates, 'updatedPublishedTemplates');
     console.log(updatedFields.producers, 'updated')
@@ -299,18 +302,24 @@ const updatedPublishedTemplates = await PublishedTemplate.updateMany(
 
 templateController.syncAllPublishedTemplates = async (req, res) => {
   try {
-    const templates = await Template.find({}, "_id producers");
+    // Trae _id, producers y fields para sincronizar ambos campos
+    const templates = await Template.find({}, "_id producers fields");
 
     let totalUpdated = 0;
     let logs = [];
 
     for (const template of templates) {
       const templateId = new mongoose.Types.ObjectId(template._id);
-      const producers = template.producers;
+      const { producers, fields } = template;
 
       const result = await PublishedTemplate.updateMany(
         { "template._id": templateId },
-        { $set: { "template.producers": producers } }
+        {
+          $set: {
+            "template.producers": producers,
+            "template.fields": fields
+          }
+        }
       );
 
       if (result.modifiedCount > 0) {
