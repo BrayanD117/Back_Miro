@@ -798,28 +798,28 @@ publTempController.getUploadedTemplateDataByProducer = async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (!user || !user.roles.includes('Productor')) {
-      return res.status(404).json({ status: 'User not found' });
+      return res.status(404).json({ status: 'User not found or not a productor' });
     }
 
-    const template = await PublishedTemplate.findOne({
-      _id: id_template,
-      'loaded_data.dependency': user.dep_code,
-    });
+    const template = await PublishedTemplate.findById(id_template);
 
     if (!template) {
       return res.status(404).json({ status: 'Template not found' });
     }
 
-    const producerData = template.loaded_data.find(
-      (data) => data.send_by.email === email
-    );
+    
+    const allFilledData = template.loaded_data.map(ld => ld.filled_data);
 
-    res.status(200).json({ data: producerData.filled_data });
+   
+    const flattenedData = allFilledData.flat();
+
+    res.status(200).json({ data: flattenedData });
   } catch (error) {
     console.error('Error fetching template data:', error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
+
 
 //Only deletes if there's no loaded data
 publTempController.deletePublishedTemplate = async (req, res) => {
