@@ -816,6 +816,7 @@ publTempController.getUploadedTemplateDataByProducer = async (req, res) => {
       return res.status(404).json({ status: 'User not found' });
     }
 
+    // Busca la plantilla publicada donde la dependencia ya haya enviado datos
     const template = await PublishedTemplate.findOne({
       _id: id_template,
       'loaded_data.dependency': user.dep_code,
@@ -825,9 +826,15 @@ publTempController.getUploadedTemplateDataByProducer = async (req, res) => {
       return res.status(404).json({ status: 'Template not found' });
     }
 
+    // ✅ Encuentra los datos enviados por la dependencia (sin importar el email)
     const producerData = template.loaded_data.find(
-      (data) => data.send_by.email === email
+      (data) => data.dependency === user.dep_code
     );
+
+        if (!producerData) {
+      return res.status(404).json({ status: 'No data found for dependency' });
+    }
+
 
     res.status(200).json({ data: producerData.filled_data });
   } catch (error) {
