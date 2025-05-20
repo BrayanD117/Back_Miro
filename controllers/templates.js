@@ -206,6 +206,14 @@ templateController.createPlantilla = async (req, res) => {
             "El nombre de la plantilla ya existe. Por favor, elija otro nombre.",
         });
     }
+
+    const invalidFileNameChars = /[<>:"/\\|?*]/;
+  if (req.body.file_name && invalidFileNameChars.test(req.body.file_name)) {
+    return res.status(400).json({
+      error: "El nombre del archivo contiene caracteres no permitidos: <>:\"/\\|?*"
+    });
+  }
+    
     console.log('Body ', req.body);
     const user = await UserService.findUserByEmailAndRole(req.body.email, "Administrador");
     const plantilla = new Template({ ...req.body, created_by: user });
@@ -233,6 +241,15 @@ templateController.createPlantilla = async (req, res) => {
 templateController.updatePlantilla = async (req, res) => {
   const { id } = req.params;
   const updatedFields = req.body;
+
+
+    const invalidFileNameChars = /[<>:"/\\|?*]/;
+  if (updatedFields.file_name && invalidFileNameChars.test(updatedFields.file_name)) {
+    return res.status(400).json({
+      error: "El nombre del archivo contiene caracteres no permitidos: <>:\"/\\|?*"
+    });
+  }
+
 
   try {
     const originalTemplate = await Template.findById(id).populate('producers');

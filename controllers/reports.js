@@ -95,6 +95,13 @@ reportController.createReport = async (req, res) => {
     const { email } = req.body;
     const { name, description, requires_attachment, file_name, dimensions } = req.body;
 
+    const invalidFileNameChars = /[<>:"/\\|?*]/;
+    if (invalidFileNameChars.test(req.body.file_name)) {
+    return res.status(400).json({
+      error: "El nombre del archivo contiene caracteres no permitidos: <>:\"/\\|?*"
+    });
+  }
+    
     const user = await User.findOne({ email, activeRole: "Administrador" }).session(session); // Incluir la sesión en las consultas
 
     if (!user || user.activeRole !== "Administrador") {
@@ -176,7 +183,14 @@ reportController.updateReport = async (req, res) => {
     const { email, name, description, requires_attachment, file_name, dimensions } = req.body;
     const nowDate = datetime_now().toDateString();
     const pubReportsToUpdate = []
-
+ 
+    const invalidFileNameChars = /[<>:"/\\|?*]/;
+    if (invalidFileNameChars.test(req.body.file_name)) {
+    return res.status(400).json({
+      error: "El nombre del archivo contiene caracteres no permitidos: <>:\"/\\|?*"
+    });
+  }
+    
     await UserService.findUserByEmailAndRole(email, "Administrador", session);
 
     const report = await Report.findById(id).session(session);

@@ -83,6 +83,13 @@ reportController.createReport = async (req, res) => {
             throw new Error("All fields are required");
     }
 
+      const invalidFileNameChars = /[<>:"/\\|?*]/;
+    if (invalidFileNameChars.test(req.body.file_name)) {
+    return res.status(400).json({
+      error: "El nombre del archivo contiene caracteres no permitidos: <>:\"/\\|?*"
+    });
+  }
+
     await ProducerReportsService.createReport(user, name, description, req.file, file_name, 
       dimensions, producers, requires_attachment, session);
 
@@ -104,6 +111,13 @@ reportController.updateReport = async (req, res) => {
   try {
     const { id, email, requires_attachment, description, name, file_name, dimensions, producers } = req.body;
     session.startTransaction();
+
+    const invalidFileNameChars = /[<>:"/\\|?*]/;
+    if (invalidFileNameChars.test(req.body.file_name)) {
+    return res.status(400).json({
+      error: "El nombre del archivo contiene caracteres no permitidos: <>:\"/\\|?*"
+    });
+  }
     
     await UserService.findUserByEmailAndRole(email, "Administrador", session);
     if(!name || !description || !requires_attachment || !file_name 
