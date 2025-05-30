@@ -523,20 +523,29 @@ publTempController.getFilledDataMergedForDimension = async (req, res) => {
       }
 
       const filledData = data.filled_data.reduce((acc, item) => {
-        item.values.forEach((value, index) => {
-          if (!acc[index]) {
-            acc[index] = { Dependencia: depCodeToNameMap[data.dependency] || data.dependency };
-          }
-          acc[index][item.field_name] = value.$numberInt || value;
-        });
-        return acc;
-      }, []);
+  item.values.forEach((value, index) => {
+    if (!acc[index]) {
+      acc[index] = { Dependencia: depCodeToNameMap[data.dependency] || data.dependency };
+    }
+
+    if (value && typeof value === 'object' && ('$numberInt' in value || '$numberDouble' in value)) {
+      acc[index][item.field_name] = value.$numberInt || value.$numberDouble;
+    } else {
+      acc[index][item.field_name] = value ?? "";
+    }
+  });
+  return acc;
+}, []);
+
+
+       console.log('INFO CARGADA', filledData);
     
       return filledData;
     }).flat();
 
     res.status(200).json({ data });
   } catch (error) {
+     console.log('LA PLANTILLA', error);
     res.status(500).json({ error: 'Error al obtener los datos de la plantilla' });
   }
 }
