@@ -366,7 +366,7 @@ validatorController.validateColumn = async (column) => {
           const strOldValue = String(oldValue);
           return strOldValue.includes(strValue);
         });
-      if (required && (value.length === 0 || value === null || value === undefined)) {
+      if (required && (value === null || value === undefined || `${value}`.trim() === '')) {
             result.status = false;
             result.errors.push({
                 register: realIndex + 1,
