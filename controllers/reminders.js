@@ -282,7 +282,7 @@ runReminderEmails: async function (periodId = null, force = false) {
 
       // Enviar correo al productor
       await sendReminderEmail(
-        "juan.gonzalez10@unibague.edu.co",
+        usuario.email,
         usuario.full_name,
         fechaLimiteMasProxima,
         plantillasPendientes.map(p => p.nombre)
@@ -358,7 +358,7 @@ async function sendSummaryEmail(logs) {
 
   await transporter.sendMail({
     from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_ADDRESS}>`,
-    to: "juan.gonzalez10@unibague.edu.co",
+    to: "miro@unibague.edu.co",
     subject: "📬 Resumen de recordatorios enviados",
     html
   });
