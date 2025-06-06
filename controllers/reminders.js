@@ -226,6 +226,81 @@ sendTestReminder: async (req, res) => {
   }
 },
 
+previewReminderEmails: async (periodId = null, force = false) =>{
+  const reminders = await Reminder.find();
+  const today = dayjs();
+
+  if (!periodId) {
+    const activePeriod = await Period.findOne({ is_active: true }).sort({ updatedAt: -1 });
+    if (!activePeriod) {
+      console.log("No se encontró periodo activo");
+      return [];
+    }
+    periodId = activePeriod._id;
+  }
+
+  // Obtener correos ya registrados en ReminderLog
+  const logs = await ReminderLog.find({ period_id: periodId });
+  const correosYaEnviados = logs.map((log) => log.recipient_email);
+
+  // Productores con el rol en roles[] y activos
+  const usuarios = await User.find({
+    roles: 'Productor',
+    isActive: true,
+    email: { $nin: correosYaEnviados },
+  });
+
+  const dependenciaCache = {};
+  const resultado = [];
+
+  for (const usuario of usuarios) {
+    const dependencia = dependenciaCache[usuario.dep_code] ||
+      await Dependency.findOne({ dep_code: usuario.dep_code });
+
+    if (!dependencia) continue;
+    dependenciaCache[usuario.dep_code] = dependencia;
+
+    const templates = await PublishedTemplate.find({
+      'template.producers': dependencia._id,
+      period: periodId,
+    }).populate('template').lean();
+
+    let plantillasPendientes = [];
+
+    for (const t of templates) {
+      const yaEnviada = t.loaded_data?.some((d) => d.dependency === usuario.dep_code);
+      const diasRestantes = dayjs(t.deadline).diff(today, 'day');
+      const match = force ? true : reminders.some((r) => r.daysBefore === diasRestantes);
+
+      if (!yaEnviada && dayjs(t.deadline).isAfter(today) && match) {
+        plantillasPendientes.push({
+          nombre: t.template?.name || 'Plantilla sin nombre',
+          deadline: t.deadline,
+        });
+      }
+    }
+
+    if (plantillasPendientes.length > 0) {
+      const fechaLimiteMasProxima = plantillasPendientes.reduce((min, p) => {
+        return dayjs(p.deadline).isBefore(min) ? p.deadline : min;
+      }, plantillasPendientes[0].deadline);
+
+      resultado.push({
+        nombre: usuario.full_name,
+        email: usuario.email,
+        deadline: fechaLimiteMasProxima,
+        plantillas: plantillasPendientes.map(p => p.nombre),
+      });
+    }
+  }
+
+return {
+  total: resultado.length,
+  usuarios: resultado
+};
+},
+
+
 runReminderEmails: async function (periodId = null, force = false) {
   const reminders = await Reminder.find();
   const today = dayjs();
@@ -242,7 +317,16 @@ runReminderEmails: async function (periodId = null, force = false) {
 
   console.log(`Periodo usado para recordatorios: ${periodId}`);
 
-  const usuarios = await User.find({ activeRole: 'Productor', isActive: true });
+   // Obtener correos ya registrados en ReminderLog
+  const logsSent = await ReminderLog.find({ period_id: periodId });
+  const correosYaEnviados = logsSent.map((log) => log.recipient_email);
+
+  const usuarios = await User.find({
+    isActive: true,
+    roles: "Productor",
+    email: { $nin: correosYaEnviados }
+  });
+
 
   const dependenciaCache = {};
   const logs = [];
@@ -358,7 +442,7 @@ async function sendSummaryEmail(logs) {
 
   await transporter.sendMail({
     from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_ADDRESS}>`,
-    to: "miro@unibague.edu.co",
+    to: 'miro@unibague.edu.co',
     subject: "📬 Resumen de recordatorios enviados",
     html
   });

@@ -18,6 +18,17 @@ router.post('/send-reminders', async (req, res) => {
   }
 });
 
+router.get("/reminders/preview", async (req, res) => {
+  try {
+    const periodId = req.query.periodId || null;
+    const resultados = await controller.previewReminderEmails(periodId, true); // `true` para forzar el match
+    res.json(resultados);
+  } catch (error) {
+    console.error("Error al previsualizar correos:", error);
+    res.status(500).json({ error: "Error al previsualizar recordatorios." });
+  }
+});
+
 // router.post('/send-reminders', async (req, res) => {
 //   try {
 //     const { periodId } = req.query;
@@ -28,5 +39,8 @@ router.post('/send-reminders', async (req, res) => {
 //     res.status(500).json({ error: 'Fallo al ejecutar recordatorios' });
 //   }
 // });
+
+
+
 
 module.exports = router;
