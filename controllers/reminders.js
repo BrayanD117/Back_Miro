@@ -6,6 +6,7 @@ const PublishedTemplate = require('../models/publishedTemplates');
 const Dependency = require('../models/dependencies');
 const Period = require('../models/periods');
 
+const ReminderLog = require("../models/reminderLog");
 
 
 const datetime_now = () => {
@@ -69,6 +70,7 @@ async function sendReminderEmail(to, nombre, fechaLimite, plantillas = []) {
       </a>
     </div>
     <p style="font-size: 14px; color: #6c757d;">Por favor, asegúrate de completar tu entrega antes de la fecha límite.</p>
+    <p style="font-size: 14px; color: #6c757d;"> Este mensaje fue generado automáticamente por la plataforma Miró. Le pedimos no responder al mismo.  Si tiene alguna inquietud por favor escribir al correo electrónico direcciondeplaneacion@unibague.edu.co</p>
     <hr style="border: none; border-top: 1px solid #ccc; margin: 30px 0;">
     <p style="font-size: 14px; text-align: center; color: #999;">— Equipo Miró</p>
   </div>
@@ -178,7 +180,7 @@ checkAndSendReminderEmails: async (req, res) => {
 
     if (plantillasPendientes.length > 0) {
       await sendReminderEmail(
-        usuario.email,
+        "juan.gonzalez10@unibague.edu.co",
         usuario.full_name,
         templates[0].deadline, 
         plantillasPendientes
@@ -224,74 +226,143 @@ sendTestReminder: async (req, res) => {
   }
 },
 
-runReminderEmails: async function (periodId = null) {
-    const reminders = await Reminder.find();
-    const today = dayjs();
+runReminderEmails: async function (periodId = null, force = false) {
+  const reminders = await Reminder.find();
+  const today = dayjs();
 
-    if (!periodId) {
-      const activePeriod = await Period.findOne({ is_active: true })
-        .sort({ updatedAt: -1 });
-
-      if (!activePeriod) {
-        console.log(" No se encontró periodo activo");
-        return 0;
-      }
-
-      periodId = activePeriod._id;
+  if (!periodId) {
+    const activePeriod = await Period.findOne({ is_active: true }).sort({ updatedAt: -1 });
+    console.log(activePeriod);
+    if (!activePeriod) {
+      console.log("No se encontró periodo activo");
+      return 0;
     }
-
-    console.log(` Periodo usado para recordatorios: ${periodId}`);
-
-    const usuarios = await User.find({ activeRole: 'Productor', isActive: true });
-    const dependenciaCache = {};
-    let totalCorreos = 0;
-
-    for (const usuario of usuarios) {
-      const dependencia = dependenciaCache[usuario.dep_code] ||
-        await Dependency.findOne({ dep_code: usuario.dep_code });
-
-      if (!dependencia) continue;
-
-      dependenciaCache[usuario.dep_code] = dependencia;
-
-      const templates = await PublishedTemplate.find({
-        'template.producers': dependencia._id,
-        period: periodId,
-      }).populate('template').lean();
-
-      let plantillasPendientes = [];
-
-      for (const t of templates) {
-        const yaEnviada = t.loaded_data?.some((d) => d.dependency === usuario.dep_code);
-        const diasRestantes = dayjs(t.deadline).diff(today, 'day');
-        const match = reminders.some((r) => r.daysBefore === diasRestantes);
-
-        if (!yaEnviada && dayjs(t.deadline).isAfter(today) && match) {
-          plantillasPendientes.push({
-            nombre: t.template?.name || 'Plantilla sin nombre',
-            deadline: t.deadline
-          });
-        }
-      }
-
-      if (plantillasPendientes.length > 0) {
-        const fechaLimiteMasProxima = plantillasPendientes.reduce((min, p) => {
-          return dayjs(p.deadline).isBefore(min) ? p.deadline : min;
-        }, plantillasPendientes[0].deadline);
-
-        await sendReminderEmail(
-          usuario.email,
-          usuario.full_name,
-          fechaLimiteMasProxima,
-          plantillasPendientes.map(p => p.nombre)
-        );
-
-        totalCorreos++;
-      }
-    }
-
-    return totalCorreos;
+    periodId = activePeriod._id;
   }
-};
+
+  console.log(`Periodo usado para recordatorios: ${periodId}`);
+
+  const usuarios = await User.find({ activeRole: 'Productor', isActive: true });
+
+  const dependenciaCache = {};
+  const logs = [];
+
+  for (const usuario of usuarios) {
+    const dependencia = dependenciaCache[usuario.dep_code] ||
+      await Dependency.findOne({ dep_code: usuario.dep_code });
+
+    if (!dependencia) continue;
+    dependenciaCache[usuario.dep_code] = dependencia;
+
+    const templates = await PublishedTemplate.find({
+      'template.producers': dependencia._id,
+      period: periodId,
+    }).populate('template').lean();
+
+
+    let plantillasPendientes = [];
+
+    for (const t of templates) {
+      const yaEnviada = t.loaded_data?.some((d) => d.dependency === usuario.dep_code);
+      const diasRestantes = dayjs(t.deadline).diff(today, 'day');
+       const match = force ? true : reminders.some((r) => r.daysBefore === diasRestantes);
+
+      if (!yaEnviada && dayjs(t.deadline).isAfter(today) && match) {
+        plantillasPendientes.push({
+          nombre: t.template?.name || 'Plantilla sin nombre',
+          deadline: t.deadline
+        });
+      }
+    }
+
+    if (plantillasPendientes.length > 0) {
+      const fechaLimiteMasProxima = plantillasPendientes.reduce((min, p) => {
+        return dayjs(p.deadline).isBefore(min) ? p.deadline : min;
+      }, plantillasPendientes[0].deadline);
+
+      // Enviar correo al productor
+      await sendReminderEmail(
+        usuario.email,
+        usuario.full_name,
+        fechaLimiteMasProxima,
+        plantillasPendientes.map(p => p.nombre)
+      );
+
+      // Guardar log del envío
+      await ReminderLog.create({
+        recipient_email: usuario.email,
+        recipient_name: usuario.full_name,
+        sent_at: new Date(),
+        templates_sent: plantillasPendientes.map(p => p.nombre),
+        deadline: fechaLimiteMasProxima,
+        period_id: periodId
+      });
+
+      // Agregar al resumen
+      logs.push({
+        email: usuario.email,
+        nombre: usuario.full_name,
+        deadline: fechaLimiteMasProxima,
+        plantillas: plantillasPendientes.map(p => p.nombre)
+      });
+    }
+  }
+
+  // Enviar correo resumen a miro@unibague.edu.co
+  if (logs.length > 0) {
+    await sendSummaryEmail(logs);
+  }
+
+  return logs.length;
+},
+}
+
+async function sendSummaryEmail(logs) {
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.pepipost.com',
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.REMINDER_EMAIL,
+      pass: process.env.REMINDER_PASS
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
+
+  const cantidad = logs.length;
+
+  const listaHtml = logs.map(log => {
+    const nombres = log.plantillas.join(', ');
+    const fecha = dayjs(log.deadline).format('DD/MM/YYYY');
+    return `<li><strong>${log.nombre}</strong> (${log.email}) — Fecha límite: <em>${fecha}</em><br>Plantillas: ${nombres}</li>`;
+  }).join('');
+
+  const html = `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 700px; margin: auto; background-color: #f9f9f9; border-radius: 8px; border: 1px solid #ddd;">
+      <div style="text-align: left;">
+        <img src="https://miro.unibague.edu.co/MIRO.png" alt="Logo Miró" width="64" height="64" />
+      </div>
+      <h2 style="color: #1d3557; text-align: center;">Resumen de recordatorios enviados</h2>
+      <p style="font-size: 16px;">
+        Se han enviado <strong>${cantidad}</strong> recordatorio${cantidad !== 1 ? "s" : ""} a los siguientes usuarios:
+      </p>
+      <ul style="padding-left: 20px; font-size: 15px;">
+        ${listaHtml}
+      </ul>
+      <hr style="border: none; border-top: 1px solid #ccc; margin: 30px 0;">
+      <p style="font-size: 14px; text-align: center; color: #999;">— Sistema de recordatorios automáticos de Miró</p>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_ADDRESS}>`,
+    to: "miro@unibague.edu.co",
+    subject: "📬 Resumen de recordatorios enviados",
+    html
+  });
+}
+
 
 module.exports = reminderController;
