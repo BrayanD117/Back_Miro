@@ -308,7 +308,7 @@ runReminderEmails: async function (periodId = null, force = false) {
     }
   }
 
-  // Enviar correo resumen a miro@unibague.edu.co
+  // Enviar el correo resumen a miro@unibague.edu.co 
   if (logs.length > 0) {
     await sendSummaryEmail(logs);
   }
