@@ -317,16 +317,10 @@ runReminderEmails: async function (periodId = null, force = false) {
 
   console.log(`Periodo usado para recordatorios: ${periodId}`);
 
-   // Obtener correos ya registrados en ReminderLog
-  const logsSent = await ReminderLog.find({ period_id: periodId });
-  const correosYaEnviados = logsSent.map((log) => log.recipient_email);
-
   const usuarios = await User.find({
     isActive: true,
     roles: "Productor",
-    email: { $nin: correosYaEnviados }
   });
-
 
   const dependenciaCache = {};
   const logs = [];
