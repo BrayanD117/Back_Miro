@@ -376,6 +376,12 @@ validatorController.validateColumn = async (column) => {
             return; // Continúa con el siguiente valor
         }
 
+        // Si el valor está vacío y el campo NO es requerido, omitir validación
+        const isEmpty = value === null || value === undefined || `${value}`.trim() === '';
+        if (!required && isEmpty) {
+            return;
+        }
+
         const validation = allowedDataTypes[datatype](value);
         if (!validation.isValid) {
             result.status = false;

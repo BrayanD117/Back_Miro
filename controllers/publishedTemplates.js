@@ -273,7 +273,6 @@ publTempController.feedOptionsToPublishTemplate = async (req, res) => {
 
 publTempController.loadProducerData = async (req, res) => {
   const { email, pubTem_id, data, edit } = req.body;
-  // Obtener el parámetro edit de la query
 
   try {
     const user = await User.findOne({ email });
@@ -290,7 +289,7 @@ publTempController.loadProducerData = async (req, res) => {
           path: 'producers',
           model: 'dependencies'
         }
-      })
+      });
     
     if (!pubTem) {
       return res.status(404).json({ status: 'Published template not found' });
@@ -298,31 +297,28 @@ publTempController.loadProducerData = async (req, res) => {
 
     const now = new Date(datetime_now().toDateString());
     const endDate = new Date(pubTem.deadline).toDateString();
-    if( endDate < now ) {
+    if (endDate < now) {
       return res.status(403).json({ status: 'The period is closed' });
     }
-    
+
     const producer = pubTem.template?.producers.find(p => p.members.includes(user.email));
-    console.log(pubTem.template?.producers)
     if (!producer) {
       return res.status(403).json({ status: 'User is not assigned to this published template' });
     }
 
-    // Asigna el published_date si no existe
+    // Asigna la fecha de publicación si no existe
     if (!pubTem.published_date) {
       pubTem.published_date = datetime_now();
     }
 
-    const fieldValuesMap = {};
+    // 🧠 NUEVO: Asegurar alineación de valores aunque falten campos
+    const allKeys = new Set();
+    data.forEach(item => Object.keys(item).forEach(k => allKeys.add(k)));
 
-    data.forEach(item => {
-      Object.entries(item).forEach(([key, value]) => {
-        if (!fieldValuesMap[key]) {
-          fieldValuesMap[key] = [];
-        }
-        fieldValuesMap[key].push(value);
-      });
-    });
+    const fieldValuesMap = {};
+    for (const key of allKeys) {
+      fieldValuesMap[key] = data.map(row => row.hasOwnProperty(key) ? row[key] : "");
+    }
 
     const result = Object.entries(fieldValuesMap).map(([key, values]) => ({
       field_name: key,
@@ -342,11 +338,8 @@ publTempController.loadProducerData = async (req, res) => {
     });
 
     const validationResults = await Promise.all(validations);
-
     const validationErrors = validationResults.filter(v => v.status === false);
-    
-    console.log("Validation errors:");
-    console.dir(validationErrors, { depth: null });
+
     if (validationErrors.length > 0) {
       await Log.create({
         user: user,
@@ -368,21 +361,19 @@ publTempController.loadProducerData = async (req, res) => {
       dependency: user.dep_code,
       send_by: user,
       filled_data: result,
-      loaded_date: datetime_now()  // Agregar la fecha de carga
+      loaded_date: datetime_now()
     };
 
     if (edit === true) {
       const existingDataIndex = pubTem.loaded_data.findIndex(
         data => data.dependency === user.dep_code
       );
-
       if (existingDataIndex > -1) {
         pubTem.loaded_data[existingDataIndex] = producersData;
       } else {
         pubTem.loaded_data.push(producersData);
       }
     } else {
-      // Solo agregar datos nuevos si edit no es true
       pubTem.loaded_data.push(producersData);
     }
 
@@ -397,6 +388,7 @@ publTempController.loadProducerData = async (req, res) => {
     return res.status(500).json({ status: 'Internal server error', details: error.message });
   }
 };
+
 
 publTempController.submitEmptyData = async (req, res) => {
   const { pubTemId, email } = req.body;
