@@ -271,6 +271,7 @@ publTempController.feedOptionsToPublishTemplate = async (req, res) => {
   }
 }
 
+
 publTempController.loadProducerData = async (req, res) => {
   const { email, pubTem_id, data, edit } = req.body;
 
@@ -280,17 +281,13 @@ publTempController.loadProducerData = async (req, res) => {
       return res.status(404).json({ status: 'User not found' });
     }
 
-    const pubTem = await PublishedTemplate
-      .findById(pubTem_id)
+    const pubTem = await PublishedTemplate.findById(pubTem_id)
       .populate('period')
       .populate({
         path: 'template',
-        populate: {
-          path: 'producers',
-          model: 'dependencies'
-        }
+        populate: { path: 'producers', model: 'dependencies' }
       });
-    
+
     if (!pubTem) {
       return res.status(404).json({ status: 'Published template not found' });
     }
@@ -306,29 +303,52 @@ publTempController.loadProducerData = async (req, res) => {
       return res.status(403).json({ status: 'User is not assigned to this published template' });
     }
 
-    // Asigna la fecha de publicación si no existe
     if (!pubTem.published_date) {
       pubTem.published_date = datetime_now();
     }
 
-    // 🧠 NUEVO: Asegurar alineación de valores aunque falten campos
-    const allKeys = new Set();
-    data.forEach(item => Object.keys(item).forEach(k => allKeys.add(k)));
+// Construcción robusta de `result` considerando `multiple`
+const result = pubTem.template.fields.map((field) => {
+  const values = data.map(row => {
+    const val = row[field.name];
 
-    const fieldValuesMap = {};
-    for (const key of allKeys) {
-      fieldValuesMap[key] = data.map(row => row.hasOwnProperty(key) ? row[key] : "");
+    if (field.multiple) {
+      if (Array.isArray(val)) return val.map(v => v?.toString?.() ?? '');
+      if (val === null || val === undefined) return [];
+      return [val.toString()];
     }
 
-    const result = Object.entries(fieldValuesMap).map(([key, values]) => ({
-      field_name: key,
-      values: values
-    }));
+    return val;
+  });
 
+  return {
+    field_name: field.name,
+    values
+  };
+});
+
+
+    console.log(result);
+
+    // Validación con valores externos si hay validate_with
     const validations = result.map(async field => {
       const templateField = pubTem.template.fields.find(f => f.name === field.field_name);
       if (!templateField) {
         throw new Error(`Field ${field.field_name} not found in template`);
+      }
+
+      // 🚀 NUEVO: si tiene validate_with, traer valores válidos
+      if (templateField.validate_with) {
+        const [validatorName, columnName] = templateField.validate_with.split(" - ");
+        const validator = await ValidatorModel.findOne({ name: validatorName });
+
+        if (validator) {
+          const validatorColumn = validator.columns.find(c => c.name === columnName);
+          if (validatorColumn) {
+            templateField.validator_values = validatorColumn.values;
+            templateField.validator_type = validatorColumn.type;
+          }
+        }
       }
 
       templateField.values = field.values;
@@ -365,9 +385,7 @@ publTempController.loadProducerData = async (req, res) => {
     };
 
     if (edit === true) {
-      const existingDataIndex = pubTem.loaded_data.findIndex(
-        data => data.dependency === user.dep_code
-      );
+      const existingDataIndex = pubTem.loaded_data.findIndex(d => d.dependency === user.dep_code);
       if (existingDataIndex > -1) {
         pubTem.loaded_data[existingDataIndex] = producersData;
       } else {
@@ -383,6 +401,7 @@ publTempController.loadProducerData = async (req, res) => {
       status: 'Data loaded successfully', 
       recordsLoaded: data.length
     });
+
   } catch (error) {
     console.log(error.message);
     return res.status(500).json({ status: 'Internal server error', details: error.message });

@@ -263,39 +263,40 @@ validatorController.deleteValidator = async (req, res) => {
 };
 
 validatorController.validateColumn = async (column) => {
-    let { values } = column;
-    const { name, datatype, validate_with, required, multiple } = column;
-    let result = { status: true, column: name, errors: [] };
-    if (!name || !datatype || !values) {
-      console.log(column);
-      return { status: false, errors: [{ register: null, message: 'Missing column name, datatype, or values' }] };
-    }
+  let { values } = column;
+  const { name, datatype, validate_with, required, multiple } = column;
+  let result = { status: true, column: name, errors: [] };
 
-    const oldValues = values;
-    if (multiple) {
-        values = values.flatMap(value => {
-            if (typeof value === 'string') {
-            return value.split(',').map(v => v.trim());
-            } else if (Array.isArray(value)) {
-            return value.flatMap(v => (typeof v === 'string' ? v.split(',') : v));
-            } else {
-            return [value];
-            }
-        });
-    }
+  if (!name || !datatype || !values) {
+    console.log(column);
+    return { status: false, errors: [{ register: null, message: 'Missing column name, datatype, or values' }] };
+  }
 
-    if (datatype === "Link") {
-      values = values.map(value => {
-        if(typeof value === 'object' && value !== null) {
-          return value.hyperlink ?? '';
-        }
-        if (typeof value === 'string' && value.startsWith('=HYPERLINK(')) {
-          const match = value.match(/HYPERLINK\("([^"]+)"/);
-          return match ? match[1] : '';
-        }
-        return value;
-      });
-    }
+  const oldValues = values;
+  if (multiple) {
+    values = values.flatMap(value => {
+      if (typeof value === 'string') {
+        return value.split(',').map(v => v.trim());
+      } else if (Array.isArray(value)) {
+        return value.flatMap(v => (typeof v === 'string' ? v.split(',') : v));
+      } else {
+        return [value];
+      }
+    });
+  }
+
+  if (datatype === "Link") {
+    values = values.map(value => {
+      if (typeof value === 'object' && value !== null) {
+        return value.hyperlink ?? '';
+      }
+      if (typeof value === 'string' && value.startsWith('=HYPERLINK(')) {
+        const match = value.match(/HYPERLINK\("([^"]+)"/);
+        return match ? match[1] : '';
+      }
+      return value;
+    });
+  }
 
   if (datatype === "Entero" || datatype === "Decimal" || datatype === "Porcentaje") {
     values = values.map(value => {
@@ -304,128 +305,104 @@ validatorController.validateColumn = async (column) => {
     });
   }
 
-    let validator = null;
-    let columnToValidate = null;
-    let validValuesSet = null;
+  let validator = null;
+  let columnToValidate = null;
+  let validValuesSet = null;
 
-    if (validate_with) {
-        const [validatorName, columnName] = validate_with.split(' - ');
+  if (validate_with) {
+    const [validatorName, columnName] = validate_with.split(' - ');
 
-        if (validatorName === "Funcionarios") {
-            // Obtener identificaciones de todos los usuarios
-            const users = await User.find({}, { identification: 1 }).lean();
-            const userIdentifications = users.map(user => user.identification);
-            validValuesSet = new Set(userIdentifications);
-            columnToValidate = { type: "Entero", values: userIdentifications }; // Ajusta según sea necesario
-        }
-        else if (validatorName === "Estudiantes") {
-            // Obtener códigos de todos los estudiantes
-            if(columnName === "Código") {
-              const students = await Student.find({}, { code_student: 1 }).lean();
-              const studentCodes = students.map(student => student.code_student);
-              validValuesSet = new Set(studentCodes);
-              columnToValidate = { type: "Texto Corto", values: studentCodes };
-            } else {
-              const students = await Student.find({}, { identification: 1 }).lean();
-              const studentIdentifications = students.map(student => student.identification);
-              validValuesSet = new Set(studentIdentifications);
-              columnToValidate = { type: "Texto Corto", values: studentIdentifications };
-            }
-        }
-        else if(validatorName === "Participantes") {
-            const students = await Student.find({}, { identification: 1 }).lean();
-            const users = await User.find({}, { identification: 1 }).lean();
-            const participantIdentifications = [
-              ...students.map(student => student.identification),
-              ...users.map(user => user.identification)
-            ];
-            validValuesSet = new Set(participantIdentifications);
-            columnToValidate = { type: "Texto Corto", values: participantIdentifications };
-        }
-        
-        else {
-            validator = await Validator.findOne({ name: validatorName });
+    if (validatorName === "Funcionarios") {
+      const users = await User.find({}, { identification: 1 }).lean();
+      const userIdentifications = users.map(user => user.identification);
+      validValuesSet = new Set(userIdentifications);
+      columnToValidate = { type: "Texto", values: userIdentifications };
+    } else if (validatorName === "Estudiantes") {
+      if (columnName === "Código") {
+        const students = await Student.find({}, { code_student: 1 }).lean();
+        const studentCodes = students.map(student => student.code_student);
+        validValuesSet = new Set(studentCodes);
+        columnToValidate = { type: "Texto", values: studentCodes };
+      } else {
+        const students = await Student.find({}, { identification: 1 }).lean();
+        const studentIdentifications = students.map(student => student.identification);
+        validValuesSet = new Set(studentIdentifications);
+        columnToValidate = { type: "Texto", values: studentIdentifications };
+      }
+    } else if (validatorName === "Participantes") {
+      const students = await Student.find({}, { identification: 1 }).lean();
+      const users = await User.find({}, { identification: 1 }).lean();
+      const participantIdentifications = [
+        ...students.map(student => student.identification),
+        ...users.map(user => user.identification)
+      ];
+      validValuesSet = new Set(participantIdentifications);
+      columnToValidate = { type: "Texto", values: participantIdentifications };
+    } else {
+      validator = await Validator.findOne({ name: validatorName });
 
-            if (!validator) {
-                return { status: false, errors: [{ register: null, message: `Tabla de validación no encontrada: ${validatorName}` }] };
-            }
+      if (!validator) {
+        return {
+          status: false,
+          errors: [{ register: null, message: `Tabla de validación no encontrada: ${validatorName}` }]
+        };
+      }
 
-            columnToValidate = validator.columns.find(column => column.name === columnName);
+      columnToValidate = validator.columns.find(column => column.name === columnName);
 
-            if (!columnToValidate) {
-                return { status: false, errors: [{ register: null, message: `Columna '${columnName}' no encontrada en la tabla: ${validatorName}` }] };
-            }
+      if (!columnToValidate) {
+        return {
+          status: false,
+          errors: [{ register: null, message: `Columna '${columnName}' no encontrada en la tabla: ${validatorName}` }]
+        };
+      }
 
-            validValuesSet = new Set(columnToValidate.values);
-        }
+      validValuesSet = new Set(columnToValidate.values);
     }
+  }
 
-    values.forEach((value, index) => {
-        const realIndex = oldValues.findIndex(oldValue => {
-          const strValue = String(value);
-          const strOldValue = String(oldValue);
-          return strOldValue.includes(strValue);
-        });
-      if (required && (value === null || value === undefined || `${value}`.trim() === '')) {
-            result.status = false;
-            result.errors.push({
-                register: realIndex + 1,
-                message: `Valor vacío encontrado en la columna ${name}, fila ${realIndex + 1}`,
-                value: value
-            });
-            return; // Continúa con el siguiente valor
-        }
-
-        // Si el valor está vacío y el campo NO es requerido, omitir validación
-        const isEmpty = value === null || value === undefined || `${value}`.trim() === '';
-        if (!required && isEmpty) {
-            return;
-        }
-
-        const validation = allowedDataTypes[datatype](value);
-        if (!validation.isValid) {
-            result.status = false;
-            result.errors.push({
-                register: realIndex + 1,
-                message: `Valor inválido encontrado en la columna ${name}, fila ${realIndex + 1}: ${validation.message}`,
-                value: value
-            });
-        }
-
-        if (columnToValidate) {
-            if ((columnToValidate.type === "Texto" && typeof value !== "string") ||
-                (columnToValidate.type === "Numero" && typeof value !== "number")) {
-                result.status = false;
-                result.errors.push({
-                    register: realIndex + 1,
-                    message: `Valor de la columna ${name}, fila ${realIndex + 1} no es del tipo ${columnToValidate.type}`,
-                    value: value
-                });
-            }
-
-            if (columnToValidate.type === "Numero" && !validValuesSet.has(value) && !validValuesSet.has(value.toString())) {
-              const intValue = parseInt(value, 10);
-            if (isNaN(intValue)) {
-              result.status = false;
-              result.errors.push({
-                register: realIndex + 1,
-                message: `Valor de la columna ${name}, fila ${realIndex + 1} no es un número entero válido`,
-                value: value
-              });
-            } else if (!validValuesSet.has(intValue)) {
-              result.status = false;
-              result.errors.push({
-                register: realIndex + 1,
-                message: `Valor de la columna ${name}, fila ${realIndex + 1} no fue encontrado en la validación: ${validate_with}`,
-                value: value
-              });
-            }
-          }
-        }
+  values.forEach((value, index) => {
+    const realIndex = oldValues.findIndex(oldValue => {
+      const strValue = String(value);
+      const strOldValue = String(oldValue);
+      return strOldValue.includes(strValue);
     });
 
-    return result;
+    if (required && (value === null || value === undefined || `${value}`.trim() === '')) {
+      result.status = false;
+      result.errors.push({
+        register: realIndex + 1,
+        message: `Valor vacío encontrado en la columna ${name}, fila ${realIndex + 1}`,
+        value: value
+      });
+      return;
+    }
+
+    const validation = allowedDataTypes[datatype](value);
+    if (!validation.isValid) {
+      result.status = false;
+      result.errors.push({
+        register: realIndex + 1,
+        message: `Valor inválido encontrado en la columna ${name}, fila ${realIndex + 1}: ${validation.message}`,
+        value: value
+      });
+    }
+
+    if (columnToValidate && validValuesSet) {
+      if (!validValuesSet.has(value) && !validValuesSet.has(String(value))) {
+        result.status = false;
+        result.errors.push({
+          register: realIndex + 1,
+          message: `Valor de la columna ${name}, fila ${realIndex + 1} no fue encontrado en la validación: ${validate_with}`,
+          value: value
+        });
+      }
+    }
+  });
+
+  return result;
 };
+
 
 
 validatorController.giveValidatorToExcel = async (name) => {
