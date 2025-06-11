@@ -298,12 +298,14 @@ validatorController.validateColumn = async (column) => {
     });
   }
 
-  if (datatype === "Entero" || datatype === "Decimal" || datatype === "Porcentaje") {
-    values = values.map(value => {
-      const num = Number(value);
-      return isNaN(num) ? value : num;
-    });
-  }
+if (datatype === "Entero" || datatype === "Decimal" || datatype === "Porcentaje") {
+  values = values.map(value => {
+    const isEmpty = value === null || value === undefined || `${value}`.trim?.() === '';
+    if (!required && isEmpty) return null;
+    const num = Number(value);
+    return isNaN(num) ? value : num;
+  });
+}
 
   let validator = null;
   let columnToValidate = null;
@@ -362,43 +364,55 @@ validatorController.validateColumn = async (column) => {
   }
 
   values.forEach((value, index) => {
-    const realIndex = oldValues.findIndex(oldValue => {
-      const strValue = String(value);
-      const strOldValue = String(oldValue);
-      return strOldValue.includes(strValue);
-    });
-
-    if (required && (value === null || value === undefined || `${value}`.trim() === '')) {
-      result.status = false;
-      result.errors.push({
-        register: realIndex + 1,
-        message: `Valor vacío encontrado en la columna ${name}, fila ${realIndex + 1}`,
-        value: value
-      });
-      return;
-    }
-
-    const validation = allowedDataTypes[datatype](value);
-    if (!validation.isValid) {
-      result.status = false;
-      result.errors.push({
-        register: realIndex + 1,
-        message: `Valor inválido encontrado en la columna ${name}, fila ${realIndex + 1}: ${validation.message}`,
-        value: value
-      });
-    }
-
-    if (columnToValidate && validValuesSet) {
-      if (!validValuesSet.has(value) && !validValuesSet.has(String(value))) {
-        result.status = false;
-        result.errors.push({
-          register: realIndex + 1,
-          message: `Valor de la columna ${name}, fila ${realIndex + 1} no fue encontrado en la validación: ${validate_with}`,
-          value: value
-        });
-      }
-    }
+  const realIndex = oldValues.findIndex(oldValue => {
+    const strValue = String(value);
+    const strOldValue = String(oldValue);
+    return strOldValue.includes(strValue);
   });
+
+  const isEmpty = value === null || value === undefined || `${value}`.trim?.() === '';
+
+  if (required && isEmpty) {
+    result.status = false;
+    result.errors.push({
+      register: realIndex + 1,
+      message: `Valor vacío encontrado en la columna ${name}, fila ${realIndex + 1}`,
+      value: value
+    });
+    return;
+  }
+
+
+  if(!required && validate_with === 'FUENTE_INTERNACIONAL - ID_FUENTE_INTERNACIONAL'){
+    console.log(value, 'el valor');
+  }
+
+// Si el valor es vacío y no es requerido, lo ignoramos
+if (!required && (value === null || value === undefined || `${value}`.trim() === '')) {
+  return;
+}
+
+  const validation = allowedDataTypes[datatype](value);
+  if (!validation.isValid) {
+    result.status = false;
+    result.errors.push({
+      register: realIndex + 1,
+      message: `Valor inválido encontrado en la columna ${name}, fila ${realIndex + 1}: ${validation.message}`,
+      value: value
+    });
+  }
+
+  if (columnToValidate && validValuesSet) {
+    if (!validValuesSet.has(value) && !validValuesSet.has(String(value))) {
+      result.status = false;
+      result.errors.push({
+        register: realIndex + 1,
+        message: `Valor de la columna ${name}, fila ${realIndex + 1} no fue encontrado en la validación: ${validate_with}`,
+        value: value
+      });
+    }
+  }
+});
 
   return result;
 };
