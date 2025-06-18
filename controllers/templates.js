@@ -298,16 +298,23 @@ const objectId = new mongoose.Types.ObjectId(id);
 // Transforma cada producer en ObjectId
 const newProducersAsObjectIds = updatedFields.producers.map(id => new mongoose.Types.ObjectId(id));
 
+const camposASincronizar = {
+  name: updatedTemplate.name,
+  "template.name": updatedTemplate.name,
+  "template.file_name": updatedTemplate.file_name,
+  "template.file_description": updatedTemplate.file_description,
+  "template.fields": updatedTemplate.fields,
+  "template.producers": newProducersAsObjectIds,
+  "template.dimensions": updatedTemplate.dimensions,
+  "template.active": updatedTemplate.active,
+};
+
 const updatedPublishedTemplates = await PublishedTemplate.updateMany(
   { "template._id": objectId },
-  { $set: { 
-    "template.producers": newProducersAsObjectIds ,
-    "template.fields": updatedTemplate.fields
-  } }
+  { $set: camposASincronizar }
 );
-    console.log(updatedPublishedTemplates, 'updatedPublishedTemplates');
-    console.log(updatedFields.producers, 'updated')
-    console.log(`Producers sincronizados en ${updatedPublishedTemplates.modifiedCount} publishedTemplates`);
+
+console.log(`Sincronizados ${updatedPublishedTemplates.modifiedCount} publishedTemplates con los nuevos datos`);
     
     return res.status(200).json(updatedTemplate);
 
@@ -319,46 +326,57 @@ const updatedPublishedTemplates = await PublishedTemplate.updateMany(
 
 templateController.syncAllPublishedTemplates = async (req, res) => {
   try {
-    // Trae _id, producers y fields para sincronizar ambos campos
-    const templates = await Template.find({}, "_id producers fields");
+    const templates = await Template.find({}, "_id name file_name file_description fields producers dimensions active");
 
     let totalUpdated = 0;
-    let logs = [];
+    const logs = [];
 
     for (const template of templates) {
       const templateId = new mongoose.Types.ObjectId(template._id);
-      const { producers, fields } = template;
+
+      // Construir snapshot completo
+      const templateSnapshot = {
+        _id: template._id,
+        name: template.name,
+        file_name: template.file_name,
+        file_description: template.file_description,
+        fields: template.fields,
+        producers: template.producers,
+        dimensions: template.dimensions,
+        active: template.active,
+      };
 
       const result = await PublishedTemplate.updateMany(
         { "template._id": templateId },
         {
           $set: {
-            "template.producers": producers,
-            "template.fields": fields
-          }
+            template: templateSnapshot,
+            name: template.name, // <- actualiza el nombre del publishedTemplate también
+          },
         }
       );
 
       if (result.modifiedCount > 0) {
         logs.push({
           templateId: template._id,
-          updatedCount: result.modifiedCount
+          updatedCount: result.modifiedCount,
         });
         totalUpdated += result.modifiedCount;
       }
     }
 
     return res.status(200).json({
-      message: `Sincronización completada`,
+      message: "Sincronización completada",
       totalTemplates: templates.length,
       totalPublishedTemplatesActualizados: totalUpdated,
-      detalles: logs
+      detalles: logs,
     });
   } catch (err) {
     console.error("Error sincronizando publishedTemplates:", err);
     return res.status(500).json({ error: err.message });
   }
 };
+
 
 templateController.deletePlantilla = async (req, res) => {
   try {
