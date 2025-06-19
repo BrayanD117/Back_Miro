@@ -647,6 +647,7 @@ publTempController.getAvailableTemplatesToProductor = async (req, res) => {
     const query = { 
       name: { $regex: search, $options: 'i' },
       'template.producers': dependency._id,
+      'template.active': true // ✅ Nuevo filtro
     };
 
     if (periodId) query.period = periodId;
