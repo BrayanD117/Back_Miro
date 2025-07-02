@@ -267,9 +267,12 @@ validatorController.validateColumn = async (column) => {
   const { name, datatype, validate_with, required, multiple } = column;
   let result = { status: true, column: name, errors: [] };
 
+
+ console.log(column);
+
   if (!name || !datatype || !values) {
     console.log(column);
-    return { status: false, errors: [{ register: null, message: 'Missing column name, datatype, or values' }] };
+    return { status: false, errors: [{ register: null, message: 'Hace falta el nombre, tipo de dato o valor para la columna ' + column?.name }] };
   }
 
   const oldValues = values;

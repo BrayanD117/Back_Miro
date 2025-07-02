@@ -328,7 +328,7 @@ const result = pubTem.template.fields.map((field) => {
 });
 
 
-    console.log(result);
+    console.log(result, 'malpariod');
 
     // Validación con valores externos si hay validate_with
     const validations = result.map(async field => {
