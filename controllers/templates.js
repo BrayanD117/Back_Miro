@@ -242,14 +242,24 @@ templateController.updatePlantilla = async (req, res) => {
   const { id } = req.params;
   const updatedFields = req.body;
 
-
-    const invalidFileNameChars = /[<>:"/\\|?*]/;
+  const invalidFileNameChars = /[<>:"/\\|?*]/;
   if (updatedFields.file_name && invalidFileNameChars.test(updatedFields.file_name)) {
     return res.status(400).json({
       error: "El nombre del archivo contiene caracteres no permitidos: <>:\"/\\|?*"
     });
   }
 
+  // ✅ Validación de campos requeridos en los fields
+  if (Array.isArray(updatedFields.fields)) {
+    const invalidField = updatedFields.fields.find(field => 
+      !field.name?.trim() || !field.datatype?.trim()
+    );
+    if (invalidField) {
+      return res.status(400).json({
+        error: "Todos los campos deben tener un nombre y un tipo de dato definidos."
+      });
+    }
+  }
 
   try {
     const originalTemplate = await Template.findById(id).populate('producers');
@@ -291,31 +301,28 @@ templateController.updatePlantilla = async (req, res) => {
     }
 
     const updatedTemplate = await Template.findByIdAndUpdate(id, updatedFields, { new: true });
-    
-     // 🔁 Se sincronizan los producers embebidos en publishedTemplates
-const objectId = new mongoose.Types.ObjectId(id);
 
-// Transforma cada producer en ObjectId
-const newProducersAsObjectIds = updatedFields.producers.map(id => new mongoose.Types.ObjectId(id));
+    // 🔁 Se sincronizan los producers embebidos en publishedTemplates
+    const objectId = new mongoose.Types.ObjectId(id);
+    const newProducersAsObjectIds = updatedFields.producers.map(id => new mongoose.Types.ObjectId(id));
 
-const camposASincronizar = {
-  name: updatedTemplate.name,
-  "template.name": updatedTemplate.name,
-  "template.file_name": updatedTemplate.file_name,
-  "template.file_description": updatedTemplate.file_description,
-  "template.fields": updatedTemplate.fields,
-  "template.producers": newProducersAsObjectIds,
-  "template.dimensions": updatedTemplate.dimensions,
-  "template.active": updatedTemplate.active,
-};
+    const camposASincronizar = {
+      name: updatedTemplate.name,
+      "template.name": updatedTemplate.name,
+      "template.file_name": updatedTemplate.file_name,
+      "template.file_description": updatedTemplate.file_description,
+      "template.fields": updatedTemplate.fields,
+      "template.producers": newProducersAsObjectIds,
+      "template.dimensions": updatedTemplate.dimensions,
+      "template.active": updatedTemplate.active,
+    };
 
-const updatedPublishedTemplates = await PublishedTemplate.updateMany(
-  { "template._id": objectId },
-  { $set: camposASincronizar }
-);
+    const updatedPublishedTemplates = await PublishedTemplate.updateMany(
+      { "template._id": objectId },
+      { $set: camposASincronizar }
+    );
 
-console.log(`Sincronizados ${updatedPublishedTemplates.modifiedCount} publishedTemplates con los nuevos datos`);
-    
+    console.log(`Sincronizados ${updatedPublishedTemplates.modifiedCount} publishedTemplates con los nuevos datos`);
     return res.status(200).json(updatedTemplate);
 
   } catch (error) {
