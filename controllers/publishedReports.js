@@ -3,6 +3,7 @@ const Report = require("../models/reports");
 const User = require("../models/users");
 const Period = require("../models/periods");
 const Dimension = require("../models/dimensions");
+const Dependency = require("../models/dependencies");
 const mongoose = require("mongoose");
 
 const UserService = require("../services/users");
@@ -353,19 +354,52 @@ pubReportController.getPublishedReport = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
 
-  const { id, email, dimension } = req.query;
+  const { id, email } = req.query;
+
   try {
-    const publishedReport = await PublishedReportService.findPublishedReportById(id, email, dimension, session);
+    // Paso 1: Buscar en dependencies donde members incluya el email
+    const dependency = await Dependency.findOne({ members: email }).session(session);
+    if (!dependency) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ error: 'No se encontró una dependencia con ese email en members' });
+    }
+
+    // Paso 2: Buscar en dimensions donde responsible sea el _id de esa dependencia
+    const dimension = await Dimension.findOne({ responsible: dependency._id }).session(session);
+    if (!dimension) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ error: 'No se encontró una dimensión con esa dependencia como responsable' });
+    }
+
+    console.log(id,
+      email,
+      dimension._id,)
+
+    // Paso 3: Llamar al servicio usando la dimensión encontrada
+    const publishedReport = await PublishedReportService.findPublishedReportById(
+      id,
+      email,
+      dimension._id,
+      session
+    );
+
     await session.commitTransaction();
     session.endSession();
     res.status(200).json(publishedReport);
+
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    console.log(error);
-    res.status(500).json({ status: "Error getting published report", error: error.message });
+    console.error(error);
+    res.status(500).json({
+      status: "Error getting published report",
+      error: error.message,
+    });
   }
 };
+
 
 pubReportController.publishReport = async (req, res) => {
   const { reportId, periodId, deadline } = req.body;

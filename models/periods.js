@@ -27,6 +27,16 @@ const periodSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+
+    producer_report_start_date: {
+      type: Date,
+      required: true,
+    },
+    producer_report_end_date: {
+      type: Date,
+      required: true,
+    },
+    
     responsible_start_date: {
       type: Date,
       required: true,

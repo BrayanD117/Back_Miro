@@ -8,7 +8,8 @@ const validatorController = {}
 
 const allowedDataTypes = {
     "Entero": (value) => {
-        const isValid = Number.isInteger(value);
+        const num = Number(value);
+        const isValid = Number.isInteger(num);
         return {
             isValid,
             message: isValid ? null : "El valor no es un entero."
@@ -277,16 +278,24 @@ validatorController.validateColumn = async (column) => {
 
   const oldValues = values;
   if (multiple) {
-    values = values.flatMap(value => {
-      if (typeof value === 'string') {
-        return value.split(',').map(v => v.trim());
-      } else if (Array.isArray(value)) {
-        return value.flatMap(v => (typeof v === 'string' ? v.split(',') : v));
-      } else {
-        return [value];
-      }
-    });
-  }
+  values = values.flatMap(value => {
+    if (typeof value === 'number') {
+      return String(value).split(',').map(v => v.trim());
+    } else if (typeof value === 'string') {
+      return value.split(',').map(v => v.trim());
+    } else if (Array.isArray(value)) {
+      return value.flatMap(v => 
+        typeof v === 'number'
+          ? String(v).split(',').map(x => x.trim())
+          : typeof v === 'string'
+            ? v.split(',').map(x => x.trim())
+            : [v]
+      );
+    } else {
+      return [value];
+    }
+  });
+}
 
   if (datatype === "Link") {
     values = values.map(value => {
@@ -302,12 +311,14 @@ validatorController.validateColumn = async (column) => {
   }
 
 if (datatype === "Entero" || datatype === "Decimal" || datatype === "Porcentaje") {
-  values = values.map(value => {
-    const isEmpty = value === null || value === undefined || `${value}`.trim?.() === '';
-    if (!required && isEmpty) return null;
-    const num = Number(value);
-    return isNaN(num) ? value : num;
-  });
+  if (!multiple) {
+    values = values.map(value => {
+      const isEmpty = value === null || value === undefined || `${value}`.trim?.() === '';
+      if (!required && isEmpty) return null;
+      const num = Number(value);
+      return isNaN(num) ? value : num;
+    });
+  }
 }
 
   let validator = null;
@@ -395,18 +406,70 @@ if (!required && (value === null || value === undefined || `${value}`.trim() ===
   return;
 }
 
-  const validation = allowedDataTypes[datatype](value);
-  if (!validation.isValid) {
-    result.status = false;
-    result.errors.push({
-      register: realIndex + 1,
-      message: `Valor inválido encontrado en la columna ${name}, fila ${realIndex + 1}: ${validation.message}`,
-      value: value
-    });
-  }
+if (multiple && Array.isArray(value)) {
+  value.forEach(val => {
+    const validateFn = allowedDataTypes[datatype];
+    if (typeof validateFn !== 'function') return;
 
-  if (columnToValidate && validValuesSet) {
-    if (!validValuesSet.has(value) && !validValuesSet.has(String(value))) {
+    const validation = validateFn(val);
+    if (!validation.isValid) {
+      result.status = false;
+      result.errors.push({
+        register: realIndex + 1,
+        message: `Valor inválido encontrado en la columna ${name}, fila ${realIndex + 1}: ${validation.message}`,
+        value: val
+      });
+    }
+  });
+} else {
+  const validateFn = allowedDataTypes[datatype];
+  if (typeof validateFn === 'function') {
+    const validation = validateFn(value);
+    if (!validation.isValid) {
+      result.status = false;
+      result.errors.push({
+        register: realIndex + 1,
+        message: `Valor inválido encontrado en la columna ${name}, fila ${realIndex + 1}: ${validation.message}`,
+        value: value
+      });
+    }
+  }
+}
+
+if (columnToValidate && validValuesSet) {
+  if (multiple && Array.isArray(value)) {
+    value.forEach(val => {
+      let normalizedVal = val;
+
+      // 🔄 Convertimos el valor al tipo esperado por el validador
+      if (column.validator_type === 'Número') {
+        const num = Number(val);
+        normalizedVal = isNaN(num) ? val : num;
+      } else {
+        normalizedVal = String(val).trim();
+      }
+
+      // 🚫 Si no está en el set, es inválido
+      if (!validValuesSet.has(normalizedVal)) {
+        result.status = false;
+        result.errors.push({
+          register: realIndex + 1,
+          message: `Valor de la columna ${name}, fila ${realIndex + 1} no fue encontrado en la validación: ${validate_with}`,
+          value: val
+        });
+      }
+    });
+  } else {
+    let normalizedVal = value;
+
+    if (column.validator_type === 'Número') {
+      const num = Number(value);
+      normalizedVal = isNaN(num) ? value : num;
+    } else {
+      normalizedVal = String(value).trim();
+    }
+
+    if (!validValuesSet.has(normalizedVal)) {
       result.status = false;
       result.errors.push({
         register: realIndex + 1,
@@ -415,12 +478,12 @@ if (!required && (value === null || value === undefined || `${value}`.trim() ===
       });
     }
   }
+}
+
 });
 
   return result;
 };
-
-
 
 validatorController.giveValidatorToExcel = async (name) => {
     try {

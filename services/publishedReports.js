@@ -2,39 +2,47 @@ const { uploadFileToGoogleDrive, uploadFilesToGoogleDrive, deleteDriveFile, dele
 const Dimension = require("../models/dimensions");
 const PubReport = require("../models/publishedReports");
 const UserService = require("./users");
+const mongoose = require('mongoose');
 
 class PublishedReportService {
-  static async findPublishedReportById(id, email, dimensionId, session) {
-    const pubReport = await PubReport
-      .findById(id)
-      .populate("period")
-      .populate({
-        path: "report.dimensions",
-        select: "name responsible",
-        model: "dimensions",
-        match: { _id: dimensionId }, // Filtra por el ID de la dimensión
-      })
-      .populate({
-        path: "filled_reports.dimension",
-        select: "name responsible",
-        model: "dimensions",
-        match: { _id: dimensionId }, // Filtra por el ID de la dimensión
-      })
-      .session(session);
-    
-    if(!pubReport) {
-      throw new Error("Report not found.");
-    }
+static async findPublishedReportById(id, email, dimensionId, session) {
+  // Asegurarse de que dimensionId sea un ObjectId
+  const dimensionObjectId = new mongoose.Types.ObjectId(dimensionId);
 
-    pubReport.report.dimensions = pubReport.report.dimensions.filter((dimension) => dimension._id.toString() === dimensionId);
+  const pubReport = await PubReport
+    .findById(id)
+    .populate("period")
+    .populate({
+      path: "report.dimensions",
+      select: "name responsible",
+      model: "dimensions"
+    })
+    .populate({
+      path: "filled_reports.dimension",
+      select: "name responsible",
+      model: "dimensions"
+    })
+    .session(session);
 
-    pubReport.filled_reports = pubReport.filled_reports.filter((filledReport) => filledReport.dimension?._id.toString() === dimensionId);
-
-    if(pubReport.report.dimensions.length === 0) {
-      throw new Error("Dimension not found in this report.");
-    }
-    return pubReport;
+  if (!pubReport) {
+    throw new Error("Report not found.");
   }
+
+  // Filtrar por la dimensión específica
+  pubReport.report.dimensions = pubReport.report.dimensions.filter((dimension) =>
+    dimension._id.equals(dimensionObjectId)
+  );
+
+  pubReport.filled_reports = pubReport.filled_reports.filter((filledReport) =>
+    filledReport.dimension?._id?.equals(dimensionObjectId)
+  );
+
+  if (pubReport.report.dimensions.length === 0) {
+    throw new Error("Dimension not found in this report.");
+  }
+
+  return pubReport;
+}
 
   static async findPublishedReports(session) {
     return await PubReport.find().session(session);

@@ -47,7 +47,7 @@ reportController.getReports = async (req, res) => {
 
 reportController.getReportsPagination = async (req, res) => {
   try {
-    const { email, page = 1, limit = 10, search = "" } = req.query;
+    const { email, page = 1, limit = 100, search = "" } = req.query;
 
     await UserService.findUserByEmailAndRoles(email, ["Administrador", "Responsable"]);
 

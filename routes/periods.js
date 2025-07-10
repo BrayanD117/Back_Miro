@@ -4,6 +4,8 @@ const controller = require('../controllers/periods.js')
 
 router.get("/every", controller.getPeriods)
 
+router.get("/byId/:id", controller.getPeriodById);
+
 router.get("/all", controller.getPeriodsPagination)
 
 router.get("/", controller.getPeriod)

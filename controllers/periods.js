@@ -14,6 +14,24 @@ const Dependency = require('../models/dependencies');
 
 const periodController = {};
 
+
+// ✅ Backend: Nuevo endpoint en controllers/periods.js
+periodController.getPeriodById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const period = await Period.findById(id, 'producer_report_start_date producer_report_end_date responsible_start_date responsible_end_date');
+
+    if (!period) {
+      return res.status(404).json({ message: 'Period not found' });
+    }
+
+    res.status(200).json(period);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 periodController.getPeriods = async (req, res) => {
   try {
     const email = req.query.email;
