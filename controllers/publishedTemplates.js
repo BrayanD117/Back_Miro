@@ -360,21 +360,34 @@ const result = pubTem.template.fields.map((field) => {
     const validationResults = await Promise.all(validations);
     const validationErrors = validationResults.filter(v => v.status === false);
 
+// Esto lo haces justo antes de guardar el Log o retornar el error
+validationErrors.forEach((err, i) => {
+  console.log(`Campo con error #${i}: ${err.column}`);
+  err.errors.forEach((e, j) => {
+    console.log(`  Error ${j}:`, e.message, '| Valor:', e.value);
+  });
+});
+
     if (validationErrors.length > 0) {
-      await Log.create({
-        user: user,
-        published_template: pubTem._id,
-        date: datetime_now(),
-        errors: validationErrors.map(err => ({
-          column: err.column ?? "Campo desconocido",
-          description: err.errors.map(e => ({
-            register: e.register ?? -1,
-            value: e.value ?? "Sin valor",
-            message: e.message ?? "Error desconocido"
-          }))
-        }))
-      });
-      return res.status(400).json({ status: 'Validation error', details: validationErrors });
+      const sanitizedErrors = validationErrors.map(err => ({
+  column: err.column ?? "Campo desconocido",
+  errors: (err.errors ?? []).map(e => ({
+    register: e.register ?? -1,
+    value: (e.value !== undefined && e.value !== null && e.value !== '') ? e.value : "Sin valor",
+    message: e.message ?? "Error desconocido"
+  }))
+}));
+
+// Guardar el log
+await Log.create({
+  user: user,
+  published_template: pubTem._id,
+  date: datetime_now(),
+  errors: sanitizedErrors
+});
+
+// Enviar al frontend
+return res.status(400).json({ status: 'Validation error', details: sanitizedErrors });
     }
 
     const producersData = {

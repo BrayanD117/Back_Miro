@@ -37,7 +37,7 @@ const allowedDataTypes = {
         };
     },
     "Texto Largo": (value) => {
-        const isValid = typeof value === 'string' && value.length <= 500;
+        const isValid = typeof value === 'string' && value.length <= 800;
         return {
             isValid,
             message: isValid ? null : "El valor no es un texto largo (máximo de 500 caracteres)."
@@ -269,8 +269,6 @@ validatorController.validateColumn = async (column) => {
   let result = { status: true, column: name, errors: [] };
 
 
- console.log(column);
-
   if (!name || !datatype || !values) {
     console.log(column);
     return { status: false, errors: [{ register: null, message: 'Hace falta el nombre, tipo de dato o valor para la columna ' + column?.name }] };
@@ -296,6 +294,7 @@ validatorController.validateColumn = async (column) => {
     }
   });
 }
+
 
   if (datatype === "Link") {
     values = values.map(value => {
@@ -378,11 +377,7 @@ if (datatype === "Entero" || datatype === "Decimal" || datatype === "Porcentaje"
   }
 
   values.forEach((value, index) => {
-  const realIndex = oldValues.findIndex(oldValue => {
-    const strValue = String(value);
-    const strOldValue = String(oldValue);
-    return strOldValue.includes(strValue);
-  });
+const realIndex = index;
 
   const isEmpty = value === null || value === undefined || `${value}`.trim?.() === '';
 
@@ -391,7 +386,7 @@ if (datatype === "Entero" || datatype === "Decimal" || datatype === "Porcentaje"
     result.errors.push({
       register: realIndex + 1,
       message: `Valor vacío encontrado en la columna ${name}, fila ${realIndex + 1}`,
-      value: value
+      value: (value !== undefined && value !== null && value !== '') ? value : "Sin valor"
     });
     return;
   }
@@ -417,7 +412,7 @@ if (multiple && Array.isArray(value)) {
       result.errors.push({
         register: realIndex + 1,
         message: `Valor inválido encontrado en la columna ${name}, fila ${realIndex + 1}: ${validation.message}`,
-        value: val
+        value: (val !== undefined && val !== null && val !== '') ? val : "Sin valor"
       });
     }
   });
@@ -430,7 +425,7 @@ if (multiple && Array.isArray(value)) {
       result.errors.push({
         register: realIndex + 1,
         message: `Valor inválido encontrado en la columna ${name}, fila ${realIndex + 1}: ${validation.message}`,
-        value: value
+        value: (value !== undefined && value !== null && value !== '') ? value : "Sin valor"
       });
     }
   }
@@ -455,7 +450,7 @@ if (columnToValidate && validValuesSet) {
         result.errors.push({
           register: realIndex + 1,
           message: `Valor de la columna ${name}, fila ${realIndex + 1} no fue encontrado en la validación: ${validate_with}`,
-          value: val
+          value: (val !== undefined && val !== null && val !== '') ? val : "Sin valor"
         });
       }
     });
@@ -474,7 +469,7 @@ if (columnToValidate && validValuesSet) {
       result.errors.push({
         register: realIndex + 1,
         message: `Valor de la columna ${name}, fila ${realIndex + 1} no fue encontrado en la validación: ${validate_with}`,
-        value: value
+        value: (value !== undefined && value !== null && value !== '') ? value : "Sin valor"
       });
     }
   }
