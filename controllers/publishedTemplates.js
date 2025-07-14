@@ -9,6 +9,7 @@ const ValidatorModel = require('../models/validators');
 const Log = require('../models/logs');
 const UserService = require('../services/users.js');
 const Category = require('../models/categories.js');  
+const ExcelJS = require("exceljs");
 
 const publTempController = {};
 
@@ -271,6 +272,63 @@ publTempController.feedOptionsToPublishTemplate = async (req, res) => {
   }
 }
 
+
+publTempController.exportPendingTemplates = async (req, res) => {
+  const {periodId} = req.params
+
+  try{
+
+    const templates = await PublishedTemplate.find({period: periodId})
+
+    const allPending = [];
+
+    for (const template of templates){
+      const producers = template.template?.producers || []
+
+      const loadedDependencyCode = (template.loaded_data || []).
+      filter(d => d?.dependency).map(d => d.dependency) 
+
+      // Buscar nombres de dependencias
+      const dependencies = await Dependency.find({ _id: { $in: producers } });
+
+      dependencies.forEach ( dep => {
+        const depCode = dep.dep_code;
+        const hasLoaded = loadedDependencyCode.includes(depCode)
+        if (!hasLoaded){
+          allPending.push({
+            template: template.name,
+            dependency: dep.name
+          })
+        }
+      })
+
+    }
+
+ // Generar Excel con ExcelJS
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Pendientes');
+
+    worksheet.columns = [
+      { header: 'Dependencia', key: 'dependency', width: 40 },
+      { header: 'Nombre de la Plantilla', key: 'template', width: 40 },
+    ];
+
+    worksheet.addRows(
+  allPending.sort((a, b) => a.dependency.localeCompare(b.dependency))
+);
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", "attachment; filename=pendientes_templates.xlsx");
+
+    await workbook.xlsx.write(res);
+    
+
+  } catch (error) {
+    console.error("Error al exportar pendientes:", error);
+    res.status(500).json({ message: error.message || "Error interno al exportar pendientes." });
+  }
+
+}
 
 publTempController.loadProducerData = async (req, res) => {
   const { email, pubTem_id, data, edit } = req.body;

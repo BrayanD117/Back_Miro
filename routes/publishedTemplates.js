@@ -22,5 +22,6 @@ router.get("/template/:id", controller.getTemplateById);
 
 router.get('/uploaded/:id_template', controller.getUploadedTemplateDataByProducer);
 
+router.get("/export-pending/:periodId", controller.exportPendingTemplates);
 
 module.exports = router

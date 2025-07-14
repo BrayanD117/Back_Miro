@@ -8,6 +8,9 @@ const Period = require("../models/periods");
 const PubReport = require("../models/publishedReports");
 const UserService = require("../services/users");
 const ProducerReportsService = require("../services/producerReports");
+const PublishedProducerReport = require("../models/publishedProducerReports");
+const ProducerReport = require("../models/producerReports");
+const { Types } = require("mongoose");
 
 const datetime_now = () => {
   const now = new Date();
@@ -139,5 +142,37 @@ reportController.updateReport = async (req, res) => {
     session.endSession();
   }
 }
+
+reportController.deleteProducerReport = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    if (!Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ status: "error", message: "ID no válido." });
+    }
+
+    const isPublished = await PublishedProducerReport.findOne({ "report._id": new Types.ObjectId(id) });
+
+    if (isPublished) {
+      return res.status(400).json({
+        status: "error",
+        message: "No se puede eliminar: este informe está asignado a uno o más periodos."
+      });
+    }
+
+    await ProducerReport.findByIdAndDelete(id);
+
+    return res.status(200).json({
+      status: "success",
+      message: "Informe eliminado correctamente."
+    });
+  } catch (error) {
+    console.error("Error deleting producer report:", error);
+    return res.status(500).json({
+      status: "error",
+      message: error?.message || "Error desconocido al intentar eliminar el informe."
+    });
+  }
+};
 
 module.exports = reportController;
