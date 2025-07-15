@@ -15,15 +15,36 @@ const datetime_now = () => {
 };
 
 class ProducerReportsService {
-  static async getReports() {
-    try {
-      const reports = await ProducerReport.find();
-      return reports;
-    } catch (error) {
-      console.error('Error fetching reports:', error);
-      throw new Error('Internal Server Error');
-    }
+// services/ProducerReportsService.js
+
+static async getReports(periodId = null) {
+  try {
+    const reports = await ProducerReport.find().lean();
+
+  
+    if (!periodId) return reports;
+
+    const enriched = await Promise.all(
+      reports.map(async (report) => {
+        const published = await PublishedProducerReports.findOne({
+          "report._id": report._id,
+          period: new ObjectId(periodId)
+        });
+
+        return {
+          ...report,
+          published: !!published
+        };
+      })
+    );
+
+    return enriched;
+  } catch (error) {
+    console.error('Error fetching reports:', error);
+    throw new Error('Internal Server Error');
   }
+}
+
 
   static async getReportsPagination (page, limit, filter) {
     const skip = (page - 1) * limit;

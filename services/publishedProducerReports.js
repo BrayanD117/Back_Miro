@@ -48,149 +48,129 @@ class PublishedReportService {
     return pubReport;
   }
 
-  static async findPublishedReports(user, page = 1, limit = 10, search = "", periodId, session) {
-    const skip = (page - 1) * limit;
-    let query = {
-      ...(search && { "report.name": { $regex: search, $options: "i" } }),
-      ...(periodId && { period: periodId }),
-    };
-    let reports;
-    if (user.activeRole === "Responsable") {
-      reports = await PubReport.find(query)
-        .populate({
-          path: 'report.dimensions',
-          model: 'dimensions',
-          populate: {
-            path: 'responsible',
-            model: 'dependencies',
-            match: { responsible: user.email }
-          }
-        })
-        .populate('period')
-        .skip(skip)
-        .limit(limit)
-        .session(session);
+static async findPublishedReports(user, page = 1, limit = 10, search = "", periodId, session) {
+  const skip = (page - 1) * limit;
+  let query = {
+    ...(search && { "report.name": { $regex: search, $options: "i" } }),
+    ...(periodId && { period: periodId }),
+  };
 
-      reports = reports.filter(report =>
-        report.report.dimensions.some(
-          dimension => dimension.responsible !== null
-        )
-      );
+  let reports;
 
-      reports.forEach((report) => {
-        // Filtrar los filled_reports que no estén en "En Borrador"
-        report.filled_reports = report.filled_reports.filter(
-          (fr) => fr.status !== "En Borrador"
-        );
-  
-        // Ordenar los filled_reports por fecha (asumiendo que tienen una propiedad 'date')
-        report.filled_reports.sort((a, b) => new Date(b.date) - new Date(a.date));
-  
-        // Eliminar duplicados de filled_reports basados en 'dimension'
-        const uniqueFilledReports = [];
-        const seenDependencies = new Set();
-  
-        report.filled_reports.forEach((fr) => {
-          if (!seenDependencies.has(fr.dependency.toString())) {
-            uniqueFilledReports.push(fr);
-            seenDependencies.add(fr.dependency.toString());
-          }
-        });
-  
-        report.filled_reports = uniqueFilledReports;
-      });
-    } else {
-      reports = await PubReport.find(query)
-        .populate({
-          path: 'period',
-          select: 'name producer_end_date'
-        })
-        .skip(skip)
-        .limit(limit)
-        .session(session);
-
-        reports.forEach((report) => {
-          // Filtrar los filled_reports que no estén en "En Borrador"
-          report.filled_reports = report.filled_reports.filter(
-            (fr) => fr.status !== "En Borrador"
-          );
-    
-          // Ordenar los filled_reports por fecha (asumiendo que tienen una propiedad 'date')
-          report.filled_reports.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-          // Eliminar duplicados de filled_reports basados en 'dimension'
-          const uniqueFilledReports = [];
-          const seenDependencies = new Set();
-    
-          report.filled_reports.forEach((fr) => {
-            if (!seenDependencies.has(fr.dependency.toString())) {
-              uniqueFilledReports.push(fr);
-              seenDependencies.add(fr.dependency.toString());
-            }
-          });
-    
-          report.filled_reports = uniqueFilledReports;
-        });
-    }
-
-    const totalReports = reports.length;
-    return {
-      totalPages: totalReports,
-      page,
-      limit,
-      totalPages: Math.ceil(totalReports / limit),
-      publishedReports: reports
-    };
-  }
-
-  static async findPublishedReportsProducer(user, page = 1, limit = 10, search = "", periodId, session) {
-    const skip = (page - 1) * limit;
-    const query = {
-      ...(search && { "report.name": { $regex: search, $options: "i" } }),
-      ...(periodId && { period: periodId }),
-    };
-    let reports;
+  if (user.activeRole === "Responsable") {
+    // Traemos todos, no aplicamos paginación aquí
     reports = await PubReport.find(query)
       .populate({
         path: 'report.dimensions',
         model: 'dimensions',
+        populate: {
+          path: 'responsible',
+          model: 'dependencies',
+          match: { responsible: user.email }
+        }
       })
       .populate('period')
-      .populate({
-        path: 'report.producers',
-        model: 'dependencies',
-        select: 'name',
-        match: { members: {$in: user.email} }
-      })
-      .populate({
-        path: 'filled_reports.dependency',
-        select: 'name responsible',
-        match: { members: {$in: user.email} }
-      })
-      .skip(skip)
-      .limit(limit)
       .session(session);
+
+    // Filtramos por dimensión responsable
     reports = reports.filter(report =>
-      report.report.producers.some(
-        dep => dep !== null
-      )
+      report.report.dimensions.some(d => d.responsible !== null)
+    );
+  } else {
+    // Administrador: solo los necesarios
+    reports = await PubReport.find(query)
+      .populate({
+        path: 'period',
+        select: 'name producer_end_date'
+      })
+      .session(session);
+  }
+
+  // Filtrado de filled_reports (en todos los casos)
+  reports.forEach((report) => {
+    report.filled_reports = report.filled_reports.filter(
+      (fr) => fr.status !== "En Borrador"
     );
 
-    reports.forEach(report => {
-      report.filled_reports = report.filled_reports.filter(filledReport => {
-        return filledReport.dependency !== null;
-      });
+    report.filled_reports.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const uniqueFilledReports = [];
+    const seenDependencies = new Set();
+
+    report.filled_reports.forEach((fr) => {
+      if (!seenDependencies.has(fr.dependency.toString())) {
+        uniqueFilledReports.push(fr);
+        seenDependencies.add(fr.dependency.toString());
+      }
     });
-    
-    const totalReports = reports.length;
-    return {
-      totalPages: totalReports,
-      page,
-      limit,
-      totalPages: Math.ceil(totalReports / limit),
-      publishedReports: reports
-    };
-  }
+
+    report.filled_reports = uniqueFilledReports;
+  });
+
+  const totalReports = reports.length;
+  const paginatedReports = reports.slice(skip, skip + limit);
+
+  return {
+    page,
+    limit,
+    total: totalReports,
+    totalPages: Math.ceil(totalReports / limit),
+    publishedReports: paginatedReports,
+  };
+}
+
+
+static async findPublishedReportsProducer(user, _, __, search = "", periodId, session) {
+  const query = {
+    ...(search && { "report.name": { $regex: search, $options: "i" } }),
+    ...(periodId && { period: periodId }),
+  };
+
+  let reports = await PubReport.find(query)
+    .populate({
+      path: 'report.dimensions',
+      model: 'dimensions',
+    })
+    .populate('period')
+    .populate({
+      path: 'report.producers',
+      model: 'dependencies',
+      select: 'name',
+      match: { members: { $in: user.email } }
+    })
+    .populate({
+      path: 'filled_reports.dependency',
+      select: 'name responsible',
+      match: { members: { $in: user.email } }
+    })
+    .session(session);
+
+  // Filtrar los que realmente tienen al menos un productor válido para este usuario
+  reports = reports.filter(report =>
+    report.report.producers.some(dep => dep !== null)
+  );
+
+  // Filtrar los filled_reports válidos
+  reports.forEach(report => {
+    report.filled_reports = report.filled_reports.filter(fr => fr.dependency !== null);
+  });
+
+  // Separar pendientes y entregados
+  const pending = reports.filter(
+    rep => !rep.filled_reports.length || rep.filled_reports[0].status === "Pendiente"
+  );
+
+  const completed = reports.filter(
+    rep => rep.filled_reports.length && rep.filled_reports[0].status !== "Pendiente"
+  );
+
+  return {
+    pendingReports: pending,
+    completedReports: completed,
+    totalPending: pending.length,
+  };
+}
+
 
   static async findPublishedReportProducer(user, id, session) {
     const report = await PubReport

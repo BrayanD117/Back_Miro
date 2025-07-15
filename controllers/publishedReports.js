@@ -185,26 +185,19 @@ pubReportController.getAdminPublishedReportById = async (req, res) => {
 
 pubReportController.getPublishedReportsResponsible = async (req, res) => {
   try {
-    const { email, page = 1, limit = 10, search = "", periodId } = req.query;
+    const { email, search = "", periodId } = req.query;
 
-    // Verificar que el usuario esté activo y tenga el rol "Responsable"
+    // Validar usuario Responsable
     const user = await User.findOne({
       email,
       activeRole: "Responsable",
       isActive: true,
     });
     if (!user) {
-      return res
-        .status(403)
-        .json({ status: "User not found or isn't Responsible" });
+      return res.status(403).json({ status: "User not found or isn't Responsible" });
     }
 
-    // Configurar paginación
-    const pageNumber = parseInt(page, 10);
-    const pageSize = parseInt(limit, 10);
-    const skip = (pageNumber - 1) * pageSize;
-
-    // Construir el objeto de búsqueda según el search y el periodId
+    // Filtro base
     const searchQuery = {
       ...(search.trim() && {
         $or: [
@@ -216,8 +209,6 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
     };
 
     let publishedReports = await PubReport.find(searchQuery)
-      .skip(skip)
-      .limit(pageSize)
       .populate("period")
       .populate({
         path: "report.dimensions",
@@ -239,30 +230,32 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
           select: "name email",
           model: "dependencies",
         },
-      })
-      .exec();
+      });
 
-    // Filtrar los reportes para dejar solo aquellos que tengan al menos una dimensión en la que el usuario es responsable
+    // Filtrar solo reportes donde el responsable tiene asignación
     publishedReports = publishedReports.filter((report) =>
       report.report.dimensions.some((dimension) => dimension.responsible !== null)
     );
 
-    // Procesar los filled_reports de cada reporte, quedándonos solo con aquellos que correspondan a dimensiones válidas
-    const publishedReportsFilter = publishedReports.map((report) => {
+    console.log(publishedReports);
+
+    // Limpiar y ordenar los filled_reports por fecha (desc)
+    const processedReports = publishedReports.map((report) => {
       report.filled_reports = report.filled_reports
-        .filter((filledRep) => filledRep.dimension.responsible !== null)
-        .sort((a, b) => new Date(b.loaded_date) - new Date(a.loaded_date)); // Orden descendente por fecha
+        .filter((fr) => fr.dimension.responsible !== null)
+        .sort((a, b) => new Date(b.loaded_date) - new Date(a.loaded_date));
       return report;
     });
 
-    const totalReports = publishedReportsFilter.length;
-    // Responder con la información paginada y los reportes filtrados
+
+
+    // Separar en pendientes y entregados
+    const pendingReports = processedReports.filter((r) => r.filled_reports.length === 0);
+    const deliveredReports = processedReports.filter((r) => r.filled_reports.length > 0);
+
     res.status(200).json({
-      total: totalReports,
-      page: pageNumber,
-      limit: pageSize,
-      totalPages: Math.ceil(totalReports / pageSize),
-      publishedReports: publishedReportsFilter,
+      pendingReports,
+      deliveredReports,
     });
   } catch (error) {
     console.log(error);
@@ -272,6 +265,7 @@ pubReportController.getPublishedReportsResponsible = async (req, res) => {
     });
   }
 };
+
 
 pubReportController.getLoadedReportsResponsible = async (req, res) => {
   try {
@@ -459,6 +453,10 @@ pubReportController.loadResponsibleReportDraft = async (req, res) => {
 
   try {
     let { email, publishedReportId, newAttachmentsDescriptions, dimension } = req.body;
+ 
+    console.log(req.body);
+
+
     if (!Array.isArray(newAttachmentsDescriptions)) {
       newAttachmentsDescriptions = [newAttachmentsDescriptions];
     }

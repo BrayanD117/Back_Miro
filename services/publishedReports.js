@@ -6,6 +6,9 @@ const mongoose = require('mongoose');
 
 class PublishedReportService {
 static async findPublishedReportById(id, email, dimensionId, session) {
+
+  console.log(dimensionId);
+
   // Asegurarse de que dimensionId sea un ObjectId
   const dimensionObjectId = new mongoose.Types.ObjectId(dimensionId);
 
@@ -27,6 +30,8 @@ static async findPublishedReportById(id, email, dimensionId, session) {
   if (!pubReport) {
     throw new Error("Report not found.");
   }
+
+  console.log(dimensionId)
 
   // Filtrar por la dimensión específica
   pubReport.report.dimensions = pubReport.report.dimensions.filter((dimension) =>

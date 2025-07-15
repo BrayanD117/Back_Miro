@@ -11,6 +11,7 @@ const ProducerReportsService = require("../services/producerReports");
 const PublishedProducerReport = require("../models/publishedProducerReports");
 const ProducerReport = require("../models/producerReports");
 const { Types } = require("mongoose");
+const { deleteDriveFile } = require("../config/googleDrive");
 
 const datetime_now = () => {
   const now = new Date();
@@ -39,8 +40,11 @@ reportController.getReport = async (req, res) => {
 reportController.getReports = async (req, res) => {
   try {
     const email = req.query.email;
+    const periodId = req.query.periodId || null;
+
     await UserService.findUserByEmailAndRole(email, "Administrador");
-    const reports = await ProducerReportsService.getReports();
+    console.log("what");
+    const reports = await ProducerReportsService.getReports(periodId);
     res.status(200).json(reports);
   } catch (error) {
     console.error(error);
@@ -146,26 +150,52 @@ reportController.updateReport = async (req, res) => {
 reportController.deleteProducerReport = async (req, res) => {
   const { id } = req.params;
 
+console.log("efjejfej");
+
+  console.log(id);
+
   try {
     if (!Types.ObjectId.isValid(id)) {
       return res.status(400).json({ status: "error", message: "ID no válido." });
     }
 
-    const isPublished = await PublishedProducerReport.findOne({ "report._id": new Types.ObjectId(id) });
+    const isPublished = await PublishedProducerReport.findOne({ "report._id": ObjectId(id) });
 
     if (isPublished) {
       return res.status(400).json({
         status: "error",
-        message: "No se puede eliminar: este informe está asignado a uno o más periodos."
+        message: "No se puede eliminar este informe ya que está asignado a uno o más periodos."
       });
     }
 
-    await ProducerReport.findByIdAndDelete(id);
+const report = await ProducerReport.findById(id);
+const fileId = report?.report_example?.id;
 
-    return res.status(200).json({
-      status: "success",
-      message: "Informe eliminado correctamente."
+if (fileId) {
+  try {
+    await deleteDriveFile(fileId);
+    console.log(`✅ Archivo eliminado de Drive: ${fileId}`);
+  } catch (err) {
+    console.error(`❌ No se pudo eliminar el archivo de Drive (${fileId}):`, err.message || err);
+
+    // Si el error NO es 404, detiene todo
+    return res.status(500).json({
+      status: "error",
+      message: "No se pudo eliminar el archivo en Drive. El informe no fue eliminado."
     });
+  }
+}
+
+// Si se llegó hasta aquí, significa que:
+// - no había archivo
+// - o se eliminó correctamente en Drive
+
+await ProducerReport.findByIdAndDelete(id);
+
+return res.status(200).json({
+  status: "success",
+  message: "Informe eliminado correctamente."
+});
   } catch (error) {
     console.error("Error deleting producer report:", error);
     return res.status(500).json({

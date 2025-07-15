@@ -14,6 +14,8 @@ router.get("/", controller.getPublishedProducerReports)
 router.post("/publish", controller.publishProducerReport)
 router.put("/status", controller.setFilledReportStatus)
 router.get("/:id", controller.getPublishedProducerReport)
+router.get('/pending-by-user', controller.getPendingProducerReportsByUser);
 
+router.delete("/:id", controller.deletePublishedProducerReport)
 
 module.exports = router

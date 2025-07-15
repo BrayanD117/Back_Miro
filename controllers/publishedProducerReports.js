@@ -4,6 +4,10 @@ const ProducerReportsService = require("../services/producerReports");
 const PublishedReportService = require("../services/publishedProducerReports");
 const UserService = require("../services/users");
 const PubProdReport = require("../models/publishedProducerReports");
+const dayjs = require('dayjs');
+const User = require('../models/users');
+const Dependency = require('../models/dependencies');
+const Period = require('../models/periods');
 
 const datetime_now = () => {
   const now = new Date();
@@ -54,6 +58,90 @@ pubProdReportController.getPublishedProducerReports = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 }
+
+pubProdReportController.deletePublishedProducerReport = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const report = await PubProdReport.findById(id);
+    if (!report) {
+      return res.status(404).json({ error: "Informe no encontrado" });
+    }
+
+    if (report.filled_reports && report.filled_reports.length > 0) {
+      return res.status(400).json({ error: "El informe ya tiene responsables que han diligenciado información" });
+    }
+
+    await PubProdReport.findByIdAndDelete(id);
+    return res.status(200).json({ status: "Informe eliminado correctamente" });
+  } catch (error) {
+    console.error("Error eliminando publishedProducerReport:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
+pubProdReportController.getPendingProducerReportsByUser = async (req, res) => {
+  try {
+    let { periodId } = req.query;
+
+    if (!periodId) {
+      const activePeriod = await Period.findOne({ is_active: true }).sort({ updatedAt: -1 });
+      if (!activePeriod) {
+        return res.status(404).json({ message: "No se encontró un periodo activo" });
+      }
+      periodId = activePeriod._id;
+    }
+
+    const users = await User.find({
+    isActive: true,
+    roles: "Productor",
+    }).lean();
+
+    const userMap = new Map(); // email -> { full_name, email, pendingReports: [] }
+
+    for (const user of users) {
+      userMap.set(user.email, {
+        full_name: user.full_name,
+        email: user.email,
+        pendingReports: []
+      });
+    }
+
+    const dependencies = await Dependency.find().lean();
+    const depMap = new Map(); // dep_code -> dependency object
+    for (const dep of dependencies) {
+      depMap.set(dep.dep_code, dep);
+    }
+
+    const reports = await PubProdReport.find({ period: periodId }).populate('report').lean();
+
+    for (const report of reports) {
+      const producerDeps = report.report?.producers || [];
+      const filledDeps = new Set(report.filled_reports?.map(f => String(f.dependency)));
+
+      for (const depId of producerDeps) {
+        if (filledDeps.has(String(depId))) continue;
+
+        const dep = dependencies.find(d => String(d._id) === String(depId));
+        if (!dep || !dep.members || dep.members.length === 0) continue;
+
+        for (const member of dep.members) {
+          const userData = userMap.get(member.email);
+          if (userData) {
+            userData.pendingReports.push(report.report?.name || 'Informe sin nombre');
+          }
+        }
+      }
+    }
+
+    const result = Array.from(userMap.values()).filter(u => u.pendingReports.length > 0);
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error("Error al obtener informes pendientes:", error);
+    return res.status(500).json({ error: error.message });
+  }
+};
 
 pubProdReportController.getPublishedProducerReportsProducer = async (req, res) => {
   try {
