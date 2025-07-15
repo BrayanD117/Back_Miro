@@ -149,17 +149,12 @@ reportController.updateReport = async (req, res) => {
 
 reportController.deleteProducerReport = async (req, res) => {
   const { id } = req.params;
-
-console.log("efjejfej");
-
-  console.log(id);
-
   try {
     if (!Types.ObjectId.isValid(id)) {
       return res.status(400).json({ status: "error", message: "ID no válido." });
     }
 
-    const isPublished = await PublishedProducerReport.findOne({ "report._id": ObjectId(id) });
+    const isPublished = await PublishedProducerReport.findOne({ "report._id": new ObjectId(id) });
 
     if (isPublished) {
       return res.status(400).json({
