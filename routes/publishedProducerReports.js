@@ -13,9 +13,10 @@ router.put("/producer/send", controller.sendProducerReport)
 router.get("/", controller.getPublishedProducerReports)
 router.post("/publish", controller.publishProducerReport)
 router.put("/status", controller.setFilledReportStatus)
+router.get('/get/pendingReportsByUser', controller.getPendingProducerReportsByUser);
 router.get("/:id", controller.getPublishedProducerReport)
-router.get('/pending-by-user', controller.getPendingProducerReportsByUser);
-
 router.delete("/:id", controller.deletePublishedProducerReport)
+router.put("/update-deadlines", controller.updateDeadlines);
+// router.put("/update-deadlines/by-period", controller.updateDeadlinesByPeriod);
 
 module.exports = router

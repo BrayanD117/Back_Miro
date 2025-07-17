@@ -93,55 +93,58 @@ pubProdReportController.getPendingProducerReportsByUser = async (req, res) => {
     }
 
     const users = await User.find({
-    isActive: true,
-    roles: "Productor",
+      isActive: true,
+      roles: "Productor",
     }).lean();
 
-    const userMap = new Map(); // email -> { full_name, email, pendingReports: [] }
+    const dependencies = await Dependency.find().lean();
+    const reports = await PubProdReport.find({ period: periodId }).lean();
+
+
+    const results = [];
 
     for (const user of users) {
-      userMap.set(user.email, {
-        full_name: user.full_name,
-        email: user.email,
-        pendingReports: []
-      });
-    }
+      const userDeps = dependencies.filter(dep =>
+        dep.members?.includes(user.email)
+      );
 
-    const dependencies = await Dependency.find().lean();
-    const depMap = new Map(); // dep_code -> dependency object
-    for (const dep of dependencies) {
-      depMap.set(dep.dep_code, dep);
-    }
+      console.log(userDeps);
 
-    const reports = await PubProdReport.find({ period: periodId }).populate('report').lean();
+      const pendingTemplates = [];
 
-    for (const report of reports) {
-      const producerDeps = report.report?.producers || [];
-      const filledDeps = new Set(report.filled_reports?.map(f => String(f.dependency)));
+      for (const report of reports) {
+        const assignedDepIds = (report.report?.producers || []).map(id => id.toString());
+        const filledDepIds = new Set((report.filled_reports || []).map(fr => fr.dependency.toString()));
 
-      for (const depId of producerDeps) {
-        if (filledDeps.has(String(depId))) continue;
+        for (const dep of userDeps) {
+          const depIdStr = dep._id.toString();
 
-        const dep = dependencies.find(d => String(d._id) === String(depId));
-        if (!dep || !dep.members || dep.members.length === 0) continue;
-
-        for (const member of dep.members) {
-          const userData = userMap.get(member.email);
-          if (userData) {
-            userData.pendingReports.push(report.report?.name || 'Informe sin nombre');
+          if (assignedDepIds.includes(depIdStr) && !filledDepIds.has(depIdStr)) {
+            const reportName = report.report?.name || "Informe sin nombre";
+            if (!pendingTemplates.includes(reportName)) {
+              pendingTemplates.push(reportName);
+            }
           }
         }
       }
+
+      if (pendingTemplates.length > 0) {
+        results.push({
+          full_name: user.full_name,
+          email: user.email,
+          pendingReports: pendingTemplates,
+        });
+      }
     }
 
-    const result = Array.from(userMap.values()).filter(u => u.pendingReports.length > 0);
-    return res.status(200).json(result);
+    return res.status(200).json(results);
 
   } catch (error) {
     console.error("Error al obtener informes pendientes:", error);
     return res.status(500).json({ error: error.message });
   }
 };
+
 
 pubProdReportController.getPublishedProducerReportsProducer = async (req, res) => {
   try {
@@ -301,6 +304,24 @@ pubProdReportController.setFilledReportStatus = async (req, res) => {
       status: "Error setting filled report status",
       error: error.message,
     });
+  }
+};
+
+
+pubProdReportController.updateDeadlines = async (req, res) => {
+  try {
+    const { email, reportIds, deadline } = req.body;
+
+    await UserService.findUserByEmailAndRoles(email, ["Administrador", "Responsable"]);
+
+    for (const id of reportIds) {
+      await PubProdReport.findByIdAndUpdate(id, { deadline });
+    }
+
+    return res.status(200).json({ message: "Fechas actualizadas exitosamente." });
+  } catch (error) {
+    console.error("Error al actualizar deadlines:", error);
+    return res.status(500).json({ error: error.message });
   }
 };
 

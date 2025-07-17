@@ -959,7 +959,25 @@ publTempController.deletePublishedTemplate = async (req, res) => {
   }
 }
 
-// TODO Editar publishedTemplate (Productores)
+publTempController.updateDeadlines = async (req, res) => {
+  try {
+    const { email, templateIds, deadline } = req.body;
+
+    console.log(req.body);
+
+
+    await UserService.findUserByEmailAndRoles(email, ["Administrador", "Responsable"]);
+
+    for (const id of templateIds) {
+      await PublishedTemplate.findByIdAndUpdate(id, { deadline });
+    }
+
+    return res.status(200).json({ message: "Fechas actualizadas exitosamente." });
+  } catch (error) {
+    console.error("Error al actualizar deadlines:", error);
+    return res.status(500).json({ error: error.message });
+  }
+};
 
 
 module.exports = publTempController;

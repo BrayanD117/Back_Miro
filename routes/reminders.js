@@ -8,15 +8,29 @@ router.delete('/:id', controller.deleteReminder);
 router.put('/:id', controller.updateReminder);
 router.post('/test-send', controller.sendTestReminder);
 router.get('/test-check', controller.checkAndSendReminderEmails);
+router.post('/send-now', controller.sendGenericReminders);
+
+router.post('/send-publishedProducerReports-reminders', async(req,res) => {
+  try {
+    const sent = await controller.runPendingProducerReportEmails(null)
+    res.status(200).json({sent})
+  } catch (error) {
+    console.error("Error ejecutando recordatorio de reportes para productores", error);
+    res.status(500).json({error: error.message})
+  }
+});
+
 router.post('/send-reminders', async (req, res) => {
   try {
-    const resultado = await controller.runReminderEmails(null, true); // sin argumentos
-    res.status(200).json({ enviados: resultado });
+    const sent = await controller.runReminderEmails(null, true); // sin argumentos
+    res.status(200).json({ sent });
   } catch (error) {
     console.error("Error ejecutando runReminderEmails:", error);
     res.status(500).json({ error: error.message });
   }
 });
+
+
 
 router.get("/reminders/preview", async (req, res) => {
   try {
