@@ -30,7 +30,7 @@ runReminderEmails: async function (periodId = null) {
     isActive: true,
     roles: "Productor",
     
-  }).limit(4);
+  }).limit();
 
   const dependenciaCache = {};
   const logs = [];
