@@ -566,7 +566,7 @@ publTempController.getFilledDataMergedForDimension = async (req, res) => {
 
   user = await User.findOne({ email })
 
-  if(!user || !user.roles.includes('Responsable') || !user.roles.includes('Administrador')) {
+  if(!user || (!user.roles.includes('Responsable') && !user.roles.includes('Administrador'))) {
     return res.status(404).json({status: 'User not available'})
   }
 

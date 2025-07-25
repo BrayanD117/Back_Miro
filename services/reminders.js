@@ -113,6 +113,8 @@ runPendingProducerReportEmails: async function(periodId = null) {
 
   const usuariosPendientes = await getPendingProducerReportsByUserRaw(periodId);
 
+  console.log(usuariosPendientes)
+
   const logs = [];
 
   for (const usuario of usuariosPendientes) {
@@ -246,10 +248,6 @@ sendReminderEmail: async function (to, nombre, fechaLimite, items = [], tipo = "
     ? `<ul style="padding-left: 20px;">${items.map(i => `<li>${i}</li>`).join('')}</ul>`
     : `<p>No se encontraron nombres de ${plural}.</p>`;
 
-  const resumen = tipo === "plantilla" ? 
-  ` Tienes <strong>${cantidad}</strong> ${cantidad === 1 ? singular : plural} pendiente${cantidad === 1 ? "" : "s"}.` :     
-  `En el informe de productor se reporta información relacionada con el quehacer de la unidad, en el marco de las estrategias que responden a requerimientos tanto internos como externos (especialmente aspectos a evaluar por el Ministerio de Educación). Este informe facilita la toma de decisiones informada y contribuye al diseño y seguimiento de acciones orientadas al mejoramiento continuo`
-
   await transporter.sendMail({
     from: `"${process.env.MAIL_FROM_NAME}" <${process.env.MAIL_FROM_ADDRESS}>`,
     to,
@@ -264,9 +262,20 @@ sendReminderEmail: async function (to, nombre, fechaLimite, items = [], tipo = "
 
     <h2 style="color: #1d3557; text-align: center;">Recordatorio de entrega pendiente</h2>
     <p style="font-size: 16px;">Hola <strong>${nombre}</strong>,</p>
-    <p style="font-size: 16px;">
-      ${resumen}
+${tipo === "informe" ? `
+  <p style="font-size: 16px;">
+    En el informe de productor se reporta información relacionada con el quehacer de la unidad, en el marco de las estrategias que responden a requerimientos tanto internos como externos (especialmente aspectos a evaluar por el Ministerio de Educación). Este informe facilita la toma de decisiones informada y contribuye al diseño y seguimiento de acciones orientadas al mejoramiento continuo.
+  </p>
+  <div style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 12px 16px; border-radius: 6px; margin: 16px 0;">
+    <p style="margin: 0; font-size: 15px; color: #856404;">
+      ⚠️ <strong>Se recomienda descargar la versión más reciente de las plantillas de informes desde Miró.</strong>
     </p>
+  </div>
+` : `
+  <p style="font-size: 16px;">
+    Tienes <strong>${cantidad}</strong> ${cantidad === 1 ? singular : plural} pendiente${cantidad === 1 ? "" : "s"}.
+  </p>
+`}
     <p style="font-size: 16px;">Te recordamos que debes entregar los siguientes ${plural}:</p>
     ${listaHtml}
     <p style="font-size: 16px;">
@@ -292,8 +301,25 @@ sendReminderEmail: async function (to, nombre, fechaLimite, items = [], tipo = "
 
 
 async function getPendingProducerReportsByUserRaw (periodId) {
-  const users = await User.find({ isActive: true, roles: "Productor" }).lean();
+
   const dependencies = await Dependency.find().lean();
+
+  // Construimos un Set con todos los correos de visualizers (líderes de dependencia)
+  const visualizerEmails = new Set();
+  for (const dep of dependencies) {
+    for (const email of dep.visualizers || []) {
+      visualizerEmails.add(email);
+    }
+  }
+
+  // Solo seleccionamos usuarios que son Productor y también líderes (visualizers)
+  const users = await User.find({ 
+    isActive: true, 
+    roles: "Productor", 
+    email: { $in: Array.from(visualizerEmails) }
+  }).lean();
+
+
   const reports = await PubProdReport.find({ period: new ObjectId(periodId) }).lean()
 
   const results = [];
