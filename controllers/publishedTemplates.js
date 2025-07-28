@@ -370,11 +370,19 @@ const result = pubTem.template.fields.map((field) => {
   const values = data.map(row => {
     const val = row[field.name];
 
-    if (field.multiple) {
-      if (Array.isArray(val)) return val.map(v => v?.toString?.() ?? '');
-      if (val === null || val === undefined) return [];
-      return [val.toString()];
-    }
+if (field.multiple) {
+  if (val === null || val === undefined) return [];
+
+  // Forzamos a string y separamos por coma
+  const rawString = val.toString();
+
+  // Si no hay coma, igual devolvemos el valor como único
+  if (!rawString.includes(',')) {
+    return [rawString.trim()];
+  }
+
+  return rawString.split(',').map(v => v.trim());
+}
 
     return val;
   });
