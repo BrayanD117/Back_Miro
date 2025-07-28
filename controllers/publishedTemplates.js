@@ -365,7 +365,7 @@ publTempController.loadProducerData = async (req, res) => {
       pubTem.published_date = datetime_now();
     }
 
-// Construcción robusta de `result` considerando `multiple`
+// Construcción robusta de `result` considerando `multiple
 const result = pubTem.template.fields.map((field) => {
   const values = data.map(row => {
     const val = row[field.name];
