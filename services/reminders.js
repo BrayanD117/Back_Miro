@@ -81,7 +81,7 @@ runReminderEmails: async function (periodId = null) {
       });
 
       logs.push({
-        email: usuario.email,
+        email:  usuario.email,
         nombre: usuario.full_name,
         deadline: fechaLimiteMasProxima,
         plantillas: plantillasPendientes.map(p => p.nombre)
@@ -264,7 +264,14 @@ sendReminderEmail: async function (to, nombre, fechaLimite, items = [], tipo = "
     <p style="font-size: 16px;">Hola <strong>${nombre}</strong>,</p>
 ${tipo === "informe" ? `
   <p style="font-size: 16px;">
-    En el informe de productor se reporta información relacionada con el quehacer de la unidad, en el marco de las estrategias que responden a requerimientos tanto internos como externos (especialmente aspectos a evaluar por el Ministerio de Educación). Este informe facilita la toma de decisiones informada y contribuye al diseño y seguimiento de acciones orientadas al mejoramiento continuo.
+    Este mensaje es para recordarte que tienes pendiente el envío del siguiente informe:
+  </p>
+  ${listaHtml}
+  <p style="font-size: 16px;">
+    El informe de productor en MIRÓ reporta la información semestral relacionada con el quehacer de la unidad a su cargo, en el marco de las estrategias que responden a requerimientos tanto internos como externos (especialmente aspectos a evaluar por el Ministerio de Educación). Este informe facilita la toma de decisiones informadas y contribuye al diseño y seguimiento de acciones orientadas al mejoramiento continuo de nuestra institución.
+  </p>
+  <p style="font-size: 16px;">
+    Las encuestas de percepción, si bien son un insumo importante para estos documentos, sólo se considerarán en los informes que se elaboren para el Semestre B de cada año toda vez que realizamos las encuestas de forma anual y durante el semestre B desde la Dirección de Planeación se estarán entregando los resultados.
   </p>
   <div style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 12px 16px; border-radius: 6px; margin: 16px 0;">
     <p style="margin: 0; font-size: 15px; color: #856404;">
@@ -275,9 +282,9 @@ ${tipo === "informe" ? `
   <p style="font-size: 16px;">
     Tienes <strong>${cantidad}</strong> ${cantidad === 1 ? singular : plural} pendiente${cantidad === 1 ? "" : "s"}.
   </p>
+  <p style="font-size: 16px;">Te recordamos que debes entregar los siguientes ${plural}:</p>
+  ${listaHtml}
 `}
-    <p style="font-size: 16px;">Te recordamos que debes entregar los siguientes ${plural}:</p>
-    ${listaHtml}
     <p style="font-size: 16px;">
       <strong style="color: #e63946;">Fecha límite:</strong> 
       <span style="font-weight: 500;">${dayjs(fechaLimite).format('DD/MM/YYYY')}</span>
