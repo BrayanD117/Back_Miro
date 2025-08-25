@@ -43,6 +43,9 @@ userController.loadUsers = async (req, res) => {
                 dep_code: user.dep_code,
             }));
 
+        // Get emails from external users
+        const externalEmails = new Set(externalUsers.map(user => user.email));
+
         // Handle dependency updates concurrently
         await Promise.all(
             externalUsers.map(async (externalUser) => {
@@ -54,10 +57,16 @@ userController.loadUsers = async (req, res) => {
             })
         );
 
-        // Sync users
+        // Sync users (upsert active users)
         await User.syncUsers(externalUsers);
 
-        // await userController.deleteDeactivatedUsersFromDependency();
+        // Deactivate users not in external list (including migrated users)
+        await User.updateMany(
+            { email: { $nin: Array.from(externalEmails) } },
+            { $set: { isActive: false } }
+        );
+
+        await userController.deleteDeactivatedUsersFromDependency();
         periodController.updateScreenshotsJob()
 
         res.status(200).send("Users synchronized");
