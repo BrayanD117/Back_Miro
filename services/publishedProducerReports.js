@@ -81,7 +81,7 @@ static async findPublishedReports(user, page = 1, limit = 10, search = "", perio
     reports = await PubReport.find(query)
       .populate({
         path: 'period',
-        select: 'name producer_end_date'
+        select: 'name producer_report_start_date producer_report_end_date producer_end_date'
       })
       .session(session);
   }

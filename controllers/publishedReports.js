@@ -17,9 +17,9 @@ const datetime_now = () => {
   const now = new Date();
 
   const offset = -5; // GMT-5
-  const dateWithOffset = new Date(now.getTime() + offset * 60 * 60 * 1000);
+  const dateWithOffset = new Date(now.getTime() + (offset * 60 * 60 * 1000));
 
-  return new Date(dateWithOffset.setMilliseconds(now.getMilliseconds()));
+  return dateWithOffset;
 };
 
 pubReportController.getPublishedReports = async (req, res) => {
@@ -432,11 +432,23 @@ pubReportController.feedOptionsForPublish = async (req, res) => {
         .json({ status: "User not found or isn't an active administrator" });
     }
     //TODO FILTER ONLY ACTIVE PERIODS
+    const currentDate = datetime_now();
+    console.log('Current date from datetime_now():', currentDate);
+    
     const periods = await Period.find({ 
       is_active: true, 
-      responsible_end_date: { $gte: datetime_now() }
+      responsible_end_date: { $gte: currentDate }
      })
      .select("name responsible_end_date");
+     
+     console.log('Periods found:', periods);
+     
+     // Debug: Let's also see all active periods without date filter
+     const allActivePeriods = await Period.find({ is_active: true })
+       .select("name responsible_end_date");
+     console.log('All active periods:', allActivePeriods);
+
+
     const dimensions = await Dimension.find({}).select("name");
     res.status(200).json({ periods, dimensions });
   } catch (error) {

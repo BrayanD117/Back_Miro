@@ -386,7 +386,7 @@ const realIndex = index;
     result.errors.push({
       register: realIndex + 1,
       message: `Valor vacío encontrado en la columna ${name}, fila ${realIndex + 1}`,
-      value: (value !== undefined && value !== null && value !== '') ? value : "Sin valor"
+      value: "Sin valor"
     });
     return;
   }
@@ -412,7 +412,7 @@ if (multiple && Array.isArray(value)) {
       result.errors.push({
         register: realIndex + 1,
         message: `Valor inválido encontrado en la columna ${name}, fila ${realIndex + 1}: ${validation.message}`,
-        value: (val !== undefined && val !== null && val !== '') ? val : "Sin valor"
+        value: val === null || val === undefined || val === '' ? "Sin valor" : (typeof val === 'object' ? JSON.stringify(val) : String(val))
       });
     }
   });
@@ -425,7 +425,7 @@ if (multiple && Array.isArray(value)) {
       result.errors.push({
         register: realIndex + 1,
         message: `Valor inválido encontrado en la columna ${name}, fila ${realIndex + 1}: ${validation.message}`,
-        value: (value !== undefined && value !== null && value !== '') ? value : "Sin valor"
+        value: value === null || value === undefined || value === '' ? "Sin valor" : (typeof value === 'object' ? JSON.stringify(value) : String(value))
       });
     }
   }
@@ -450,7 +450,7 @@ if (columnToValidate && validValuesSet) {
         result.errors.push({
           register: realIndex + 1,
           message: `Valor de la columna ${name}, fila ${realIndex + 1} no fue encontrado en la validación: ${validate_with}`,
-          value: (val !== undefined && val !== null && val !== '') ? val : "Sin valor"
+          value: val === null || val === undefined || val === '' ? "Sin valor" : (typeof val === 'object' ? JSON.stringify(val) : String(val))
         });
       }
     });
@@ -469,7 +469,7 @@ if (columnToValidate && validValuesSet) {
       result.errors.push({
         register: realIndex + 1,
         message: `Valor de la columna ${name}, fila ${realIndex + 1} no fue encontrado en la validación: ${validate_with}`,
-        value: (value !== undefined && value !== null && value !== '') ? value : "Sin valor"
+        value: value === null || value === undefined || value === '' ? "Sin valor" : (typeof value === 'object' ? JSON.stringify(value) : String(value))
       });
     }
   }

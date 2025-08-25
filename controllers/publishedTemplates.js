@@ -333,6 +333,8 @@ publTempController.exportPendingTemplates = async (req, res) => {
 publTempController.loadProducerData = async (req, res) => {
   const { email, pubTem_id, data, edit } = req.body;
 
+
+
   try {
     const user = await User.findOne({ email });
     if (!user) {
@@ -365,10 +367,59 @@ publTempController.loadProducerData = async (req, res) => {
       pubTem.published_date = datetime_now();
     }
 
+    // VALIDACIÓN PREVIA: Verificar que las columnas del Excel coincidan
+    if (data && data.length > 0) {
+      const excelColumns = Object.keys(data[0]);
+      const templateColumns = pubTem.template.fields.map(f => f.name);
+      
+      const missingColumns = templateColumns.filter(col => !excelColumns.includes(col));
+      const extraColumns = excelColumns.filter(col => !templateColumns.includes(col));
+      
+      if (missingColumns.length > 0 || extraColumns.length > 0) {
+        const errorDetails = [];
+        
+        if (missingColumns.length > 0) {
+          errorDetails.push({
+            column: "Columnas faltantes",
+            errors: missingColumns.map(col => ({
+              register: 1,
+              value: "No encontrada",
+              message: `La columna '${col}' no se encontró en el archivo Excel. Sus columnas actuales: [${excelColumns.join(', ')}]. Debe ser exactamente: '${col}'`
+            }))
+          });
+        }
+        
+        if (extraColumns.length > 0) {
+          extraColumns.forEach(col => {
+            errorDetails.push({
+              column: `Columna desconocida (${col})`,
+              errors: [{
+                register: 1,
+                value: col,
+                message: `La columna '${col}' no pertenece a esta plantilla. Elimine esta columna. Columnas válidas: [${templateColumns.join(', ')}]`
+              }]
+            });
+          });
+        }
+        
+        return res.status(400).json({ 
+          status: 'Column mismatch error', 
+          details: errorDetails,
+          message: 'Las columnas del archivo Excel no coinciden con la plantilla esperada'
+        });
+      }
+    }
+
 // Construcción robusta de `result` considerando `multiple
 const result = pubTem.template.fields.map((field) => {
   const values = data.map(row => {
-    const val = row[field.name];
+    let val = row[field.name];
+    
+    // FIX TEMPORAL: Detectar [object Object] strings del frontend
+    if (typeof val === 'string' && val === '[object Object]') {
+      console.warn(`⚠️  Campo ${field.name} contiene '[object Object]' - problema en el frontend`);
+      val = null; // Convertir a null para que se maneje como valor vacío
+    }
 
 if (field.multiple) {
   if (val === null || val === undefined) return [];
@@ -426,7 +477,7 @@ if (field.multiple) {
     const validationResults = await Promise.all(validations);
     const validationErrors = validationResults.filter(v => v.status === false);
 
-// Esto lo haces justo antes de guardar el Log o retornar el error
+// Debug: mostrar errores de validación
 validationErrors.forEach((err, i) => {
   console.log(`Campo con error #${i}: ${err.column}`);
   err.errors.forEach((e, j) => {
@@ -436,24 +487,24 @@ validationErrors.forEach((err, i) => {
 
     if (validationErrors.length > 0) {
       const sanitizedErrors = validationErrors.map(err => ({
-  column: err.column ?? "Campo desconocido",
-  errors: (err.errors ?? []).map(e => ({
-    register: e.register ?? -1,
-    value: (e.value !== undefined && e.value !== null && e.value !== '') ? e.value : "Sin valor",
-    message: e.message ?? "Error desconocido"
-  }))
-}));
+        column: err.column ?? "Campo desconocido",
+        errors: (err.errors ?? []).map(e => ({
+          register: e.register ?? 1,
+          value: e.value ?? "Sin valor",
+          message: e.message ?? "Error desconocido"
+        }))
+      }));
 
-// Guardar el log
-await Log.create({
-  user: user,
-  published_template: pubTem._id,
-  date: datetime_now(),
-  errors: sanitizedErrors
-});
+      // Guardar el log
+      await Log.create({
+        user: user,
+        published_template: pubTem._id,
+        date: datetime_now(),
+        errors: sanitizedErrors
+      });
 
-// Enviar al frontend
-return res.status(400).json({ status: 'Validation error', details: sanitizedErrors });
+      // Enviar al frontend
+      return res.status(400).json({ status: 'Validation error', details: sanitizedErrors });
     }
 
     const producersData = {

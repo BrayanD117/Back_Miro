@@ -31,6 +31,14 @@ userController.loadUsers = async (req, res) => {
 
         const usersMigrated = await User.find({ migrated: true });
 
+        // All users from external endpoint (for deactivation comparison)
+        const allExternalEmails = new Set(
+            response.data
+                .filter(user => user.code_user && user.code_user.trim() !== "")
+                .map(user => user.email)
+        );
+
+        // Only non-migrated users for processing
         const externalUsers = response.data
             .filter(user => user.code_user && user.code_user.trim() !== "" && 
                 !usersMigrated.some(migratedUser => migratedUser.email === user.email)
@@ -42,9 +50,6 @@ userController.loadUsers = async (req, res) => {
                 position: user.position,
                 dep_code: user.dep_code,
             }));
-
-        // Get emails from external users
-        const externalEmails = new Set(externalUsers.map(user => user.email));
 
         // Handle dependency updates concurrently
         await Promise.all(
@@ -60,9 +65,9 @@ userController.loadUsers = async (req, res) => {
         // Sync users (upsert active users)
         await User.syncUsers(externalUsers);
 
-        // Deactivate users not in external list (including migrated users)
+        // Deactivate users not in external endpoint (regardless of migration status)
         await User.updateMany(
-            { email: { $nin: Array.from(externalEmails) } },
+            { email: { $nin: Array.from(allExternalEmails) } },
             { $set: { isActive: false } }
         );
 
