@@ -372,7 +372,10 @@ publTempController.loadProducerData = async (req, res) => {
       const excelColumns = Object.keys(data[0]);
       const templateColumns = pubTem.template.fields.map(f => f.name);
       
-      const missingColumns = templateColumns.filter(col => !excelColumns.includes(col));
+      // Solo considerar como faltantes las columnas que son obligatorias (required = true)
+      const missingColumns = pubTem.template.fields
+        .filter(field => field.required && !excelColumns.includes(field.name))
+        .map(field => field.name);
       const extraColumns = excelColumns.filter(col => !templateColumns.includes(col));
       
       if (missingColumns.length > 0 || extraColumns.length > 0) {

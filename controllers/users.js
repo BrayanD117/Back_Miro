@@ -43,6 +43,23 @@ userController.loadUsers = async (req, res) => {
                 position: user.position,
                 dep_code: user.dep_code,
             }));
+            
+        // DEBUG: Verificar usuario específico
+        const williamUser = response.data.find(u => u.email === 'william.londono@unibague.edu.co');
+        console.log('=== DEBUG WILLIAM USER ===');
+        console.log('William found in endpoint:', williamUser ? 'YES' : 'NO');
+        if (williamUser) {
+            console.log('William data:', {
+                email: williamUser.email,
+                dep_code: williamUser.dep_code,
+                code_user: williamUser.code_user,
+                full_name: williamUser.full_name
+            });
+            const isMigrated = usersMigrated.some(m => m.email === williamUser.email);
+            console.log('William is migrated:', isMigrated);
+            console.log('William will be processed:', !isMigrated && williamUser.code_user && williamUser.code_user.trim() !== "");
+        }
+        console.log('=== END DEBUG ===');
 
         // Handle dependency updates concurrently
         await Promise.all(
@@ -51,6 +68,39 @@ userController.loadUsers = async (req, res) => {
                     await dependencyController.addUserToDependency(externalUser.dep_code, externalUser.email);
                 } catch (error) {
                     console.error(`Error processing user ${externalUser.email}:`, error);
+                }
+            })
+        );
+        
+        // Asegurar que usuarios migrados estén en el array members de su dependencia actual
+        console.log('=== ENSURING MIGRATED USERS ARE IN THEIR DEPENDENCY MEMBERS ===');
+        const migratedUsersToAddToMembers = [];
+        
+        for (const migratedUser of usersMigrated) {
+            const userDependency = await Dependency.findOne({ dep_code: migratedUser.dep_code });
+            if (userDependency && !userDependency.members.includes(migratedUser.email)) {
+                console.log(`Migrated user not in members: ${migratedUser.email} -> ${userDependency.name}`);
+                migratedUsersToAddToMembers.push({
+                    email: migratedUser.email,
+                    dep_code: migratedUser.dep_code
+                });
+            }
+        }
+        
+        console.log(`Migrated users to add to members: ${migratedUsersToAddToMembers.length}`);
+        
+        // Agregar usuarios migrados al array members de su dependencia actual (sin moverlos)
+        await Promise.all(
+            migratedUsersToAddToMembers.map(async (user) => {
+                try {
+                    const dependency = await Dependency.findOne({ dep_code: user.dep_code });
+                    if (dependency && !dependency.members.includes(user.email)) {
+                        dependency.members.push(user.email);
+                        await dependency.save();
+                        console.log(`Usuario migrado agregado a members: ${user.email} -> ${dependency.name}`);
+                    }
+                } catch (error) {
+                    console.error(`Error adding migrated user to members ${user.email}:`, error);
                 }
             })
         );

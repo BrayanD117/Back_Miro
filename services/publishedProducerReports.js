@@ -77,7 +77,7 @@ static async findPublishedReports(user, page = 1, limit = 10, search = "", perio
       report.report.dimensions.some(d => d.responsible !== null)
     );
   } else {
-    // Administrador: solo los necesarios
+    // Administrador: solo los necesarioss
     reports = await PubReport.find(query)
       .populate({
         path: 'period',
@@ -121,10 +121,14 @@ static async findPublishedReports(user, page = 1, limit = 10, search = "", perio
 
 
 static async findPublishedReportsProducer(user, _, __, search = "", periodId, session) {
+
+  
   const query = {
     ...(search && { "report.name": { $regex: search, $options: "i" } }),
     ...(periodId && { period: periodId }),
   };
+  
+  console.log('Query:', JSON.stringify(query));
 
   let reports = await PubReport.find(query)
     .populate({
@@ -136,12 +140,12 @@ static async findPublishedReportsProducer(user, _, __, search = "", periodId, se
       path: 'report.producers',
       model: 'dependencies',
       select: 'name',
-      match: { members: { $in: user.email } }
+      match: { members: user.email }
     })
     .populate({
       path: 'filled_reports.dependency',
       select: 'name responsible',
-      match: { members: { $in: user.email } }
+      match: { members: user.email }
     })
     .session(session);
 
@@ -184,13 +188,13 @@ static async findPublishedReportsProducer(user, _, __, search = "", periodId, se
     .populate({
       path: "filled_reports.dependency",
       select: "name responsible",
-      match: { members: {$in: user.email} }
+      match: { members: user.email }
     })
     .populate({
       path: "report.producers",
       select: "name",
       model: "dependencies",
-      match: { members: {$in: user.email} }
+      match: { members: user.email }
     })
 
     if (report?.filled_reports) {

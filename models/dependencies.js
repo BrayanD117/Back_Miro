@@ -82,32 +82,41 @@ dependencySchema.statics.upsertDependencies = async function(dependencies) {
 
 dependencySchema.statics.addUserToDependency = async function(dep_code, user) {
     try {
+        console.log(`=== DEBUG addUserToDependency: ${user} -> ${dep_code} ===`);
+        
         // Buscar si el usuario ya está en la dependencia especificada
         const currentDependency = await this.findOne({ dep_code, members: user });
+        console.log('User already in target dependency:', currentDependency ? 'YES' : 'NO');
 
         if (currentDependency) {
+            console.log('User already in dependency, skipping...');
             return;
         }
 
         // Eliminar al usuario de cualquier otra dependencia en la que se encuentre actualmente
-        await this.updateMany(
+        const removeResult = await this.updateMany(
             { members: user },
             { $pull: { members: user } }
         );
+        console.log('Removed from other dependencies:', removeResult.modifiedCount);
 
         // Añadir al usuario a la nueva dependencia
         const newDependency = await this.findOne({ dep_code });
         if (!newDependency) {
-            console.log("Specified dependency not found");
+            console.log("Specified dependency not found:", dep_code);
             return;
         }
+        
+        console.log('Target dependency found:', newDependency.name);
+        console.log('Current members count:', newDependency.members.length);
 
         newDependency.members.push(user);
         await newDependency.save();
-        console.log("User added to the specified dependency");
+        console.log(`User ${user} added to dependency ${newDependency.name}`);
+        console.log('New members count:', newDependency.members.length);
 
     } catch (error) {
-        console.error(error);
+        console.error('Error in addUserToDependency:', error);
     }
 };
 
