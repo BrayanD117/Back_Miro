@@ -62,6 +62,7 @@ apiRouter.use("/producerReports", require('./routes/producerReports'));
 apiRouter.use("/pProducerReports", require('./routes/publishedProducerReports'));
 apiRouter.use("/logs", require('./routes/logs'));
 apiRouter.use("/homeInfo", require('./routes/homeInfo'));
+apiRouter.use("/pending-user-changes", require('./routes/pendingUserChanges'));
 
 if (process.env.NODE_ENV === 'production') {
   app.use('/api/p', apiRouter);

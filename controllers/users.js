@@ -5,6 +5,7 @@ const Dependency = require('../models/dependencies');
 const dependencyController = require('./dependencies.js');
 const { default: mongoose } = require('mongoose');
 const periodController = require('./periods.js');
+const PendingUserChanges = require('../models/pendingUserChanges');
 
 const userController = {}
 
@@ -72,22 +73,59 @@ userController.loadUsers = async (req, res) => {
             })
         );
         
-        // Asegurar que usuarios migrados estén en el array members de su dependencia actual
-        console.log('=== ENSURING MIGRATED USERS ARE IN THEIR DEPENDENCY MEMBERS ===');
+        // Detectar cambios en usuarios migrados y crear registros de cambios pendientes
+        console.log('=== DETECTING CHANGES IN MIGRATED USERS ===');
+        const pendingChanges = [];
         const migratedUsersToAddToMembers = [];
         
-        for (const migratedUser of usersMigrated) {
-            const userDependency = await Dependency.findOne({ dep_code: migratedUser.dep_code });
-            if (userDependency && !userDependency.members.includes(migratedUser.email)) {
-                console.log(`Migrated user not in members: ${migratedUser.email} -> ${userDependency.name}`);
-                migratedUsersToAddToMembers.push({
-                    email: migratedUser.email,
-                    dep_code: migratedUser.dep_code
-                });
+        for (const externalUser of response.data.filter(user => user.code_user && user.code_user.trim() !== "")) {
+            const migratedUser = usersMigrated.find(m => m.email === externalUser.email);
+            if (migratedUser) {
+                // Verificar si el usuario está en members de su dependencia actual
+                const userDependency = await Dependency.findOne({ dep_code: migratedUser.dep_code });
+                if (userDependency && !userDependency.members.includes(migratedUser.email)) {
+                    migratedUsersToAddToMembers.push({
+                        email: migratedUser.email,
+                        dep_code: migratedUser.dep_code
+                    });
+                }
+                
+                // Verificar si hay cambio de dependencia
+                if (migratedUser.dep_code !== externalUser.dep_code) {
+                    const currentDep = await Dependency.findOne({ dep_code: migratedUser.dep_code });
+                    const proposedDep = await Dependency.findOne({ dep_code: externalUser.dep_code });
+                    
+                    if (currentDep && proposedDep) {
+                        pendingChanges.push({
+                            user_email: externalUser.email,
+                            user_name: externalUser.full_name,
+                            change_type: 'dependency_change',
+                            current_value: migratedUser.dep_code,
+                            proposed_value: externalUser.dep_code,
+                            current_dependency_name: currentDep.name,
+                            proposed_dependency_name: proposedDep.name
+                        });
+                        console.log(`Detected change: ${externalUser.email} (${currentDep.name} -> ${proposedDep.name})`);
+                    }
+                }
             }
         }
         
+        console.log(`Pending changes detected: ${pendingChanges.length}`);
         console.log(`Migrated users to add to members: ${migratedUsersToAddToMembers.length}`);
+        
+        // Guardar cambios pendientes (evitar duplicados)
+        if (pendingChanges.length > 0) {
+            try {
+                await PendingUserChanges.insertMany(pendingChanges, { ordered: false });
+                console.log(`${pendingChanges.length} pending changes saved`);
+            } catch (error) {
+                // Ignorar errores de duplicados (E11000)
+                if (error.code !== 11000) {
+                    console.error('Error saving pending changes:', error);
+                }
+            }
+        }
         
         // Agregar usuarios migrados al array members de su dependencia actual (sin moverlos)
         await Promise.all(
