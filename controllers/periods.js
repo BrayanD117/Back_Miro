@@ -121,7 +121,7 @@ periodController.updateScreenshotsJob = async () => {
     const periods = await Period.find({ producer_end_date: { $gt: currentDate } });
 
     for (const period of periods) {
-      const users = await User.find();
+      const users = await User.find({ isActive: true });
       const dependencies = await Dependency.find();
       const validators = await Validator.find();
 

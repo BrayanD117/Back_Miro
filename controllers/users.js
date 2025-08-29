@@ -31,13 +31,6 @@ userController.loadUsers = async (req, res) => {
 
         const usersMigrated = await User.find({ migrated: true });
 
-        // All users from external endpoint (for deactivation comparison)
-        const allExternalEmails = new Set(
-            response.data
-                .filter(user => user.code_user && user.code_user.trim() !== "")
-                .map(user => user.email)
-        );
-
         // Only non-migrated users for processing
         const externalUsers = response.data
             .filter(user => user.code_user && user.code_user.trim() !== "" && 
@@ -64,13 +57,49 @@ userController.loadUsers = async (req, res) => {
 
         // Sync users (upsert active users)
         await User.syncUsers(externalUsers);
+        
+        // RESET: Activar a TODOS los usuarios primero (para limpiar estado de producción)
+        console.log('=== RESET: Activando todos los usuarios ===');
+        const resetResult = await User.updateMany(
+            {},
+            { $set: { isActive: true } }
+        );
+        console.log(`Usuarios activados en reset: ${resetResult.modifiedCount}`);
+        
+        // All users from external endpoint (for deactivation comparison)
+        const allExternalEmails = new Set(
+            response.data
+                .filter(user => user.code_user && user.code_user.trim() !== "")
+                .map(user => user.email)
+        );
 
-        // Deactivate users not in external endpoint (regardless of migration status)
+        // DEBUG: Mostrar usuarios que serían desactivados
+        const usersToDeactivate = await User.find(
+            { 
+                email: { $nin: Array.from(allExternalEmails) },
+                isActive: true
+            },
+            { email: 1, full_name: 1, dep_code: 1, migrated: 1, roles: 1 }
+        );
+        
+        console.log('=== DEBUG: USUARIOS QUE SERÍAN DESACTIVADOS ===');
+        console.log(`Total: ${usersToDeactivate.length}`);
+        usersToDeactivate.forEach((user, index) => {
+            console.log(`${index + 1}. ${user.email} - ${user.full_name}`);
+            console.log(`   Dependencia: ${user.dep_code}`);
+            console.log(`   Migrado: ${user.migrated ? 'Sí' : 'No'}`);
+            console.log(`   Roles: ${user.roles?.join(', ') || 'Sin roles'}`);
+            console.log('   ---');
+        });
+        console.log('=== FIN DEBUG ===');
+        
+        // Desactivar usuarios que no están en el endpoint externo
         await User.updateMany(
             { email: { $nin: Array.from(allExternalEmails) } },
             { $set: { isActive: false } }
         );
 
+        // Eliminar usuarios desactivados de las dependencias
         await userController.deleteDeactivatedUsersFromDependency();
         periodController.updateScreenshotsJob()
 
